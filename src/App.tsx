@@ -82,6 +82,13 @@ function isViewId(value: string): value is ViewId {
   return validViewIds.has(value as ViewId)
 }
 
+function presetIdFromHost(hostname: string): PresetId | undefined {
+  const host = hostname.toLowerCase()
+  if (host.includes('signal-brief')) return 'signal-brief'
+  if (host.includes('skills-school')) return 'skills-school'
+  return undefined
+}
+
 function isPublicationPreset(preset: { id: string }) {
   return preset.id === 'signal-brief'
 }
@@ -104,9 +111,10 @@ function getInitialRoute() {
   const params = new URLSearchParams(window.location.search)
   const caseParam = params.get('case') ?? params.get('preset')
   const viewParam = params.get('view')
+  const presetId = normalizePresetId(caseParam) ?? presetIdFromHost(window.location.hostname)
 
   return {
-    presetId: normalizePresetId(caseParam),
+    presetId,
     view: viewParam && isViewId(viewParam) ? viewParam : undefined,
   }
 }

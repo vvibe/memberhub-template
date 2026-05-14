@@ -33,9 +33,9 @@ Full setup checklist: [`docs/fork-readiness.md`](./docs/fork-readiness.md)
 
 ## Live Preview
 
-- Production preview: https://memberhub-coral.vercel.app/
-- Skool-style case: https://memberhub-coral.vercel.app/?case=skills-school&view=join
-- Substack-style case: https://memberhub-coral.vercel.app/?case=signal-brief&view=blog
+- Skool-style case: https://skills-school-memberhub.vercel.app/
+- Substack-style case: https://signal-brief-publication.vercel.app/
+- Shared preview: https://memberhub-coral.vercel.app/
 - Vercel project: `memberhub`
 - Current examples: `Skills School 職能加速社群` and `Signal Brief 策略通訊`.
 
