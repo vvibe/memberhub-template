@@ -323,6 +323,18 @@ test('Signal Brief standalone article and limited-free rules work', async ({ pag
   await expect(page.getByText('免費讀者')).toBeVisible()
   await expect(page.getByText('付費讀者')).toBeVisible()
   await expect(page.locator('.signal-author-card').getByText('付費轉換')).toHaveCount(0)
+  const authorProfileLayout = await page.locator('.signal-author-card').evaluate((card) => {
+    const avatar = card.querySelector('.signal-author-avatar')
+    if (!avatar) throw new Error('Missing Signal Brief author avatar')
+    const cardRect = card.getBoundingClientRect()
+    const avatarRect = avatar.getBoundingClientRect()
+    return {
+      avatarWidth: Math.round(avatarRect.width),
+      avatarCenterOffset: Math.round(Math.abs((avatarRect.left + avatarRect.width / 2) - (cardRect.left + cardRect.width / 2))),
+    }
+  })
+  expect(authorProfileLayout.avatarWidth).toBeGreaterThanOrEqual(94)
+  expect(authorProfileLayout.avatarCenterOffset).toBeLessThanOrEqual(1)
   await page.locator('.signal-feature-post').click()
   await expect(page.getByRole('heading', { name: 'AI 工具從嘗鮮走向日常工作的三個訊號' })).toBeVisible()
   await expect(page.getByText('想讀完整付費分析？')).toHaveCount(0)

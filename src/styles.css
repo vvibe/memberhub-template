@@ -1130,16 +1130,17 @@ button:active {
 }
 
 .signal-author-profile {
-  display: flex;
-  align-items: center;
-  gap: 18px;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  text-align: center;
 }
 
 .signal-author-avatar {
-  width: 72px;
-  height: 72px;
+  width: 96px;
+  height: 96px;
   flex: 0 0 auto;
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .signal-author-label {
