@@ -37,9 +37,8 @@ const requiredMigrationTables = [
 ]
 
 const requiredReadmePhrases = [
-  'Portaly Vibe 產品優化工具',
-  'InsForge Auth',
-  'Portaly Vibe hosted checkout',
+  '可以私有化部署',
+  'Portaly Vibe MCP',
   '是否需要啟用金流、訂閱方案與發票流程',
   '可能產生成本',
   'ALLOWED_ORIGINS',
@@ -89,9 +88,9 @@ assert(checkoutFunction.includes('/api/creator-subscription/checkout-sessions'),
 assert(checkoutFunction.includes('PORTALY_API_KEY'), 'Portaly checkout function reads server-side API key')
 assert(checkoutFunction.includes('ALLOWED_ORIGINS'), 'Portaly checkout function restricts allowed origins')
 assert(checkoutFunction.includes('origin_not_allowed'), 'Portaly checkout function rejects untrusted browser origins')
-assert(webhookFunction.includes('PORTALY_CALLBACK_SECRET'), 'Portaly webhook verifies callback secret')
-assert(webhookFunction.includes('x-portaly-signature'), 'Portaly webhook reads signature header')
-assert(webhookFunction.includes('timingSafeEqual'), 'Portaly webhook uses timing-safe signature comparison')
+assert(webhookFunction.includes('PORTALY_CALLBACK_SECRET'), 'optional payment callback verifies callback secret')
+assert(webhookFunction.includes('x-portaly-signature'), 'optional payment callback reads signature header')
+assert(webhookFunction.includes('timingSafeEqual'), 'optional payment callback uses timing-safe signature comparison')
 assert(agents.includes('Only after the above is complete, ask whether the user wants to enable payments'), 'AGENTS keeps payment opt-in guard')
 assert(forkReadiness.includes('可能產生成本'), 'fork readiness documents possible costs')
 assert(forkReadiness.includes('安全注意'), 'fork readiness documents security notes')

@@ -1,19 +1,35 @@
 # MemberHub - Membership / Courses / Community Platform
 
-> A forkable "Substack + Patreon + Skool" for creators: paywalled content, subscriptions, course progress, community discussions, challenges, newsletters, and webinars.
+> A self-hostable membership site starter. Use it to run paid content, online courses, member communities, newsletters, challenges, and events under your own brand.
 
 [中文 README](./README.md)
 
-## Start Here
+## What You Can Build
 
-- You can fork the repo, run `npm ci`, then `npm run dev`. The local demo does not require API keys.
-- Production requires InsForge and Portaly Vibe keys. Store real values in `.env.local` or your deployment secret manager.
-- Potential costs: InsForge, Portaly Vibe / payment processing fees, hosting, domain, Email/LINE messaging, and invoice/e-invoice providers. This repo does not automatically enable any paid service.
-- Live payments are disabled by default. The AI agent must finish frontend, login, InsForge, and Portaly Vibe setup first, then ask whether to enable payments, subscription plans, and invoice flow.
-- Security basics: never commit real keys; set `ALLOWED_ORIGINS` to your production domain; verify RLS policies, payment webhooks, and invoice flow in test mode before launch.
-- Completion gate: `npm run check:integrations`, `npm run build`, and `npm run test:qa` must pass.
+MemberHub is for people who want to run a paid content, course, or community product without starting from a blank app. You can adapt it to your own brand, deploy it privately, and manage your own members and content.
 
-Full fork checklist: [`docs/fork-readiness.md`](./docs/fork-readiness.md)
+It can be used for:
+
+- Paid posts and member-only content
+- Online courses and progress tracking
+- Private community discussions
+- Monthly, yearly, and lifetime plans
+- Newsletters and member notifications
+- Challenges, points, and leaderboards
+- Events, webinars, and replay libraries
+- Member self-service and admin operations
+
+You can run the local demo without connecting any external service. When you are ready for production, connect InsForge for auth/database and use the Portaly Vibe MCP so an AI coding agent can help review and optimize product setup.
+
+## Notes
+
+- The local demo does not require API keys. Production requires InsForge setup and a Portaly Vibe MCP token.
+- Payments, subscription plans, and invoice flow are optional and should be enabled only when you are ready.
+- Possible costs include hosting, domain, InsForge, Portaly Vibe, payment processing, Email/LINE messaging, and invoice/e-invoice providers.
+- Never commit real API keys, MCP tokens, or callback secrets to GitHub.
+- Before launch, run `npm run check:integrations`, `npm run build`, and `npm run test:qa`; Playwright should pass at 100%.
+
+Full setup checklist: [`docs/fork-readiness.md`](./docs/fork-readiness.md)
 
 ## Live Demo
 
@@ -23,19 +39,13 @@ Full fork checklist: [`docs/fork-readiness.md`](./docs/fork-readiness.md)
 
 ## What This Is
 
-MemberHub is a complete open-source wheel designed for GitHub. It helps creators, coaches, teachers, consultants, and community builders fork a ready membership business system instead of starting from a generic SaaS boilerplate.
+MemberHub is an open-source membership platform starter. It helps creators, coaches, teachers, consultants, and community builders launch a private membership site faster.
 
-This is not only documentation or a design spec. This folder includes a runnable Vite + React service, four switchable vertical presets, demo data, paywalls, newsletters, referral gifts, global search, member directory, course resources, moderation queues, challenges, events, member self-service, a complete operator admin dashboard, an InsForge migration, and a Portaly webhook skeleton. It runs locally with mock/localStorage data first, then can be connected to InsForge and Portaly for production.
+This is not only documentation or a design spec. The project includes a runnable Vite + React service, four switchable examples, demo data, paywalls, newsletters, referral gifts, global search, member directory, course resources, moderation queues, challenges, events, member self-service, and an admin dashboard. It runs locally first, then can be connected to InsForge and the Portaly Vibe MCP for a self-hosted production deployment.
 
 The frontend uses React throughout. UI components default to shadcn/ui primitives (`components.json` and `src/components/ui/*` are already set up). The visual direction is a clean, sharp product interface: white surfaces, fine borders, low shadows, clear hierarchy, 8px/12px radii, and black primary buttons so the template stays professional across verticals.
 
-The default homepage README is Chinese-first for Chinese-speaking creators and vibe coders. This English file mirrors the same product and implementation intent for global builders and AI agents.
-
-## Copywriting Perspective
-
-All website, demo, preset, seed data, and README copy should default to the perspective of the creator, teacher, coach, consultant, or community operator who is running the final service. Public-facing copy should sound like they are speaking to their own members, students, readers, or subscribers. Admin copy should sound like the operating workspace they use every day.
-
-Avoid writing copy as if an agency is selling this wheel to a client or handing off a project. Use template, fork, install, integration, or implementation language only inside repo documentation and AI setup instructions where builders need it.
+The default README is Chinese-first; this file mirrors the same product intent for English readers and AI agents.
 
 ## Who Should Use It
 
@@ -49,7 +59,7 @@ Avoid writing copy as if an agency is selling this wheel to a client or handing 
 
 ## What Creators Can Run With It
 
-MemberHub is not only a course website. It is a verticalizable membership business system that creators and operators can use to run:
+MemberHub is not only a course website. You can adapt it into different types of membership products:
 
 - Online course platform
 - Paid newsletter platform
@@ -90,7 +100,7 @@ npm run test:qa
 
 `test:qa` builds the latest production bundle first, then runs Playwright against Vite preview. Completion requires a 100% pass rate: the suite currently covers 13 main views, desktop `1440x1000`, mobile `390x844`, console errors, horizontal overflow, shared UI tokens, typography weight/scale rules, viewport screenshots, and core interaction flows.
 
-The demo runs without keys. Production mode requires InsForge and Portaly Vibe keys.
+The demo runs without keys. Production requires InsForge setup and a Portaly Vibe MCP token.
 
 Recommended Node version: `^22.13.0 || ^20.12.0`.
 
@@ -111,9 +121,9 @@ This repo is not a static showcase. Without any backend keys, the localStorage d
 - Invite a demo member
 - Generate a membership review task from an invited member
 - Open the moderation queue from the membership questions action
-- View member self-service, receipt/invoice webhook fixture, referral gifts, and admin operations dashboards
+- View member self-service, receipt/invoice status examples, referral gifts, and admin operations dashboards
 
-For production, replace `src/lib/store.ts` localStorage state with InsForge CRUD. Payment, subscriptions, invoices, and the Portaly Portal should only be enabled after the core flow is complete and after the AI agent asks the user whether to enable them.
+For production, replace `src/lib/store.ts` localStorage state with InsForge CRUD. Payment, subscriptions, and invoices should only be enabled after the core flow is complete and after the AI agent asks the user whether to enable them.
 
 ## Project Structure
 
@@ -124,13 +134,10 @@ src/
   data/presets.ts         # Switchable verticals: baking community, design teacher, fitness coach, finance newsletter
   lib/insforge.ts         # InsForge browser SDK client factory
   lib/store.ts            # localStorage demo state; replace with InsForge DB
-  lib/portaly.ts          # Portaly checkout/webhook fixture helper
+  lib/portaly.ts          # Portaly payment status demo helper
   styles.css              # Product UI styles
 migrations/
   20260511210000_memberhub.sql
-insforge/functions/
-  portaly-checkout/index.ts
-  portaly-webhook/index.ts
 docs/
   ai-install-intake.md
   launch-checklist.md
@@ -162,36 +169,42 @@ docs/
 
 ## System Architecture
 
-Recommended stack:
+This project uses:
 
-- Frontend: Vite React in this template; can be adapted to Next.js React
-- UI Components: shadcn/ui. `components.json` is initialized and button, card, badge, input, select, table, separator, and alert are installed.
-- Backend: InsForge Auth, Postgres, RLS, Edge Functions, Storage
-- Product optimization: Portaly Vibe product optimization tooling
-- Payment: Portaly Vibe hosted checkout for subscriptions, one-time payments, and discount codes
-- Invoice: invoice/e-invoice flow can be connected through Portaly, an invoice provider, or the creator's existing invoice system; MemberHub stores payment, invoice task, and webhook status
-- Analytics: Portaly Vibe + GA4 event tracking
-- Messaging: email provider, LINE Messaging API, or webhook adapter
+- Frontend: Vite + React
+- UI: shadcn/ui
+- Auth and database: InsForge
+- AI-assisted product setup: Portaly Vibe MCP
+- Testing: Playwright
 
-## Preinstalled Integration Assumption
+You can swap backend, payment, or messaging services to match your own deployment needs. The goal is to provide a working, adaptable, self-hostable membership platform starting point.
 
-This wheel assumes Portaly Vibe product optimization tooling is already installed. The user only needs to apply for and fill in:
+## Portaly Vibe MCP
 
-- InsForge project URL
-- InsForge anon key
-- InsForge server/API key, server-side only
-- Portaly Vibe API key
-- Portaly callback secret
-- Allowed origins, such as the production domain and local development URLs
+This project includes project-scoped Portaly Vibe MCP config so supported coding agents can connect to Portaly Vibe from this project.
 
-`npm ci` installs `@insforge/sdk`, `@insforge/cli`, and Playwright QA tooling. Forked projects do not need to guess which integration packages to add. The repo already includes the InsForge migration, browser SDK client, Portaly checkout Edge Function, Portaly callback Edge Function, AI install intake, and launch checklist.
-
-This wheel also includes project-scoped Portaly Vibe MCP config:
+Included files:
 
 - `.mcp.json`
 - `.cursor/mcp.json`
 
-The MCP server name is `portaly-vibe`, the HTTP URL is `https://mcp.portaly.ai`, and the Authorization header template is `Bearer <YOUR_TOKEN>`. After forking, replace `<YOUR_TOKEN>` with your own Portaly Vibe MCP token. Do not commit a real token to GitHub. See `docs/mcp-setup.md`.
+The MCP server name is `portaly-vibe`, the HTTP URL is `https://mcp.portaly.ai`, and the Authorization header template is `Bearer <YOUR_TOKEN>`.
+
+Apply for a Portaly Vibe MCP token and replace `<YOUR_TOKEN>` locally. Do not commit a real token to GitHub. See `docs/mcp-setup.md`.
+
+## What Production Needs
+
+If you only want to try the demo, you can skip this section. For production, you usually need:
+
+- InsForge project URL
+- InsForge anon key
+- InsForge server/API key, server-side only
+- Portaly Vibe MCP token
+- Allowed origins, such as the production domain and local development URLs
+
+`npm ci` installs `@insforge/sdk`, `@insforge/cli`, and Playwright QA tooling. The repo includes the InsForge migration, browser SDK client, Portaly Vibe MCP config, AI install intake, and launch checklist.
+
+Payments, subscription plans, and invoices are optional. If you enable them, test the full flow before switching to live payments.
 
 Available commands:
 
@@ -212,7 +225,7 @@ If you are an AI agent, help the user in this order:
 2. Confirm the app runs locally.
 3. Configure frontend pages and login. The default production recommendation is InsForge Google OAuth.
 4. Complete InsForge setup first: Auth, tables, RLS, Storage, Edge Functions.
-5. Complete Portaly Vibe product optimization setup: member sync, product state, analytics events, security scan state.
+5. Complete Portaly Vibe MCP setup so supported Coding Agents can read project product context and help with setup checks.
 6. Make demo seed data work and confirm three vertical presets can switch.
 7. Only after everything else is installed, ask the user: "Do you want to enable payments, subscription plans, and invoice flow?"
 8. If the user enables payments, default to a Portaly test key. Do not run live mode first.
@@ -224,7 +237,7 @@ Suggested payment question after core setup:
 ```text
 Do you want to enable payments, subscription plans, and invoice flow?
 
-If yes, I will use Portaly Vibe hosted checkout, start with a test key, and configure monthly/yearly/lifetime plans, payment callbacks, subscription sync, and invoice task records.
+If yes, I will start in test mode and configure monthly/yearly/lifetime plans, payment status sync, and invoice task records. After the test flow works, you can decide whether to switch to live payments.
 ```
 
 ## Environment Variables
@@ -312,7 +325,7 @@ Later presets:
 - Members can open courses, update progress, comment, and check in.
 - Admin can create content, plans, courses, and events.
 - Portaly Vibe receives member sync, product state, and analytics events.
-- Payment callback fixtures update membership plan status.
+- Payment status examples update membership plan status.
 - Invoice tasks or invoice status records are stored.
 - README, `.env.example`, demo seed data, and screenshots are current.
 

@@ -2,7 +2,7 @@
 
 ## Playwright QA Gate
 
-- [ ] Run `npm run test:qa` before marking the wheel or generated website complete.
+- [ ] Run `npm run test:qa` before marking the site or template complete.
 - [ ] Pass rate is 100%.
 - [ ] All main views pass in desktop and mobile viewports.
 - [ ] No console errors.
@@ -16,7 +16,7 @@
 - [ ] `npm run check:integrations` passes.
 - [ ] `.env.example` documents every required variable.
 - [ ] `.env.local` is ignored by Git.
-- [ ] README starts with the fork-critical facts: demo works without keys, production needs InsForge/Portaly, possible costs, security boundaries, and QA commands.
+- [ ] README starts with a clear user-facing explanation of what this project can do.
 - [ ] `docs/fork-readiness.md` is current and linked from both README files.
 - [ ] `.mcp.json` defines project-scoped `portaly-vibe` MCP over HTTP.
 - [ ] `.cursor/mcp.json` defines project-scoped `portaly-vibe` MCP for Cursor.
@@ -42,7 +42,7 @@
 - [ ] Secrets are stored in `.env.local` or deployment secret manager.
 - [ ] `ALLOWED_ORIGINS` includes only trusted frontend origins before production.
 - [ ] Checkout Edge Function rejects untrusted browser origins.
-- [ ] Portaly webhook validates timestamp and `x-portaly-signature`.
+- [ ] If payment callbacks are enabled, callback requests validate timestamp and signature.
 - [ ] Demo localStorage is not used for production member, payment, or invoice data.
 - [ ] Live mode, real payments, subscription cancellation/resume, and manual payment completion require explicit confirmation.
 
@@ -61,16 +61,12 @@
 - [ ] Admin can create content, courses, plans, webinars, newsletters, and announcements.
 - [ ] Admin can review membership questions, reports, AutoMod risk, and billing disputes.
 
-## Portaly Vibe
+## Portaly Vibe MCP
 
-- [ ] Portaly Vibe product optimization tooling is connected.
-- [ ] Member sync events reach Portaly Vibe.
-- [ ] Product analytics events reach Portaly Vibe.
-- [ ] Security scan status is visible in the admin panel.
-- [ ] Webhook health is visible in the admin panel.
-- [ ] `insforge/functions/portaly-checkout` creates hosted checkout sessions with the server-side `PORTALY_API_KEY`.
-- [ ] `insforge/functions/portaly-checkout` restricts browser callers with `ALLOWED_ORIGINS`.
-- [ ] `insforge/functions/portaly-webhook` verifies `x-portaly-signature` with `PORTALY_CALLBACK_SECRET`.
+- [ ] `.mcp.json` and `.cursor/mcp.json` define the project-scoped `portaly-vibe` MCP server.
+- [ ] MCP uses HTTP URL `https://mcp.portaly.ai`.
+- [ ] Real MCP token is stored locally or in a secret manager, not committed.
+- [ ] Coding Agent can read the project-local MCP config before production setup.
 
 ## Payment And Invoice
 
@@ -85,7 +81,7 @@ If yes:
 - [ ] Use Portaly test key first.
 - [ ] Create monthly, yearly, and lifetime test plans.
 - [ ] Create checkout session flow.
-- [ ] Verify Portaly callback signature.
-- [ ] Store payment and subscription callback events.
+- [ ] Verify payment callback signature if callback functions are enabled.
+- [ ] Store payment and subscription status events.
 - [ ] Store invoice task or invoice status records.
 - [ ] Confirm with the user before any live-mode money-moving action.

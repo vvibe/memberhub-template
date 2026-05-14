@@ -7,7 +7,7 @@ Read `README.md` first. The Chinese README is the canonical homepage; `README.en
 Before changing code for a forked install, read `docs/fork-readiness.md` and explain the key boundaries to the user in simple language:
 
 - The local demo runs without keys.
-- Production requires InsForge and Portaly Vibe accounts/keys.
+- Production requires InsForge setup and a Portaly Vibe MCP token.
 - Possible costs include InsForge, Portaly Vibe, payment processing, hosting, domain, Email/LINE, and invoice providers.
 - Live payment, official subscription plans, invoice issuing, and message sending are disabled until explicitly enabled.
 - Secrets must go into `.env.local` or a deployment secret manager, never into chat or GitHub.
@@ -20,7 +20,7 @@ Before changing code for a forked install, read `docs/fork-readiness.md` and exp
 4. Configure the selected vertical in `src/data/presets.ts`.
 5. Complete login setup. Default production recommendation is InsForge Google OAuth.
 6. Complete InsForge setup: Auth, Postgres tables, RLS, Storage, Edge Functions.
-7. Complete Portaly Vibe product optimization setup: member sync, product state, analytics events, security status.
+7. Complete Portaly Vibe MCP setup so the project-local Coding Agent can connect to Portaly Vibe.
 8. Load demo seed data and verify the vertical presets.
 9. Only after the above is complete, ask whether the user wants to enable payments, subscription plans, and invoice flow.
 
@@ -33,9 +33,9 @@ npm run insforge:migrate
 npm run insforge:functions:deploy
 ```
 
-The fork includes `@insforge/sdk`, `@insforge/cli`, `src/lib/insforge.ts`, the InsForge migration, `insforge/functions/portaly-checkout`, and `insforge/functions/portaly-webhook`.
+The project includes `@insforge/sdk`, `@insforge/cli`, `src/lib/insforge.ts`, the InsForge migration, and optional checkout/callback function examples for teams that enable payments.
 
-The fork also includes project-scoped Portaly Vibe MCP config:
+The project also includes project-scoped Portaly Vibe MCP config:
 
 - `.mcp.json`
 - `.cursor/mcp.json`

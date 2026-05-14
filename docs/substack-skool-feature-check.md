@@ -85,7 +85,7 @@ To be considered feature-complete against Substack and Skool basics, a MemberHub
 - Membership questions, report queue, AutoMod-risk queue, and moderator/admin role handling.
 - Course resources, transcripts, and pinned lesson discussion links.
 - Referral codes, paid subscriber gift campaigns, and source/campaign attribution.
-- Portaly Vibe product optimization, member sync, analytics, and security status.
+- Portaly Vibe MCP-assisted setup, member state review, analytics review, and security status checks.
 
 ## Implemented Demo Coverage Added on 2026-05-14
 

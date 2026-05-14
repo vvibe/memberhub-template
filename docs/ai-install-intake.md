@@ -18,7 +18,7 @@ Tell the user these facts first in simple language:
 
 Default all generated copy to the final operator's perspective. If the user is building a baking community, design course, fitness membership, finance newsletter, or language school, write homepage, seed content, plan descriptions, emails, and admin labels as that creator/teacher/coach speaking to their members, students, readers, or subscribers.
 
-Do not write public-facing copy as if MemberHub is being sold to an outside client. Only use implementation language such as fork, install, preset, payment integration, invoice integration, or InsForge setup inside README, setup notes, and agent handoff sections.
+Public-facing copy should speak to the operator's members, students, readers, or subscribers. Keep implementation language such as install, preset, payment integration, invoice integration, or InsForge setup inside setup notes and agent instructions.
 
 ## Required Questions
 

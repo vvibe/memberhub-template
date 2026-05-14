@@ -40,7 +40,7 @@ MemberHub uses a restrained product UI system so forked verticals stay coherent.
 
 - Public-facing copy should be written from the final creator/operator to their members, students, readers, or subscribers.
 - Admin copy should describe the operator's own daily work: publishing, member care, moderation, billing review, and community operations.
-- Avoid agency/client sales language in the app UI. Keep fork, install, integration, and implementation wording inside repo documentation or setup files.
+- Avoid sales or implementation language in the app UI. Keep install, integration, and setup wording inside documentation or setup files.
 
 ## AI Agent Notes
 
