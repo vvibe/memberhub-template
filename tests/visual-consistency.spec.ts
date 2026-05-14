@@ -772,10 +772,47 @@ async function expectFormControlConsistency(page: Page) {
       })
       .filter((control) => control.issue)
 
-    return { controls }
+    const toggles = Array.from(document.querySelectorAll('.editor-toggle'))
+      .filter(isVisible)
+      .map((element) => {
+        const style = window.getComputedStyle(element)
+        const rect = element.getBoundingClientRect()
+        const input = element.querySelector('input[type="checkbox"]')
+        const inputRect = input?.getBoundingClientRect()
+        const inputStyle = input ? window.getComputedStyle(input) : null
+        const display = style.display
+        const height = Math.round(rect.height)
+        const inputWidth = inputRect ? Math.round(inputRect.width) : 0
+        const inputHeight = inputRect ? Math.round(inputRect.height) : 0
+
+        return {
+          text: element.textContent?.trim() ?? '',
+          display,
+          height,
+          borderRadius: style.borderRadius,
+          borderWidth: style.borderTopWidth,
+          alignItems: style.alignItems,
+          inputWidth,
+          inputHeight,
+          inputAppearance: inputStyle?.appearance ?? '',
+          issue:
+            !display.includes('flex') ||
+            style.alignItems !== 'center' ||
+            Number.parseFloat(style.borderTopWidth) < 1 ||
+            style.borderRadius !== '8px' ||
+            height < 30 ||
+            inputWidth !== 18 ||
+            inputHeight !== 18 ||
+            inputStyle?.appearance !== 'none',
+        }
+      })
+      .filter((toggle) => toggle.issue)
+
+    return { controls, toggles }
   })
 
   expect(report.controls, 'form controls should use the shared input/textarea styling instead of browser defaults').toEqual([])
+  expect(report.toggles, 'checkbox toggles should stay inline and use the shared custom control styling').toEqual([])
 }
 
 async function expectPublicationAdminTabs(page: Page) {

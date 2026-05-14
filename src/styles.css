@@ -916,9 +916,40 @@ button:active {
 }
 
 .editor-toggle input {
-  width: 15px;
-  height: 15px;
-  accent-color: #111111;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 1px solid rgba(47, 52, 55, 0.28);
+  border-radius: 5px;
+  background: #ffffff;
+  appearance: none;
+  display: grid;
+  place-items: center;
+}
+
+.editor-toggle input::after {
+  content: "";
+  width: 8px;
+  height: 5px;
+  border-left: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  transform: translateY(-1px) rotate(-45deg) scale(0);
+  transition: transform 120ms ease;
+}
+
+.editor-toggle input:checked {
+  border-color: var(--brand-accent);
+  background: var(--brand-accent);
+}
+
+.editor-toggle input:checked::after {
+  transform: translateY(-1px) rotate(-45deg) scale(1);
+}
+
+.editor-toggle:has(input:checked) {
+  border-color: rgba(46, 110, 86, 0.35);
+  background: var(--soft-green);
 }
 
 .editor-actions {
@@ -2547,6 +2578,15 @@ button:active {
   color: var(--text-muted);
   font-size: var(--font-sm);
   font-weight: var(--weight-medium);
+}
+
+.settings-card label.editor-toggle {
+  min-width: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 8px;
+  color: var(--text);
 }
 
 .settings-editor .span-2 {
