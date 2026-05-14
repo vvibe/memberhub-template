@@ -1,4 +1,4 @@
-export type PresetId = 'baking-community' | 'design-teacher' | 'fitness-coach' | 'finance-newsletter'
+export type PresetId = 'skills-school' | 'superstake'
 export type Role = 'visitor' | 'member' | 'admin'
 export type ViewId = 'home' | 'content' | 'newsletter' | 'courses' | 'community' | 'members' | 'search' | 'challenges' | 'events' | 'login' | 'member' | 'admin' | 'setup'
 export type PlanId = 'free' | 'monthly' | 'lifetime'
@@ -200,9 +200,9 @@ export type AppState = {
   completedLessons: string[]
   checkedInChallenges: string[]
   paymentEvents: PaymentEvent[]
-  demoContentItems: ContentItem[]
-  demoNewsletterIssues: NewsletterIssue[]
-  demoReferralCampaigns: ReferralCampaign[]
-  demoMembers: Member[]
-  demoModeration: ModerationItem[]
+  localContentItems: ContentItem[]
+  localNewsletterIssues: NewsletterIssue[]
+  localReferralCampaigns: ReferralCampaign[]
+  localMembers: Member[]
+  localModeration: ModerationItem[]
 }

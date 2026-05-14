@@ -21,7 +21,7 @@ Before changing code for a forked install, read `docs/fork-readiness.md` and exp
 5. Complete login setup. Default production recommendation is InsForge Google OAuth.
 6. Complete InsForge setup: Auth, Postgres tables, RLS, Storage, Edge Functions.
 7. Complete Portaly Vibe MCP setup so the project-local Coding Agent can connect to Portaly Vibe.
-8. Load demo seed data and verify the vertical presets.
+8. Load local case data and verify the Skills School and SuperStake cases.
 9. Only after the above is complete, ask whether the user wants to enable payments, subscription plans, and invoice flow.
 
 Use these repo-provided commands instead of asking future agents to infer setup steps:

@@ -1,19 +1,19 @@
 import type { AppState, PaymentEvent, PlanId, PresetId, Role } from '../types'
 
-const STORAGE_KEY = 'memberhub-demo-state-v3'
+const STORAGE_KEY = 'memberhub-preview-state-v4'
 
 export const defaultState: AppState = {
-  presetId: 'baking-community',
+  presetId: 'skills-school',
   role: 'visitor',
   selectedPlanId: 'free',
   completedLessons: [],
   checkedInChallenges: [],
   paymentEvents: [],
-  demoContentItems: [],
-  demoNewsletterIssues: [],
-  demoReferralCampaigns: [],
-  demoMembers: [],
-  demoModeration: [],
+  localContentItems: [],
+  localNewsletterIssues: [],
+  localReferralCampaigns: [],
+  localMembers: [],
+  localModeration: [],
 }
 
 export function loadState(): AppState {
@@ -44,10 +44,8 @@ export function roleLabel(role: Role) {
 
 export function presetLabel(id: PresetId) {
   const labels: Record<PresetId, string> = {
-    'baking-community': '烘焙會員社群',
-    'design-teacher': '設計師教學',
-    'fitness-coach': '健身教練',
-    'finance-newsletter': '財經 Newsletter',
+    'skills-school': 'Skills School',
+    superstake: 'SuperStake',
   }
   return labels[id]
 }

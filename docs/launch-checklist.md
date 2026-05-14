@@ -26,8 +26,8 @@
 - [ ] `@insforge/sdk` and `@insforge/cli` are installed from `package.json`.
 - [ ] RLS policies protect member-only content and admin tables.
 - [ ] RLS policies have been tested with at least guest, free member, paid member, and admin roles.
-- [ ] Demo seed data can be loaded.
-- [ ] At least three vertical presets can be switched without source-code rewrites.
+- [ ] Local case data can be loaded.
+- [ ] Skills School and SuperStake cases can be switched without source-code rewrites.
 
 ## Cost Disclosure
 

@@ -2,7 +2,7 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test'
 
 const viewCases = [
   { id: 'home', label: '首頁', expectedText: '會員可以理解並選擇的方案結構' },
-  { id: 'content', label: '內容', expectedText: '文章、影片、Podcast、資源與付費牆' },
+  { id: 'content', label: '內容', expectedText: '公開文章、會員內容與付費牆' },
   { id: 'newsletter', label: '通訊', expectedText: 'Email/LINE 通訊、付費轉換與推薦贈閱' },
   { id: 'courses', label: '課程', expectedText: '課程、進度與等級解鎖' },
   { id: 'community', label: '社群', expectedText: '分類、權限、公告、留言與反應' },
@@ -10,10 +10,10 @@ const viewCases = [
   { id: 'search', label: '搜尋', expectedText: '搜尋文章、課程、逐字稿、討論、活動與會員' },
   { id: 'challenges', label: '打卡', expectedText: '打卡挑戰、積分、等級與排行榜' },
   { id: 'events', label: '活動', expectedText: 'Webinar、Live、Office hour 與回放' },
-  { id: 'login', label: '登入', expectedText: '登入 SweetCrumb 烘焙研究室' },
+  { id: 'login', label: '登入', expectedText: '登入 Skills School 職能加速社群' },
   { id: 'member', label: '會員', expectedText: '會員方案、收據/發票狀態與付款自助' },
-  { id: 'admin', label: '後台', expectedText: 'SweetCrumb 烘焙研究室 營運後台案例' },
-  { id: 'setup', label: '設定', expectedText: '把這個服務改成你的領域' },
+  { id: 'admin', label: '後台', expectedText: 'Skills School 職能加速社群 營運後台' },
+  { id: 'setup', label: '設定', expectedText: '把這個服務改成你的品牌' },
 ] as const
 
 test.beforeEach(async ({ page }) => {
@@ -29,7 +29,7 @@ for (const viewCase of viewCases) {
 
     await openView(page, viewCase)
     await expect(page.locator('.workspace')).toBeVisible()
-    await expect(page.locator('.topbar h1')).toHaveText('SweetCrumb 烘焙研究室')
+    await expect(page.locator('.topbar h1')).toHaveText('Skills School 職能加速社群')
     await expect(page.getByText(viewCase.expectedText, { exact: true })).toBeVisible()
 
     await expectNoHorizontalOverflow(page)
@@ -47,6 +47,7 @@ for (const viewCase of viewCases) {
 test('interactive flows stay usable and visually stable', async ({ page }, testInfo) => {
   const consoleErrors = collectConsoleErrors(page)
 
+  await page.getByRole('button', { name: '管理員' }).click()
   await openNav(page, '內容')
   await page.getByPlaceholder('輸入文章標題').fill('QA 測試文章')
   await page.getByPlaceholder('列表與分享時顯示的短摘要').fill('這是 Playwright QA 產生的測試摘要。')
@@ -60,19 +61,19 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
 
   await openNav(page, '通訊')
   await page.getByRole('button', { name: /新增 issue/ }).click()
-  await expect(page.getByText(/Demo issue/).first()).toBeVisible()
+  await expect(page.getByText(/新增快訊/).first()).toBeVisible()
   await page.getByRole('button', { name: /建立贈閱碼/ }).click()
-  await expect(page.getByText(/Demo 贈閱活動/).first()).toBeVisible()
+  await expect(page.getByText(/會員贈閱活動/).first()).toBeVisible()
 
   await openNav(page, '成員')
   await page.getByRole('button', { name: /邀請會員/ }).click()
-  await expect(page.getByText(/Demo Member/).first()).toBeVisible()
+  await expect(page.getByText(/新會員/).first()).toBeVisible()
   await page.getByRole('button', { name: /入會問題/ }).click()
-  await expect(page.getByText('SweetCrumb 烘焙研究室 營運後台案例', { exact: true })).toBeVisible()
+  await expect(page.getByText('Skills School 職能加速社群 營運後台', { exact: true })).toBeVisible()
 
   await openNav(page, '課程')
-  await page.getByRole('button', { name: /實作流程拆解/ }).first().click()
-  await expect(page.locator('.lesson-card.complete').filter({ hasText: '實作流程拆解' })).toBeVisible()
+  await page.getByRole('button', { name: /完成第一版作品頁/ }).first().click()
+  await expect(page.locator('.lesson-card.complete').filter({ hasText: '完成第一版作品頁' })).toBeVisible()
 
   await openNav(page, '打卡')
   await page.getByRole('button', { name: '完成打卡' }).first().click()
@@ -84,6 +85,36 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   await expectConsistentSpacingAndTextMetrics(page)
   await expectNoLayoutCollisions(page)
   await attachViewportScreenshot(page, testInfo, 'interactive-flows')
+
+  expect(consoleErrors.errors).toEqual([])
+})
+
+test('Skills School and SuperStake reference cases are both usable', async ({ page }, testInfo) => {
+  const consoleErrors = collectConsoleErrors(page)
+
+  await expect(page.locator('.topbar h1')).toHaveText('Skills School 職能加速社群')
+  await openNav(page, '內容')
+  await expect(page.getByText('公開文章：如何安排 30 天職能升級計畫')).toBeVisible()
+  await expect(page.locator('.editor-panel')).toHaveCount(0)
+
+  await page.locator('.preset-select-trigger').click()
+  await page.getByRole('option', { name: 'SuperStake' }).click()
+  await expect(page.locator('.topbar h1')).toHaveText('SuperStake 策略通訊')
+
+  await openNav(page, '內容')
+  await expect(page.getByText('公開文章：AI 工具從嘗鮮走向日常工作的三個訊號')).toBeVisible()
+  await expect(page.getByText('會員專欄：自動化內容工具的商業模式與留存風險')).toBeVisible()
+  await expect(page.locator('.editor-panel')).toHaveCount(0)
+
+  await openNav(page, '首頁')
+  await expect(page.getByRole('heading', { name: '把公開文章、深度專欄與會員社群放在自己的網站' })).toBeVisible()
+
+  await expectNoHorizontalOverflow(page)
+  await expectSharedVisualTokens(page)
+  await expectReadableTypography(page)
+  await expectConsistentSpacingAndTextMetrics(page)
+  await expectNoLayoutCollisions(page)
+  await attachViewportScreenshot(page, testInfo, 'reference-cases')
 
   expect(consoleErrors.errors).toEqual([])
 })

@@ -35,13 +35,13 @@ Full setup checklist: [`docs/fork-readiness.md`](./docs/fork-readiness.md)
 
 - Production demo: https://memberhub-coral.vercel.app/
 - Vercel project: `memberhub`
-- Current default example: `SweetCrumb 烘焙研究室`, showing how a cooking / baking membership site can use the same frontend, login, member self-service, and operator admin system.
+- Current examples: `Skills School 職能加速社群` and `SuperStake 策略通訊`.
 
 ## What This Is
 
 MemberHub is an open-source membership platform starter. It helps creators, coaches, teachers, consultants, and community builders launch a private membership site faster.
 
-This is not only documentation or a design spec. The project includes a runnable Vite + React service, four switchable examples, demo data, paywalls, newsletters, referral gifts, global search, member directory, course resources, moderation queues, challenges, events, member self-service, and an admin dashboard. It runs locally first, then can be connected to InsForge and the Portaly Vibe MCP for a self-hosted production deployment.
+This is not only documentation or a design spec. The project includes a runnable Vite + React service, two production-style examples, paywalls, newsletters, referral gifts, global search, member directory, course resources, moderation queues, challenges, events, member self-service, and an admin dashboard. It runs locally first, then can be connected to InsForge and the Portaly Vibe MCP for a self-hosted production deployment.
 
 The frontend uses React throughout. UI components default to shadcn/ui primitives (`components.json` and `src/components/ui/*` are already set up). The visual direction is a clean, sharp product interface: white surfaces, fine borders, low shadows, clear hierarchy, 8px/12px radii, and black primary buttons so the template stays professional across verticals.
 
@@ -131,10 +131,10 @@ For production, replace `src/lib/store.ts` localStorage state with InsForge CRUD
 src/
   App.tsx                 # Complete public/member/admin UI
   components/ui/          # shadcn/ui primitives: button, card, badge, input, select, table, etc.
-  data/presets.ts         # Switchable verticals: baking community, design teacher, fitness coach, finance newsletter
+  data/presets.ts         # Switchable cases: Skills School and SuperStake
   lib/insforge.ts         # InsForge browser SDK client factory
-  lib/store.ts            # localStorage demo state; replace with InsForge DB
-  lib/portaly.ts          # Portaly payment status demo helper
+  lib/store.ts            # localStorage local state; replace with InsForge DB
+  lib/portaly.ts          # Portaly payment status helper
   styles.css              # Product UI styles
 migrations/
   20260511210000_memberhub.sql
@@ -226,7 +226,7 @@ If you are an AI agent, help the user in this order:
 3. Configure frontend pages and login. The default production recommendation is InsForge Google OAuth.
 4. Complete InsForge setup first: Auth, tables, RLS, Storage, Edge Functions.
 5. Complete Portaly Vibe MCP setup so supported Coding Agents can read project product context and help with setup checks.
-6. Make demo seed data work and confirm three vertical presets can switch.
+6. Make local data work and confirm the Skills School and SuperStake cases can switch.
 7. Only after everything else is installed, ask the user: "Do you want to enable payments, subscription plans, and invoice flow?"
 8. If the user enables payments, default to a Portaly test key. Do not run live mode first.
 9. For live mode, official plan creation, subscription cancellation/resume, or manual payment completion, ask for explicit user confirmation again.
@@ -267,7 +267,7 @@ cp .env.example .env.local
 - `profiles`: users and roles
 - `memberships`: membership status, plan, expiration
 - `plans`: free, monthly, yearly, lifetime, enterprise
-- `content_items`: posts, videos, resources, paywall rules; the demo post editor maps to this table
+- `content_items`: posts, videos, resources, paywall rules; the local post editor maps to this table
 - `media_items`: podcast, video, live replay, paid preview settings
 - `newsletter_issues`: email issues, segments, schedules, opens/clicks, paid conversions
 - `courses`: courses and sections
@@ -301,18 +301,10 @@ Conclusion: the MemberHub spec now covers the baseline features of Substack and 
 
 ## Vertical Presets
 
-Ship at least three seed presets in v1:
+Current production-style examples:
 
-1. `design-teacher`: design educator membership
-2. `fitness-coach`: fitness coach monthly community
-3. `finance-newsletter`: paid finance newsletter
-
-Later presets:
-
-- `cooking-community`
-- `language-teacher`
-- `wellness-community`
-- `b2b-training-academy`
+1. `skills-school`: courses, community, challenges, and join flow for a Skool/School-style learning community.
+2. `superstake`: public blog, paid columns, and member research library for a Substack-style subscription publication.
 
 ## Launch Checklist
 
@@ -327,7 +319,7 @@ Later presets:
 - Portaly Vibe receives member sync, product state, and analytics events.
 - Payment status examples update membership plan status.
 - Invoice tasks or invoice status records are stored.
-- README, `.env.example`, demo seed data, and screenshots are current.
+- README, `.env.example`, case content, and screenshots are current.
 
 ## GitHub Publishing
 

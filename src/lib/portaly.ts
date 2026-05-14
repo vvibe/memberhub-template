@@ -1,15 +1,15 @@
 import type { PaymentEvent, Plan } from '../types'
 
-export function createDemoCheckoutSession(plan: Plan) {
+export function createCheckoutSessionPreview(plan: Plan) {
   return {
-    id: `demo_checkout_${plan.id}_${Date.now()}`,
+    id: `checkout_preview_${plan.id}_${Date.now()}`,
     planId: plan.id,
     amountLabel: plan.price,
     expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
   }
 }
 
-export function paymentEventToWebhookFixture(event: PaymentEvent) {
+export function paymentEventToCallbackPayload(event: PaymentEvent) {
   return {
     provider: event.provider,
     event_id: event.id,
@@ -23,9 +23,9 @@ export function paymentEventToWebhookFixture(event: PaymentEvent) {
 }
 
 export const portalyIntegrationNotes = [
-  'Portaly Vibe 產品優化工具已預設納入流程',
-  '使用者只需要申請 Portaly key 與 InsForge key',
+  'Portaly Vibe MCP 已放在 project-scoped 設定中',
+  '使用者只需要申請 Portaly Vibe MCP token 與 InsForge key',
   '前台、登入、內容、會員流程完成後，再詢問是否啟用金流',
-  '金流先使用 test checkout，確認後才切換 live mode',
+  '金流先使用測試模式，確認後才切換正式收款',
   '發票狀態由 payment_events.invoice_status 追蹤',
 ]

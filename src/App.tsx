@@ -30,7 +30,7 @@ import {
   UsersRound,
 } from 'lucide-react'
 import { getPreset, presets } from './data/presets'
-import { createDemoCheckoutSession, paymentEventToWebhookFixture, portalyIntegrationNotes } from './lib/portaly'
+import { createCheckoutSessionPreview, paymentEventToCallbackPayload, portalyIntegrationNotes } from './lib/portaly'
 import { createPaymentEvent, loadState, presetLabel, resetState, roleLabel, saveState } from './lib/store'
 import type { AppState, ContentItem, Member, ModerationItem, NewsletterIssue, Plan, PresetId, ReferralCampaign, Role, ViewId } from './types'
 import { Badge } from '@/components/ui/badge'
@@ -76,13 +76,13 @@ function App() {
   const runtimePreset = useMemo(
     () => ({
       ...preset,
-      content: [...state.demoContentItems, ...preset.content],
-      newsletter: [...state.demoNewsletterIssues, ...preset.newsletter],
-      referrals: [...state.demoReferralCampaigns, ...preset.referrals],
-      members: [...state.demoMembers, ...preset.members],
-      moderation: [...state.demoModeration, ...preset.moderation],
+      content: [...state.localContentItems, ...preset.content],
+      newsletter: [...state.localNewsletterIssues, ...preset.newsletter],
+      referrals: [...state.localReferralCampaigns, ...preset.referrals],
+      members: [...state.localMembers, ...preset.members],
+      moderation: [...state.localModeration, ...preset.moderation],
     }),
-    [preset, state.demoContentItems, state.demoMembers, state.demoModeration, state.demoNewsletterIssues, state.demoReferralCampaigns],
+    [preset, state.localContentItems, state.localMembers, state.localModeration, state.localNewsletterIssues, state.localReferralCampaigns],
   )
   const selectedPlan = runtimePreset.plans.find((plan) => plan.id === state.selectedPlanId) ?? runtimePreset.plans[0]
   const currentMember = runtimePreset.members[0]
@@ -99,11 +99,11 @@ function App() {
       completedLessons: [],
       checkedInChallenges: [],
       paymentEvents: [],
-      demoContentItems: [],
-      demoNewsletterIssues: [],
-      demoReferralCampaigns: [],
-      demoMembers: [],
-      demoModeration: [],
+      localContentItems: [],
+      localNewsletterIssues: [],
+      localReferralCampaigns: [],
+      localMembers: [],
+      localModeration: [],
     })
     document.documentElement.style.setProperty('--brand-primary', nextPreset.brand.primary)
     document.documentElement.style.setProperty('--brand-accent', nextPreset.brand.accent)
@@ -114,7 +114,7 @@ function App() {
   }
 
   const handleCheckout = (plan: Plan) => {
-    const session = createDemoCheckoutSession(plan)
+    const session = createCheckoutSessionPreview(plan)
     const event = createPaymentEvent(plan.id, session.amountLabel)
     updateState({
       role: 'member',
@@ -140,19 +140,19 @@ function App() {
   const handleCreateContent = (item: Omit<ContentItem, 'id' | 'source' | 'minutes'>) => {
     const nextItem: ContentItem = {
       ...item,
-      id: `demo_content_${Date.now()}`,
+      id: `local_content_${Date.now()}`,
       source: 'editor',
       minutes: Math.max(3, Math.ceil(item.body.length / 220)),
     }
-    updateState({ demoContentItems: [nextItem, ...state.demoContentItems] })
+    updateState({ localContentItems: [nextItem, ...state.localContentItems] })
     setQuery('')
   }
 
   const handleAddNewsletterIssue = () => {
-    const issueNumber = state.demoNewsletterIssues.length + 1
+    const issueNumber = state.localNewsletterIssues.length + 1
     const nextIssue: NewsletterIssue = {
-      id: `demo_issue_${Date.now()}`,
-      subject: `Demo issue ${issueNumber}：${runtimePreset.name} 新內容預告`,
+      id: `local_issue_${Date.now()}`,
+      subject: `新增快訊 ${issueNumber}：${runtimePreset.name} 本週內容預告`,
       segment: 'paid',
       status: 'draft',
       sendAt: 'draft',
@@ -160,30 +160,30 @@ function App() {
       clickRate: '-',
       paidConversions: 0,
     }
-    updateState({ demoNewsletterIssues: [nextIssue, ...state.demoNewsletterIssues] })
+    updateState({ localNewsletterIssues: [nextIssue, ...state.localNewsletterIssues] })
   }
 
   const handleCreateReferralCampaign = () => {
-    const serial = state.demoReferralCampaigns.length + 1
+    const serial = state.localReferralCampaigns.length + 1
     const campaign: ReferralCampaign = {
-      id: `demo_ref_${Date.now()}`,
+      id: `local_ref_${Date.now()}`,
       code: `GIFT${serial + 7}`,
-      label: `Demo 贈閱活動 ${serial}`,
+      label: `會員贈閱活動 ${serial}`,
       source: 'manual gift link',
       reward: '新會員 7 天試用，推薦人獲得續訂提醒',
       freeTrials: 0,
       paidConversions: 0,
       revenueLabel: 'NT$0',
     }
-    updateState({ demoReferralCampaigns: [campaign, ...state.demoReferralCampaigns] })
+    updateState({ localReferralCampaigns: [campaign, ...state.localReferralCampaigns] })
   }
 
   const handleInviteMember = () => {
-    const serial = state.demoMembers.length + 1
+    const serial = state.localMembers.length + 1
     const member: Member = {
-      id: `demo_member_${Date.now()}`,
-      name: `Demo Member ${serial}`,
-      email: `demo${serial}@example.com`,
+      id: `local_member_${Date.now()}`,
+      name: `新會員 ${serial}`,
+      email: `member${serial}@example.com`,
       role: 'member',
       groupRole: 'member',
       planId: 'free',
@@ -191,13 +191,13 @@ function App() {
       level: 1,
       points: 0,
       source: 'manual invite',
-      bio: '由後台邀請建立的 demo 會員，等待完成入會問題。',
+      bio: '由後台邀請加入的會員，等待完成入會問題。',
       joinedAt: new Date().toISOString().slice(0, 10),
       contributions: { posts: 0, comments: 0, likesReceived: 0 },
       risk: 'low',
     }
     const review: ModerationItem = {
-      id: `demo_review_${Date.now()}`,
+      id: `local_review_${Date.now()}`,
       kind: 'membership-question',
       title: '邀請會員待完成入會問題',
       subject: member.name,
@@ -206,8 +206,8 @@ function App() {
       action: '寄送邀請信後，等待回答入會問題並由管理員批准。',
     }
     updateState({
-      demoMembers: [member, ...state.demoMembers],
-      demoModeration: [review, ...state.demoModeration],
+      localMembers: [member, ...state.localMembers],
+      localModeration: [review, ...state.localModeration],
     })
   }
 
@@ -241,7 +241,7 @@ function App() {
         </nav>
 
         <div className="sidebar-panel">
-          <span className="eyebrow">Demo account</span>
+          <span className="eyebrow">Preview account</span>
           <div className="segmented">
             {(['visitor', 'member', 'admin'] as Role[]).map((role) => (
               <button key={role} className={state.role === role ? 'selected' : ''} onClick={() => handleRoleChange(role)}>
@@ -255,7 +255,7 @@ function App() {
       <section className="workspace">
         <header className="topbar">
           <div>
-            <p className="eyebrow">會員服務營運系統</p>
+            <p className="eyebrow">私有化會員平台</p>
             <h1>{runtimePreset.brand.productName}</h1>
           </div>
           <div className="topbar-actions">
@@ -276,7 +276,7 @@ function App() {
                 </SelectContent>
               </Select>
             </label>
-            <Button variant="outline" className="ghost-button" onClick={() => updateState(resetState())}>重置 demo</Button>
+            <Button variant="outline" className="ghost-button" onClick={() => updateState(resetState())}>重置本機資料</Button>
             {state.role === 'visitor' ? (
               <Button className="primary-button" onClick={() => setView('login')}><LogIn data-icon="inline-start" />登入</Button>
             ) : (
@@ -300,6 +300,7 @@ function App() {
             query={query}
             onQuery={setQuery}
             hasPaidAccess={hasPaidAccess}
+            canCreateContent={state.role === 'admin'}
             onCreateContent={handleCreateContent}
             onCheckout={() => handleCheckout(runtimePreset.plans.find((plan) => plan.highlighted) ?? runtimePreset.plans[1])}
           />
@@ -421,6 +422,7 @@ function ContentView({
   query,
   onQuery,
   hasPaidAccess,
+  canCreateContent,
   onCreateContent,
   onCheckout,
 }: {
@@ -428,6 +430,7 @@ function ContentView({
   query: string
   onQuery: (value: string) => void
   hasPaidAccess: boolean
+  canCreateContent: boolean
   onCreateContent: (item: Omit<ContentItem, 'id' | 'source' | 'minutes'>) => void
   onCheckout: () => void
 }) {
@@ -468,8 +471,8 @@ function ContentView({
     <section className="section-block">
       <div className="section-heading horizontal">
         <div>
-          <span className="eyebrow">Content library</span>
-          <h3>文章、影片、Podcast、資源與付費牆</h3>
+          <span className="eyebrow">Public blog + member library</span>
+          <h3>公開文章、會員內容與付費牆</h3>
         </div>
         <label className="search-box">
           <Search size={18} />
@@ -477,51 +480,53 @@ function ContentView({
         </label>
       </div>
 
-      <article className="editor-panel" aria-label="Content editor">
-        <div className="editor-head">
-          <div>
-            <span className="eyebrow">Post editor</span>
-            <h4>發文編輯器</h4>
+      {canCreateContent && (
+        <article className="editor-panel" aria-label="Content editor">
+          <div className="editor-head">
+            <div>
+              <span className="eyebrow">Post editor</span>
+              <h4>發文編輯器</h4>
+            </div>
+            <StatusPill tone={draft.isPaid ? 'blue' : 'green'}>{draft.isPaid ? 'paid' : 'free'}</StatusPill>
           </div>
-          <StatusPill tone={draft.isPaid ? 'blue' : 'green'}>{draft.isPaid ? 'paid' : 'free'}</StatusPill>
-        </div>
-        <div className="editor-grid">
-          <label>
-            標題
-            <Input value={draft.title} onChange={(event) => updateDraft({ title: event.target.value })} placeholder="輸入文章標題" />
+          <div className="editor-grid">
+            <label>
+              標題
+              <Input value={draft.title} onChange={(event) => updateDraft({ title: event.target.value })} placeholder="輸入文章標題" />
+            </label>
+            <label>
+              分類
+              <Input value={draft.category} onChange={(event) => updateDraft({ category: event.target.value })} placeholder="公開內容 / 會員課 / 公告" />
+            </label>
+            <label>
+              類型
+              <select className="editor-select" value={draft.type} onChange={(event) => updateDraft({ type: event.target.value as ContentItem['type'] })}>
+                <option value="article">article</option>
+                <option value="video">video</option>
+                <option value="podcast">podcast</option>
+                <option value="resource">resource</option>
+                <option value="newsletter">newsletter</option>
+              </select>
+            </label>
+            <label className="editor-toggle">
+              <input type="checkbox" checked={draft.isPaid} onChange={(event) => updateDraft({ isPaid: event.target.checked })} />
+              會員限定 / 付費牆
+            </label>
+          </div>
+          <label className="editor-field">
+            摘要
+            <Input value={draft.excerpt} onChange={(event) => updateDraft({ excerpt: event.target.value })} placeholder="列表與分享時顯示的短摘要" />
           </label>
-          <label>
-            分類
-            <Input value={draft.category} onChange={(event) => updateDraft({ category: event.target.value })} placeholder="公開內容 / 會員課 / 公告" />
+          <label className="editor-field">
+            內文
+            <Textarea value={draft.body} onChange={(event) => updateDraft({ body: event.target.value })} placeholder="撰寫文章、課程公告或 newsletter 內容..." />
           </label>
-          <label>
-            類型
-            <select className="editor-select" value={draft.type} onChange={(event) => updateDraft({ type: event.target.value as ContentItem['type'] })}>
-              <option value="article">article</option>
-              <option value="video">video</option>
-              <option value="podcast">podcast</option>
-              <option value="resource">resource</option>
-              <option value="newsletter">newsletter</option>
-            </select>
-          </label>
-          <label className="editor-toggle">
-            <input type="checkbox" checked={draft.isPaid} onChange={(event) => updateDraft({ isPaid: event.target.checked })} />
-            會員限定 / 付費牆
-          </label>
-        </div>
-        <label className="editor-field">
-          摘要
-          <Input value={draft.excerpt} onChange={(event) => updateDraft({ excerpt: event.target.value })} placeholder="列表與分享時顯示的短摘要" />
-        </label>
-        <label className="editor-field">
-          內文
-          <Textarea value={draft.body} onChange={(event) => updateDraft({ body: event.target.value })} placeholder="撰寫文章、課程公告或 newsletter 內容..." />
-        </label>
-        <div className="editor-actions">
-          <small>{draft.body.length} chars · 預估 {Math.max(3, Math.ceil(draft.body.length / 220))} min</small>
-          <Button className="primary-button" type="button" disabled={!canPublish} onClick={handlePublish}><FileText data-icon="inline-start" />發布到內容庫</Button>
-        </div>
-      </article>
+          <div className="editor-actions">
+            <small>{draft.body.length} chars · 預估 {Math.max(3, Math.ceil(draft.body.length / 220))} min</small>
+            <Button className="primary-button" type="button" disabled={!canPublish} onClick={handlePublish}><FileText data-icon="inline-start" />發布到內容庫</Button>
+          </div>
+        </article>
+      )}
 
       <div className="content-list">
         {items.map((item) => {
@@ -529,15 +534,15 @@ function ContentView({
           return (
             <article key={item.id} className="content-row">
               <div>
-                <Badge variant="outline" className="pill">{item.type}</Badge>
+              <Badge variant="outline" className="pill">{item.type}</Badge>
                 <h4>{item.title}</h4>
                 <p>{item.excerpt}</p>
-                <small>{item.category} · {item.minutes} min · source: {item.source}</small>
+                <small>{item.category} · {item.minutes} min · {item.source}</small>
               </div>
               {locked ? (
                 <Button className="lock-button" onClick={onCheckout}><Lock data-icon="inline-start" />升級解鎖</Button>
               ) : (
-                <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span>
+              <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span>
               )}
             </article>
           )
@@ -647,7 +652,7 @@ function LoginView({ preset, onLogin }: { preset: ReturnType<typeof getPreset>; 
       <article className="auth-card">
         <span className="eyebrow">Sign in</span>
         <h3>登入 {preset.brand.productName}</h3>
-        <p>Demo 模式會把登入狀態存在 localStorage。Production 可改接 InsForge Google OAuth、Magic Link 或 email/password。</p>
+        <p>先用預覽登入了解會員與管理員流程。正式部署時可接 InsForge Google OAuth、Magic Link 或 email/password。</p>
         <form
           className="auth-form"
           onSubmit={(event) => {
@@ -665,17 +670,17 @@ function LoginView({ preset, onLogin }: { preset: ReturnType<typeof getPreset>; 
           <Button className="primary-button" type="submit"><LogIn data-icon="inline-start" />以會員身份登入</Button>
         </form>
         <div className="button-row">
-          <Button variant="outline" className="secondary-button" onClick={() => onLogin('member')}>模擬 Google OAuth</Button>
-          <Button variant="outline" className="ghost-button" onClick={() => onLogin('admin')}>管理員 demo</Button>
+          <Button variant="outline" className="secondary-button" onClick={() => onLogin('member')}>以 Google 帳號登入</Button>
+          <Button variant="outline" className="ghost-button" onClick={() => onLogin('admin')}>管理員登入</Button>
         </div>
       </article>
       <article className="auth-notes">
-        <h4>Production auth checklist</h4>
+        <h4>正式登入設定</h4>
         <ul className="check-list">
           <li><CheckCircle2 size={16} />InsForge Auth：Google OAuth 或 email magic link</li>
           <li><CheckCircle2 size={16} />登入後建立 `profiles` 與 `memberships`</li>
           <li><CheckCircle2 size={16} />RLS 依會員方案保護內容、課程與社群</li>
-          <li><CheckCircle2 size={16} />把新會員同步到 Portaly Vibe members dashboard</li>
+          <li><CheckCircle2 size={16} />透過 Portaly Vibe MCP 檢查會員設定與產品狀態</li>
         </ul>
       </article>
     </section>
@@ -976,7 +981,7 @@ function MemberView({ preset, state, selectedPlan }: { preset: ReturnType<typeof
           </div>
         </article>
       </div>
-      <pre className="code-block">{JSON.stringify(lastEvent ? paymentEventToWebhookFixture(lastEvent) : { status: 'no_payment_yet' }, null, 2)}</pre>
+      <pre className="code-block">{JSON.stringify(lastEvent ? paymentEventToCallbackPayload(lastEvent) : { status: 'no_payment_yet' }, null, 2)}</pre>
     </section>
   )
 }
@@ -988,7 +993,7 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
   const adminQueue = [
     { label: '內容草稿待審', value: `${paidContent + 2}`, tone: 'yellow' },
     { label: '社群檢舉待處理', value: `${preset.moderation.filter((item) => item.status !== 'resolved').length}`, tone: 'red' },
-    { label: '付款 callback 待確認', value: `${state.paymentEvents.length}`, tone: 'blue' },
+    { label: '付款狀態待確認', value: `${state.paymentEvents.length}`, tone: 'blue' },
     { label: 'Newsletter 排程', value: `${preset.newsletter.filter((issue) => issue.status === 'scheduled').length}`, tone: 'green' },
   ]
 
@@ -997,8 +1002,8 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
       <section className="section-block admin-hero">
         <div className="section-heading">
           <span className="eyebrow">Admin workspace</span>
-          <h3>{preset.brand.productName} 營運後台案例</h3>
-          <p>這個後台示範創作者、老師或教練每天會使用的營運工作台：會員、內容、課程、社群、活動、金流、發票與產品優化狀態都集中管理。</p>
+          <h3>{preset.brand.productName} 營運後台</h3>
+          <p>這裡集中管理會員、內容、課程、社群、活動、金流、發票與產品設定狀態，適合每天檢查營運進度。</p>
         </div>
         <div className="admin-grid">
           <MetricTile label="MRR" value={preset.metrics.mrr} icon={BarChart3} />
@@ -1208,8 +1213,8 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
           </div>
           {state.paymentEvents.length === 0 ? (
             <div className="empty-state">
-              <strong>尚未啟用 Portaly test checkout</strong>
-              <small>等前台、登入、內容與會員流程完成後，再由 AI 詢問是否啟用金流與發票。</small>
+              <strong>尚未啟用正式金流</strong>
+              <small>等前台、登入、內容與會員流程完成後，再決定是否啟用金流與發票。</small>
             </div>
           ) : (
             state.paymentEvents.map((event) => (
@@ -1233,8 +1238,8 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
             <IntegrationItem label="InsForge Auth" value="Google OAuth ready" />
             <IntegrationItem label="Database + RLS" value="Migration included" />
             <IntegrationItem label="Storage" value="Course resources / replay files" />
-            <IntegrationItem label="Portaly Vibe" value="Member sync + product analytics" />
-            <IntegrationItem label="Hosted checkout" value="Ask user after core setup" />
+            <IntegrationItem label="Portaly Vibe MCP" value="Project-scoped MCP config included" />
+            <IntegrationItem label="Payments" value="Optional after core setup" />
             <IntegrationItem label="Invoice task" value="payment_events.invoice_status" />
           </div>
         </article>
@@ -1263,25 +1268,25 @@ function SetupView({ presetId }: { presetId: PresetId }) {
   return (
     <section className="section-block">
       <div className="section-heading">
-        <span className="eyebrow">Fork guide</span>
-        <h3>把這個服務改成你的領域</h3>
+        <span className="eyebrow">Setup guide</span>
+        <h3>把這個服務改成你的品牌</h3>
       </div>
       <div className="setup-grid">
         <article>
           <h4>先改這些檔案</h4>
           <ul className="check-list">
             <li><Settings2 size={16} />`src/data/presets.ts`：文案、方案、課程、社群、活動</li>
-            <li><Settings2 size={16} />`.env.local`：InsForge 和 Portaly key</li>
-            <li><Settings2 size={16} />`migrations/*.sql`：上 production 前套用資料表</li>
-            <li><Settings2 size={16} />`insforge/functions/portaly-webhook`：付款 callback</li>
+            <li><Settings2 size={16} />`.env.local`：InsForge 和 Portaly Vibe MCP token</li>
+            <li><Settings2 size={16} />`migrations/*.sql`：正式部署前套用資料表</li>
+            <li><Settings2 size={16} />金流 functions：需要收款時再啟用</li>
           </ul>
         </article>
         <article>
-          <h4>目前 preset</h4>
-          <pre className="code-block">{JSON.stringify({ presetId, nextStep: 'duplicate one preset and rename domain fields' }, null, 2)}</pre>
+          <h4>目前版本</h4>
+          <pre className="code-block">{JSON.stringify({ presetId, nextStep: 'adjust brand, plans, content, courses, and community settings' }, null, 2)}</pre>
         </article>
         <article>
-          <h4>Portaly integration notes</h4>
+          <h4>Portaly Vibe MCP</h4>
           <ul className="check-list">
             {portalyIntegrationNotes.map((note) => <li key={note}><ShieldCheck size={16} />{note}</li>)}
           </ul>
