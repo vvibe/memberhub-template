@@ -66,6 +66,7 @@ const navItems: Array<{ id: ViewId; label: string; icon: typeof LayoutDashboard 
 
 const validPresetIds = new Set(presets.map((preset) => preset.id))
 const validViewIds = new Set(navItems.map((item) => item.id))
+const publicationHiddenViews: ViewId[] = ['courses', 'community', 'members', 'challenges', 'events']
 
 function isPresetId(value: string): value is PresetId {
   return validPresetIds.has(value as PresetId)
@@ -81,6 +82,23 @@ function isViewId(value: string): value is ViewId {
   return validViewIds.has(value as ViewId)
 }
 
+function isPublicationPreset(preset: { id: string }) {
+  return preset.id === 'signal-brief'
+}
+
+function navLabel(item: { id: ViewId; label: string }, preset: { id: string }) {
+  if (!isPublicationPreset(preset)) return item.label
+  const labels: Partial<Record<ViewId, string>> = {
+    home: '首頁',
+    blog: '文章',
+    join: '訂閱',
+    content: '文章庫',
+    newsletter: '電子報',
+    member: '我的訂閱',
+  }
+  return labels[item.id] ?? item.label
+}
+
 function getInitialRoute() {
   if (typeof window === 'undefined') return { presetId: undefined, view: undefined }
   const params = new URLSearchParams(window.location.search)
@@ -94,7 +112,7 @@ function getInitialRoute() {
 }
 
 function siteEyebrow(preset: ReturnType<typeof getPreset>) {
-  return preset.id === 'signal-brief' ? '獨立策略通訊' : '職能學習社群'
+  return isPublicationPreset(preset) ? '獨立策略通訊' : '職能學習社群'
 }
 
 function brandMark(preset: ReturnType<typeof getPreset>) {
@@ -102,7 +120,7 @@ function brandMark(preset: ReturnType<typeof getPreset>) {
 }
 
 function homeMetrics(preset: ReturnType<typeof getPreset>, selectedPlan: Plan) {
-  if (preset.id === 'signal-brief') {
+  if (isPublicationPreset(preset)) {
     return [
       { label: '本月研究', value: '8 篇', icon: BarChart3 },
       { label: '讀者', value: String(preset.metrics.activeMembers), icon: UsersRound },
@@ -120,11 +138,11 @@ function homeMetrics(preset: ReturnType<typeof getPreset>, selectedPlan: Plan) {
 }
 
 function beforeJoinEyebrow(preset: ReturnType<typeof getPreset>) {
-  return preset.id === 'signal-brief' ? '訂閱前先閱讀' : '加入前先看看'
+  return isPublicationPreset(preset) ? '訂閱前先閱讀' : '加入前先看看'
 }
 
 function beforeJoinHeading(preset: ReturnType<typeof getPreset>) {
-  return preset.id === 'signal-brief' ? '訂閱前可以先閱讀的公開文章與研究節奏' : '加入前可以先看見的內容與社群節奏'
+  return isPublicationPreset(preset) ? '訂閱前可以先閱讀的公開文章與研究節奏' : '加入前可以先看見的內容與社群節奏'
 }
 
 function contentTypeLabel(type: ContentItem['type'] | string) {
@@ -211,9 +229,15 @@ function notificationTriggerLabel(trigger: string) {
   return labels[trigger] ?? trigger
 }
 
-function notificationAudienceLabel(audience: string) {
-  const labels: Record<string, string> = {
+function notificationAudienceLabel(audience: string, publication = false) {
+  const labels: Record<string, string> = publication ? {
+    all: '全部讀者',
+    free: '免費讀者',
+    paid: '付費讀者',
+    'at-risk': '需關懷讀者',
+  } : {
     all: '全部會員',
+    free: '免費會員',
     paid: '付費會員',
     'at-risk': '需關懷會員',
     subscribers: '訂閱讀者',
@@ -221,8 +245,13 @@ function notificationAudienceLabel(audience: string) {
   return labels[audience] ?? audience
 }
 
-function moderationKindLabel(kind: string) {
-  const labels: Record<string, string> = {
+function moderationKindLabel(kind: string, publication = false) {
+  const labels: Record<string, string> = publication ? {
+    'membership-question': '訂閱問題',
+    'reported-post': '留言檢舉',
+    'automod-risk': '存取風險',
+    'billing-dispute': '退款爭議',
+  } : {
     'membership-question': '入會問題',
     'reported-post': '檢舉內容',
     'automod-risk': '風險行為',
@@ -377,14 +406,14 @@ function App() {
   const activeLevel = state.role === 'visitor' ? 0 : currentMember.level
   const hasPaidAccess = state.role === 'admin' || state.selectedPlanId !== 'free'
   const visibleNavItems = useMemo(
-    () => runtimePreset.id === 'signal-brief'
-      ? navItems.filter((item) => !['courses', 'community', 'challenges', 'events'].includes(item.id))
+    () => isPublicationPreset(runtimePreset)
+      ? navItems.filter((item) => !publicationHiddenViews.includes(item.id))
       : navItems,
     [runtimePreset.id],
   )
 
   useEffect(() => {
-    if (runtimePreset.id === 'signal-brief' && ['courses', 'community', 'challenges', 'events'].includes(view)) {
+    if (isPublicationPreset(runtimePreset) && publicationHiddenViews.includes(view)) {
       setView('blog')
     }
   }, [runtimePreset.id, view])
@@ -549,7 +578,7 @@ function App() {
             return (
               <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => setView(item.id)}>
                 <Icon size={18} />
-                <span>{item.label}</span>
+                <span>{navLabel(item, runtimePreset)}</span>
               </button>
             )
           })}
@@ -624,6 +653,7 @@ function App() {
         )}
         {view === 'content' && (
           <ContentView
+            preset={runtimePreset}
             items={visibleContent}
             query={query}
             onQuery={setQuery}
@@ -729,25 +759,25 @@ function HomeView({
         </div>
         <div className="plan-grid">
           <article className="plan-card">
-            <span className="plan-name">公開內容</span>
+            <span className="plan-name">{isPublicationPreset(preset) ? '公開文章' : '公開內容'}</span>
             <strong>{publicContent.length}</strong>
             <small>可直接閱讀</small>
             <p>{publicContent.map((item) => item.title.replace(/^公開文章：/, '')).join('、')}</p>
             <Button variant="outline" onClick={onOpenBlog}>閱讀公開文章</Button>
           </article>
           <article className="plan-card highlighted">
-            <span className="plan-name">會員內容</span>
+            <span className="plan-name">{isPublicationPreset(preset) ? '付費文章' : '會員內容'}</span>
             <strong>{paidContent.length}</strong>
             <small>加入後解鎖</small>
-            <p>{paidContent.map((item) => item.category).join('、')}，適合想持續深入學習或追蹤的人。</p>
-            <Button onClick={onOpenJoin}>查看會員方案</Button>
+            <p>{paidContent.map((item) => item.category).join('、')}，適合想持續深入{isPublicationPreset(preset) ? '閱讀與追蹤的人。' : '學習或追蹤的人。'}</p>
+            <Button onClick={onOpenJoin}>{isPublicationPreset(preset) ? '查看訂閱方案' : '查看會員方案'}</Button>
           </article>
           <article className="plan-card">
-            <span className="plan-name">課程與社群</span>
-            <strong>{firstCourse?.progress ?? 0}%</strong>
-            <small>持續更新</small>
-            <p>{firstCourse?.description ?? preset.audience}</p>
-            <Button variant="outline" onClick={onOpenJoin}>加入後開始使用</Button>
+            <span className="plan-name">{isPublicationPreset(preset) ? 'Newsletter' : '課程與社群'}</span>
+            <strong>{isPublicationPreset(preset) ? preset.newsletter.length : `${firstCourse?.progress ?? 0}%`}</strong>
+            <small>{isPublicationPreset(preset) ? '封已排程或寄出' : '持續更新'}</small>
+            <p>{isPublicationPreset(preset) ? '訂閱後可收到完整文章、資料補充與每週研究信。' : firstCourse?.description ?? preset.audience}</p>
+            <Button variant="outline" onClick={isPublicationPreset(preset) ? onOpenBlog : onOpenJoin}>{isPublicationPreset(preset) ? '先閱讀文章' : '加入後開始使用'}</Button>
           </article>
         </div>
       </section>
@@ -878,6 +908,7 @@ function JoinView({
 }
 
 function ContentView({
+  preset,
   items,
   query,
   onQuery,
@@ -886,6 +917,7 @@ function ContentView({
   onCreateContent,
   onCheckout,
 }: {
+  preset: ReturnType<typeof getPreset>
   items: ContentItem[]
   query: string
   onQuery: (value: string) => void
@@ -894,6 +926,7 @@ function ContentView({
   onCreateContent: (item: Omit<ContentItem, 'id' | 'source' | 'minutes'>) => void
   onCheckout: () => void
 }) {
+  const isPublication = isPublicationPreset(preset)
   const [draft, setDraft] = useState({
     title: '',
     type: 'article' as ContentItem['type'],
@@ -931,12 +964,12 @@ function ContentView({
     <section className="section-block">
       <div className="section-heading horizontal">
         <div>
-          <span className="eyebrow">內容庫</span>
-          <h3>公開文章、會員內容與付費牆</h3>
+          <span className="eyebrow">{isPublication ? '文章庫' : '內容庫'}</span>
+          <h3>{isPublication ? '公開文章、付費文章與付費牆' : '公開文章、會員內容與付費牆'}</h3>
         </div>
         <label className="search-box">
           <Search size={18} aria-hidden="true" />
-          <Input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="搜尋內容、分類、類型" />
+          <Input value={query} onChange={(event) => onQuery(event.target.value)} placeholder={isPublication ? '搜尋文章、主題、類型' : '搜尋內容、分類、類型'} />
         </label>
       </div>
 
@@ -956,21 +989,21 @@ function ContentView({
             </label>
             <label>
               分類
-              <Input value={draft.category} onChange={(event) => updateDraft({ category: event.target.value })} placeholder="公開內容 / 會員課 / 公告" />
+              <Input value={draft.category} onChange={(event) => updateDraft({ category: event.target.value })} placeholder={isPublication ? '公開文章 / 付費文章 / 讀者信' : '公開內容 / 會員課 / 公告'} />
             </label>
             <label>
               類型
               <select className="editor-select" value={draft.type} onChange={(event) => updateDraft({ type: event.target.value as ContentItem['type'] })}>
                 <option value="article">文章</option>
-                <option value="video">影片</option>
                 <option value="podcast">音訊</option>
-                <option value="resource">資源</option>
                 <option value="newsletter">通訊</option>
+                {!isPublication && <option value="video">影片</option>}
+                {!isPublication && <option value="resource">資源</option>}
               </select>
             </label>
             <label className="editor-toggle">
               <input type="checkbox" checked={draft.isPaid} onChange={(event) => updateDraft({ isPaid: event.target.checked })} />
-              會員限定 / 付費牆
+              {isPublication ? '付費訂閱 / 付費牆' : '會員限定 / 付費牆'}
             </label>
           </div>
           <label className="editor-field">
@@ -979,11 +1012,11 @@ function ContentView({
           </label>
           <label className="editor-field">
             內文
-            <Textarea value={draft.body} onChange={(event) => updateDraft({ body: event.target.value })} placeholder="撰寫文章、課程公告或通訊內容…" />
+            <Textarea value={draft.body} onChange={(event) => updateDraft({ body: event.target.value })} placeholder={isPublication ? '撰寫文章或電子報內容…' : '撰寫文章、課程公告或通訊內容…'} />
           </label>
           <div className="editor-actions">
             <small>{draft.body.length} 字 · 預估 {Math.max(3, Math.ceil(draft.body.length / 220))} 分鐘閱讀</small>
-            <Button className="primary-button" type="button" disabled={!canPublish} onClick={handlePublish}><FileText data-icon="inline-start" />發布到內容庫</Button>
+            <Button className="primary-button" type="button" disabled={!canPublish} onClick={handlePublish}><FileText data-icon="inline-start" />{isPublication ? '發布文章' : '發布到內容庫'}</Button>
           </div>
         </article>
       )}
@@ -1021,12 +1054,13 @@ function NewsletterView({
   onAddIssue: () => void
   onCreateReferral: () => void
 }) {
+  const isPublication = isPublicationPreset(preset)
   return (
     <section className="section-block">
       <div className="section-heading horizontal">
         <div>
           <span className="eyebrow">通訊與成長</span>
-          <h3>Email/LINE 通訊、付費轉換與推薦贈閱</h3>
+          <h3>{isPublication ? 'Newsletter、付費轉換與推薦贈閱' : 'Email/LINE 通訊、付費轉換與推薦贈閱'}</h3>
         </div>
         <div className="button-row compact">
           <Button variant="outline" className="secondary-button" onClick={onAddIssue}><Mail data-icon="inline-start" />新增通訊</Button>
@@ -1038,8 +1072,8 @@ function NewsletterView({
         <article className="newsletter-panel span-2">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">{preset.id === 'signal-brief' ? '文章電子報' : '課程通訊'}</span>
-              <h4>{preset.id === 'signal-brief' ? '把文章寄給訂閱讀者' : '把文章、課程或活動寄給會員'}</h4>
+              <span className="eyebrow">{isPublication ? '文章電子報' : '課程通訊'}</span>
+              <h4>{isPublication ? '把文章寄給訂閱讀者' : '把文章、課程或活動寄給會員'}</h4>
             </div>
             <Mail size={18} aria-hidden="true" />
           </div>
@@ -1052,7 +1086,7 @@ function NewsletterView({
             <div>
               <span>2</span>
               <strong>選擇讀者</strong>
-              <small>{preset.id === 'signal-brief' ? '免費讀者、付費讀者或全部訂閱者' : '免費會員、付費會員或全部會員'}</small>
+              <small>{isPublication ? '免費讀者、付費讀者或全部訂閱者' : '免費會員、付費會員或全部會員'}</small>
             </div>
             <div>
               <span>3</span>
@@ -1092,7 +1126,7 @@ function NewsletterView({
           <div className="admin-panel-head">
             <div>
               <span className="eyebrow">通知設定</span>
-              <h4>Email / LINE / 站內通知</h4>
+              <h4>{isPublication ? 'Email / 站內通知' : 'Email / LINE / 站內通知'}</h4>
             </div>
             <Bell size={18} />
           </div>
@@ -1101,7 +1135,7 @@ function NewsletterView({
               <div key={notification.id} className="admin-content-item">
                 <Badge variant="outline" className="pill">{channelLabel(notification.channel)}</Badge>
                 <strong>{notificationTriggerLabel(notification.trigger)}</strong>
-                <small>{notificationAudienceLabel(notification.audience)} · {statusLabel(notification.status)}</small>
+                <small>{notificationAudienceLabel(notification.audience, isPublication)} · {statusLabel(notification.status)}</small>
               </div>
             ))}
           </div>
@@ -1337,29 +1371,30 @@ function SearchView({
   query: string
   onQuery: (value: string) => void
 }) {
+  const isPublication = isPublicationPreset(preset)
   const searchTerm = query.trim().toLowerCase()
   const results = useMemo(() => {
     const rows: Array<{ id: string; type: string; title: string; meta: string; text: string }> = []
     preset.content.forEach((item) => rows.push({ id: item.id, type: contentTypeLabel(item.type), title: item.title, meta: `${item.category} · ${sourceLabel(item.source)}`, text: `${item.title} ${item.category} ${item.excerpt} ${item.body}` }))
-    preset.newsletter.forEach((issue) => rows.push({ id: issue.id, type: '通訊', title: issue.subject, meta: `${segmentLabel(issue.segment)} · ${statusLabel(issue.status)}`, text: `${issue.subject} ${issue.segment} ${issue.status}` }))
+    preset.newsletter.forEach((issue) => rows.push({ id: issue.id, type: isPublication ? '電子報' : '通訊', title: issue.subject, meta: `${segmentLabel(issue.segment)} · ${statusLabel(issue.status)}`, text: `${issue.subject} ${issue.segment} ${issue.status}` }))
     preset.courses.forEach((course) => {
       rows.push({ id: course.id, type: '課程', title: course.title, meta: `完成度 ${course.progress}%`, text: `${course.title} ${course.description}` })
       course.lessons.forEach((lesson) => rows.push({ id: lesson.id, type: '單元', title: lesson.title, meta: `${course.title} · ${lesson.minutes} 分鐘`, text: `${lesson.title} ${lesson.transcript ?? ''} ${(lesson.resources ?? []).map((resource) => resource.title).join(' ')}` }))
     })
     preset.threads.forEach((thread) => rows.push({ id: thread.id, type: '討論', title: thread.title, meta: `${thread.category} · ${thread.replies} 則回覆`, text: `${thread.title} ${thread.category} ${thread.author}` }))
-    preset.members.forEach((member) => rows.push({ id: member.id, type: '成員', title: member.name, meta: `${roleDisplayLabel(member.groupRole)} · Level ${member.level}`, text: `${member.name} ${member.bio} ${member.source} ${member.groupRole}` }))
+    preset.members.forEach((member) => rows.push({ id: member.id, type: isPublication ? '訂閱者' : '成員', title: member.name, meta: isPublication ? `${statusLabel(member.status)} · ${sourceLabel(member.source)}` : `${roleDisplayLabel(member.groupRole)} · Level ${member.level}`, text: `${member.name} ${member.bio} ${member.source} ${member.groupRole}` }))
     preset.events.forEach((event) => rows.push({ id: event.id, type: '活動', title: event.title, meta: `${eventKindLabel(event.kind)} · ${event.date}`, text: `${event.title} ${event.description} ${event.audience}` }))
 
     if (!searchTerm) return rows
     return rows.filter((row) => row.text.toLowerCase().includes(searchTerm))
-  }, [preset, searchTerm])
+  }, [isPublication, preset, searchTerm])
 
   return (
     <section className="section-block">
       <div className="section-heading horizontal">
         <div>
           <span className="eyebrow">站內搜尋</span>
-          <h3>搜尋文章、課程、逐字稿、討論、活動與會員</h3>
+          <h3>{isPublication ? '搜尋文章、Newsletter、讀者與訂閱資料' : '搜尋文章、課程、逐字稿、討論、活動與會員'}</h3>
         </div>
         <label className="search-box">
           <Search size={18} aria-hidden="true" />
@@ -1498,6 +1533,7 @@ function AdminSettingsEditor({
   preset: VerticalPreset
   onUpdatePreset: (patch: Partial<VerticalPreset>) => void
 }) {
+  const isPublication = isPublicationPreset(preset)
   const updateBrand = (key: keyof VerticalPreset['brand'], value: string) => {
     onUpdatePreset({ brand: { ...preset.brand, [key]: value } })
   }
@@ -1522,7 +1558,7 @@ function AdminSettingsEditor({
       <div className="admin-panel-head">
         <div>
           <span className="eyebrow">基礎編輯</span>
-          <h4>Fork 後可調整的網站內容</h4>
+          <h4>{isPublication ? '出版站可調整的內容' : 'Fork 後可調整的網站內容'}</h4>
         </div>
         <StatusPill tone="green">可編輯</StatusPill>
       </div>
@@ -1578,7 +1614,7 @@ function AdminSettingsEditor({
       <div className="settings-editor-section">
         <div>
           <span className="eyebrow">文章與付費牆</span>
-          <h5>{preset.id === 'signal-brief' ? '公開文章與付費訂閱文章' : '公開內容、會員內容與課程素材'}</h5>
+          <h5>{isPublication ? '公開文章、付費文章與付費牆' : '公開內容、會員內容與課程素材'}</h5>
         </div>
         <div className="settings-stack">
           {preset.content.slice(0, 4).map((item) => (
@@ -1629,7 +1665,7 @@ function AdminSettingsEditor({
       <div className="settings-editor-section">
         <div>
           <span className="eyebrow">電子報設定</span>
-          <h5>文章電子報、分眾與發送時間</h5>
+          <h5>{isPublication ? 'Newsletter 發送、分眾與歡迎信' : '文章電子報、分眾與發送時間'}</h5>
         </div>
         <div className="settings-stack">
           {preset.newsletter.map((issue) => (
@@ -1655,15 +1691,24 @@ function AdminSettingsEditor({
 }
 
 function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; state: AppState; onUpdatePreset: (patch: Partial<VerticalPreset>) => void }) {
+  const isPublication = isPublicationPreset(preset)
   const paidMembers = preset.members.filter((member) => member.status === 'active').length
   const paidContent = preset.content.filter((item) => item.isPaid).length
   const totalLessons = preset.courses.reduce((count, course) => count + course.lessons.length, 0)
-  const adminQueue = [
-    { label: '內容草稿待審', value: `${paidContent + 2}`, tone: 'yellow' },
-    { label: '社群檢舉待處理', value: `${preset.moderation.filter((item) => item.status !== 'resolved').length}`, tone: 'red' },
-    { label: '付款狀態待確認', value: `${state.paymentEvents.length}`, tone: 'blue' },
-    { label: '通訊排程', value: `${preset.newsletter.filter((issue) => issue.status === 'scheduled').length}`, tone: 'green' },
-  ]
+  const openModeration = preset.moderation.filter((item) => item.status !== 'resolved').length
+  const adminQueue = isPublication
+    ? [
+        { label: '付費文章草稿', value: `${paidContent}`, tone: 'yellow' },
+        { label: '讀者回覆待處理', value: `${openModeration}`, tone: 'red' },
+        { label: '付款狀態待確認', value: `${state.paymentEvents.length}`, tone: 'blue' },
+        { label: 'Newsletter 排程', value: `${preset.newsletter.filter((issue) => issue.status === 'scheduled').length}`, tone: 'green' },
+      ]
+    : [
+        { label: '內容草稿待審', value: `${paidContent + 2}`, tone: 'yellow' },
+        { label: '社群檢舉待處理', value: `${openModeration}`, tone: 'red' },
+        { label: '付款狀態待確認', value: `${state.paymentEvents.length}`, tone: 'blue' },
+        { label: '通訊排程', value: `${preset.newsletter.filter((issue) => issue.status === 'scheduled').length}`, tone: 'green' },
+      ]
 
   return (
     <div className="admin-workspace">
@@ -1671,12 +1716,12 @@ function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; 
         <div className="section-heading">
           <span className="eyebrow">營運後台</span>
           <h3>{preset.brand.productName} 營運後台</h3>
-          <p>這裡集中管理會員、內容、課程、社群、活動、金流、發票與產品設定狀態，適合每天檢查營運進度。</p>
+          <p>{isPublication ? '這裡集中管理文章、付費牆、訂閱者、Newsletter、推薦贈閱、金流、發票與出版設定，只保留出版與訂閱需要的營運模組。' : '這裡集中管理會員、內容、課程、社群、活動、金流、發票與產品設定狀態，適合每天檢查營運進度。'}</p>
         </div>
         <div className="admin-grid">
-          <MetricTile label="月經常收入" value={preset.metrics.mrr} icon={BarChart3} />
-          <MetricTile label="活躍會員" value={String(preset.metrics.activeMembers)} icon={UsersRound} />
-          <MetricTile label="付費會員" value={String(paidMembers)} icon={ShieldCheck} />
+          <MetricTile label={isPublication ? '訂閱收入' : '月經常收入'} value={preset.metrics.mrr} icon={BarChart3} />
+          <MetricTile label={isPublication ? '訂閱讀者' : '活躍會員'} value={String(preset.metrics.activeMembers)} icon={UsersRound} />
+          <MetricTile label={isPublication ? '付費訂閱' : '付費會員'} value={String(paidMembers)} icon={ShieldCheck} />
           <MetricTile label="主要來源" value={sourceLabel(preset.metrics.topSource)} icon={Globe2} />
         </div>
       </section>
@@ -1687,18 +1732,18 @@ function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; 
         <article className="admin-panel span-2">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">會員營運</span>
-              <h4>會員與訂閱狀態</h4>
+              <span className="eyebrow">{isPublication ? '讀者營運' : '會員營運'}</span>
+              <h4>{isPublication ? '讀者與訂閱狀態' : '會員與訂閱狀態'}</h4>
             </div>
             <Button variant="outline" className="ghost-button"><SlidersHorizontal data-icon="inline-start" />篩選</Button>
           </div>
           <div className="admin-table">
             <div className="admin-table-head">
-              <span>會員</span>
+              <span>{isPublication ? '讀者' : '會員'}</span>
               <span>方案</span>
               <span>狀態</span>
               <span>來源</span>
-              <span>等級</span>
+              <span>{isPublication ? '互動' : '等級'}</span>
             </div>
             {preset.members.map((member) => {
               const plan = preset.plans.find((item) => item.id === member.planId)
@@ -1711,7 +1756,7 @@ function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; 
                   <span>{plan?.name ?? member.planId}</span>
                   <span><StatusPill tone={member.status === 'active' ? 'green' : 'yellow'}>{statusLabel(member.status)}</StatusPill></span>
                   <span>{sourceLabel(member.source)}</span>
-                  <span>Level {member.level} · {roleDisplayLabel(member.groupRole)} · {member.points} 分</span>
+                  <span>{isPublication ? `${member.contributions.posts} 則留言 · ${member.contributions.comments} 次互動` : `Level ${member.level} · ${roleDisplayLabel(member.groupRole)} · ${member.points} 分`}</span>
                 </div>
               )
             })}
@@ -1762,14 +1807,14 @@ function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; 
           <div className="admin-panel-head">
             <div>
               <span className="eyebrow">審核</span>
-              <h4>入會審核、檢舉與風險處理</h4>
+              <h4>{isPublication ? '留言、讀者回覆與付款爭議' : '入會審核、檢舉與風險處理'}</h4>
             </div>
             <ShieldCheck size={18} />
           </div>
           <div className="admin-content-stack">
             {preset.moderation.map((item) => (
               <div key={item.id} className="admin-content-item">
-                <Badge variant="outline" className="pill">{moderationKindLabel(item.kind)} · {statusLabel(item.status)}</Badge>
+                <Badge variant="outline" className="pill">{moderationKindLabel(item.kind, isPublication)} · {statusLabel(item.status)}</Badge>
                 <strong>{item.title}</strong>
                 <small>{item.subject} · 優先度 {priorityLabel(item.priority)}</small>
                 <small>{item.action}</small>
@@ -1913,7 +1958,7 @@ function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; 
           <div className="integration-grid">
             <IntegrationItem label="登入" value="Google 登入可啟用" />
             <IntegrationItem label="資料庫權限" value="資料表與權限規則已準備" />
-            <IntegrationItem label="檔案儲存" value="課程資源與回放檔案" />
+            <IntegrationItem label="檔案儲存" value={isPublication ? '文章圖片與付費附件' : '課程資源與回放檔案'} />
             <IntegrationItem label="Portaly Vibe MCP" value="專案層級設定已加入" />
             <IntegrationItem label="金流" value="核心流程完成後再啟用" />
             <IntegrationItem label="發票狀態" value="可同步到付款紀錄" />
@@ -1941,17 +1986,18 @@ function IntegrationItem({ label, value }: { label: string; value: string }) {
 }
 
 function SetupView({ presetId }: { presetId: PresetId }) {
+  const isPublication = presetId === 'signal-brief'
   return (
     <section className="section-block">
       <div className="section-heading">
         <span className="eyebrow">設定指南</span>
-        <h3>調整品牌、內容與會員設定</h3>
+        <h3>{isPublication ? '調整出版品牌、文章與訂閱設定' : '調整品牌、內容與會員設定'}</h3>
       </div>
       <div className="setup-grid">
         <article>
           <h4>先改這些檔案</h4>
           <ul className="check-list">
-            <li><Settings2 size={16} />`src/data/presets.ts`：文案、方案、課程、社群、活動</li>
+            <li><Settings2 size={16} />`src/data/presets.ts`：{isPublication ? '文案、方案、文章、電子報、訂閱者' : '文案、方案、課程、社群、活動'}</li>
             <li><Settings2 size={16} />`.env.local`：InsForge 和 Portaly Vibe MCP token</li>
             <li><Settings2 size={16} />`migrations/*.sql`：正式部署前套用資料表</li>
             <li><Settings2 size={16} />金流 functions：需要收款時再啟用</li>
@@ -1959,7 +2005,7 @@ function SetupView({ presetId }: { presetId: PresetId }) {
         </article>
         <article>
           <h4>目前版本</h4>
-          <pre className="code-block">{JSON.stringify({ 目前案例: presetId, 下一步: '調整品牌、方案、內容、課程與社群設定' }, null, 2)}</pre>
+          <pre className="code-block">{JSON.stringify({ 目前案例: presetId, 下一步: isPublication ? '調整出版品牌、訂閱方案、文章與 Newsletter 設定' : '調整品牌、方案、內容、課程與社群設定' }, null, 2)}</pre>
         </article>
         <article>
           <h4>Portaly Vibe MCP</h4>

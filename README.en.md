@@ -43,7 +43,7 @@ Full setup checklist: [`docs/fork-readiness.md`](./docs/fork-readiness.md)
 
 MemberHub is an open-source membership platform starter. It helps creators, coaches, teachers, consultants, and community builders launch a private membership site faster.
 
-This is not only documentation or a design spec. The project includes a runnable Vite + React service, two production-style examples, paywalls, newsletters, referral gifts, global search, member directory, course resources, moderation queues, challenges, events, member self-service, and an admin dashboard. It runs locally first, then can be connected to InsForge and the Portaly Vibe MCP for a self-hosted production deployment.
+This is not only documentation or a design spec. The project includes a runnable Vite + React service, two production-style examples, paywalls, newsletters, referral gifts, global search, subscriber/member self-service, and an editable admin dashboard. Each example shows only the features that fit that product: the Skool-style case includes courses, community, check-ins, and events; the Substack-style case only includes posts, paywalls, subscriptions, newsletters, subscribers, referral gifts, payments, and invoice status. It runs locally first, then can be connected to InsForge and the Portaly Vibe MCP for a self-hosted production deployment.
 
 The frontend uses React throughout. UI components default to shadcn/ui primitives (`components.json` and `src/components/ui/*` are already set up). The visual direction is a clean, sharp product interface: white surfaces, fine borders, low shadows, clear hierarchy, 8px/12px radii, and black primary buttons so the template stays professional across verticals.
 
@@ -305,8 +305,8 @@ Conclusion: the MemberHub spec now covers the baseline features of Substack and 
 
 Current production-style examples:
 
-1. `skills-school`: courses, community, challenges, and join flow for a Skool/School-style learning community.
-2. `signal-brief`: public blog, paid articles, Email Newsletter, and subscription plans for a Substack-style publication.
+1. `skills-school`: an independent Skool/School-style website case with courses, community, check-ins, events, member directory, and community operations.
+2. `signal-brief`: an independent Substack-style publication case with public posts, paid posts, paywalls, subscriptions, newsletters, subscribers, referral gifts, payment state, and invoice state only.
 
 ## Launch Checklist
 
@@ -316,8 +316,9 @@ Current production-style examples:
 - [`docs/fork-readiness.md`](./docs/fork-readiness.md) has been reviewed, including cost, production setup, and security boundaries.
 - `ALLOWED_ORIGINS` is set to the production domain and no longer includes unnecessary test origins.
 - RLS policies are tested for content permissions, membership state, and admin roles.
-- Members can open courses, update progress, comment, and check in.
-- Admin can create content, plans, courses, and events.
+- Skool-style members can open courses, update progress, comment, and check in.
+- Substack-style readers can read public posts, see paid paywalls, subscribe, and receive newsletter issues without unrelated course, community, check-in, or event modules.
+- Admin can create content, plans, and newsletters; course/event settings appear only for Skool-style cases.
 - Portaly Vibe receives member sync, product state, and analytics events.
 - Payment status examples update membership plan status.
 - Invoice tasks or invoice status records are stored.

@@ -379,10 +379,10 @@ export const presets: VerticalPreset[] = [
     challenges: [],
     events: [],
     members: [
-      { id: 'signal-brief-m1', name: 'Kai', email: 'kai.tsai@signal.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 2, points: 460, source: 'blog', bio: '固定閱讀會員專欄，關注 AI 工具與內容產品。', joinedAt: '2026-02-18', contributions: { posts: 6, comments: 29, likesReceived: 460 }, risk: 'low' },
-      { id: 'signal-brief-m2', name: 'Lena', email: 'lena.chou@signal.tw', role: 'member', groupRole: 'moderator', planId: 'lifetime', status: 'active', level: 4, points: 1180, source: 'newsletter', bio: '協助整理讀者提問與會員資料庫回饋。', joinedAt: '2025-11-28', contributions: { posts: 15, comments: 63, likesReceived: 1180 }, risk: 'low' },
-      { id: 'signal-brief-m3', name: 'Mika', email: 'mika.wang@signal.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 3, points: 790, source: 'referral', bio: '每週參與研究筆記挑戰與公開討論。', joinedAt: '2026-01-17', contributions: { posts: 10, comments: 38, likesReceived: 790 }, risk: 'medium' },
-      { id: 'signal-brief-m4', name: 'Owen', email: 'owen.liu@signal.tw', role: 'member', groupRole: 'member', planId: 'free', status: 'free', level: 1, points: 95, source: 'organic', bio: '免費讀者，主要閱讀公開文章與每週摘要。', joinedAt: '2026-04-22', contributions: { posts: 1, comments: 3, likesReceived: 95 }, risk: 'low' },
+      { id: 'signal-brief-m1', name: 'Kai', email: 'kai.tsai@signalbrief.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 1, points: 0, source: 'blog', bio: '固定閱讀會員專欄，關注 AI 工具與內容產品。', joinedAt: '2026-02-18', contributions: { posts: 6, comments: 29, likesReceived: 0 }, risk: 'low' },
+      { id: 'signal-brief-m2', name: 'Lena', email: 'lena.chou@signalbrief.tw', role: 'member', groupRole: 'member', planId: 'lifetime', status: 'active', level: 1, points: 0, source: 'newsletter', bio: '年度訂閱讀者，常回覆每週研究信並提供資料表回饋。', joinedAt: '2025-11-28', contributions: { posts: 15, comments: 63, likesReceived: 0 }, risk: 'low' },
+      { id: 'signal-brief-m3', name: 'Mika', email: 'mika.wang@signalbrief.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 1, points: 0, source: 'referral', bio: '透過讀者推薦訂閱，主要追蹤付費文章與每週摘要。', joinedAt: '2026-01-17', contributions: { posts: 10, comments: 38, likesReceived: 0 }, risk: 'medium' },
+      { id: 'signal-brief-m4', name: 'Owen', email: 'owen.liu@signalbrief.tw', role: 'member', groupRole: 'member', planId: 'free', status: 'free', level: 1, points: 0, source: 'organic', bio: '免費讀者，主要閱讀公開文章與每週摘要。', joinedAt: '2026-04-22', contributions: { posts: 1, comments: 3, likesReceived: 0 }, risk: 'low' },
     ],
     referrals: [
       { id: 'signal-brief-ref1', code: 'BRIEF7', label: '會員贈閱 7 天', source: 'subscriber gift', reward: '新讀者可體驗一週完整研究', freeTrials: 61, paidConversions: 19, revenueLabel: 'NT$7,980' },
@@ -390,15 +390,15 @@ export const presets: VerticalPreset[] = [
       { id: 'signal-brief-ref3', code: 'RESEARCH-LIVE', label: '直播報名來源', source: 'live campaign', reward: '活動後升級信', freeTrials: 84, paidConversions: 22, revenueLabel: 'NT$9,240' },
     ],
     moderation: [
-      { id: 'signal-brief-mod1', kind: 'membership-question', title: '新會員入會問題待審', subject: 'Owen 想加入付費讀者', status: 'open', priority: 'medium', action: '確認研究主題、使用目的與資料需求' },
-      { id: 'signal-brief-mod2', kind: 'reported-post', title: '討論串被檢舉', subject: '五月 AI 內容產品追蹤表已更新', status: 'reviewing', priority: 'high', action: '確認留言是否包含未授權資料或不當轉載' },
-      { id: 'signal-brief-mod3', kind: 'automod-risk', title: '高風險會員行為', subject: '新帳號大量複製資料庫內容', status: 'open', priority: 'high', action: '暫停下載權限並確認使用條款' },
-      { id: 'signal-brief-mod4', kind: 'billing-dispute', title: '付款爭議資料準備', subject: '讀者要求退款', status: 'resolved', priority: 'low', action: '匯出閱讀紀錄、付款紀錄與資料庫存取紀錄' },
+      { id: 'signal-brief-mod1', kind: 'membership-question', title: '新訂閱讀者問題待回覆', subject: 'Owen 想確認年度訂閱是否包含資料附錄', status: 'open', priority: 'medium', action: '回覆訂閱權益、發送文章索引與資料附錄說明' },
+      { id: 'signal-brief-mod2', kind: 'reported-post', title: '文章留言被檢舉', subject: '五月 AI 內容產品追蹤表留言區', status: 'reviewing', priority: 'high', action: '確認留言是否包含未授權資料或不當轉載' },
+      { id: 'signal-brief-mod3', kind: 'automod-risk', title: '資料存取異常', subject: '新帳號大量複製付費資料附錄', status: 'open', priority: 'high', action: '暫停下載權限並確認使用條款' },
+      { id: 'signal-brief-mod4', kind: 'billing-dispute', title: '退款資料準備', subject: '讀者要求取消年度訂閱', status: 'resolved', priority: 'low', action: '匯出閱讀紀錄、付款紀錄與資料庫存取紀錄' },
     ],
     notifications: [
       { id: 'signal-brief-notify1', channel: 'email', trigger: 'new-post', audience: 'all', status: 'scheduled' },
-      { id: 'signal-brief-notify2', channel: 'line', trigger: 'live-start', audience: 'paid', status: 'ready' },
-      { id: 'signal-brief-notify3', channel: 'in-app', trigger: 'course-reminder', audience: 'paid', status: 'ready' },
+      { id: 'signal-brief-notify2', channel: 'email', trigger: 'welcome', audience: 'free', status: 'ready' },
+      { id: 'signal-brief-notify3', channel: 'in-app', trigger: 'new-post', audience: 'paid', status: 'ready' },
       { id: 'signal-brief-notify4', channel: 'email', trigger: 'payment-failed', audience: 'at-risk', status: 'ready' },
     ],
     metrics: {

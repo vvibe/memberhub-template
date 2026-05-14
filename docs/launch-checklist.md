@@ -28,7 +28,8 @@
 - [ ] RLS policies have been tested with at least guest, free member, paid member, and admin roles.
 - [ ] Local case data can be loaded.
 - [ ] Skills School and Signal Brief cases can be switched without source-code rewrites.
-- [ ] Admin base editing can update site title, hero copy, plans, content/paywall state, course titles when enabled, and Newsletter send settings.
+- [ ] Admin base editing can update site title, hero copy, plans, content/paywall state, Newsletter send settings, and course/community settings only when that case enables them.
+- [ ] Substack-style cases do not show unrelated course, community, check-in, member directory, or event modules in the frontend or admin.
 
 ## Cost Disclosure
 
