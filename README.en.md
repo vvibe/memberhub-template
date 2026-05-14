@@ -19,11 +19,11 @@ It can be used for:
 - Events, webinars, and replay libraries
 - Member self-service and admin operations
 
-You can run the local demo without connecting any external service. When you are ready for production, connect InsForge for auth/database and use the Portaly Vibe MCP so an AI coding agent can help review and optimize product setup.
+You can run the local experience without connecting any external service. When you are ready for production, connect InsForge for auth/database and use the Portaly Vibe MCP so an AI coding agent can help review and optimize product setup.
 
 ## Notes
 
-- The local demo does not require API keys. Production requires InsForge setup and a Portaly Vibe MCP token.
+- The local experience does not require API keys. Production requires InsForge setup and a Portaly Vibe MCP token.
 - Payments, subscription plans, and invoice flow are optional and should be enabled only when you are ready.
 - Possible costs include hosting, domain, InsForge, Portaly Vibe, payment processing, Email/LINE messaging, and invoice/e-invoice providers.
 - Never commit real API keys, MCP tokens, or callback secrets to GitHub.
@@ -31,9 +31,9 @@ You can run the local demo without connecting any external service. When you are
 
 Full setup checklist: [`docs/fork-readiness.md`](./docs/fork-readiness.md)
 
-## Live Demo
+## Live Preview
 
-- Production demo: https://memberhub-coral.vercel.app/
+- Production preview: https://memberhub-coral.vercel.app/
 - Vercel project: `memberhub`
 - Current examples: `Skills School 職能加速社群` and `SuperStake 策略通訊`.
 
@@ -98,27 +98,27 @@ Run the full Playwright QA suite:
 npm run test:qa
 ```
 
-`test:qa` builds the latest production bundle first, then runs Playwright against Vite preview. Completion requires a 100% pass rate: the suite currently covers 13 main views, desktop `1440x1000`, mobile `390x844`, console errors, horizontal overflow, shared UI tokens, typography weight/scale rules, viewport screenshots, and core interaction flows.
+`test:qa` builds the latest production bundle first, then runs Playwright against Vite preview. Completion requires a 100% pass rate: the suite currently covers 15 main views, desktop `1440x1000`, mobile `390x844`, console errors, horizontal overflow, shared UI tokens, typography weight/scale rules, viewport screenshots, production-style copy checks, and core interaction flows.
 
-The demo runs without keys. Production requires InsForge setup and a Portaly Vibe MCP token.
+The local experience runs without keys. Production requires InsForge setup and a Portaly Vibe MCP token.
 
 Recommended Node version: `^22.13.0 || ^20.12.0`.
 
-## Demo Features You Can Actually Use
+## Local Features You Can Actually Use
 
-This repo is not a static showcase. Without any backend keys, the localStorage demo supports these flows:
+This repo is not a static showcase. Without any backend keys, the localStorage state supports these flows:
 
-- Sign in/out as demo member or admin
+- Sign in/out as member or admin
 - Switch vertical presets
 - Use the post editor to create a post with title, excerpt, category, content type, body, and paywall state
 - New posts immediately appear in the content library, global search, and admin content operations
-- Simulate joining a paid plan and unlock paywalled content
+- Select a paid plan and unlock paywalled content
 - Search the content library and global index
 - Complete course lessons and persist completion state
 - Complete check-in challenges and persist check-in state
 - Create a newsletter issue draft
 - Create a referral / gift campaign code
-- Invite a demo member
+- Invite a member
 - Generate a membership review task from an invited member
 - Open the moderation queue from the membership questions action
 - View member self-service, receipt/invoice status examples, referral gifts, and admin operations dashboards
@@ -194,7 +194,7 @@ Apply for a Portaly Vibe MCP token and replace `<YOUR_TOKEN>` locally. Do not co
 
 ## What Production Needs
 
-If you only want to try the demo, you can skip this section. For production, you usually need:
+If you only want to try the local experience, you can skip this section. For production, you usually need:
 
 - InsForge project URL
 - InsForge anon key

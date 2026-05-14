@@ -47,8 +47,10 @@ import {
 } from '@/components/ui/select'
 
 const navItems: Array<{ id: ViewId; label: string; icon: typeof LayoutDashboard }> = [
-  { id: 'home', label: '首頁', icon: Globe2 },
-  { id: 'content', label: '內容', icon: BookOpen },
+  { id: 'home', label: '預覽', icon: Globe2 },
+  { id: 'blog', label: '部落格', icon: FileText },
+  { id: 'join', label: '加入會員', icon: CircleDollarSign },
+  { id: 'content', label: '內容庫', icon: BookOpen },
   { id: 'newsletter', label: '通訊', icon: Megaphone },
   { id: 'courses', label: '課程', icon: PlayCircle },
   { id: 'community', label: '社群', icon: MessageSquareText },
@@ -241,7 +243,7 @@ function App() {
         </nav>
 
         <div className="sidebar-panel">
-          <span className="eyebrow">Preview account</span>
+          <span className="eyebrow">目前身份</span>
           <div className="segmented">
             {(['visitor', 'member', 'admin'] as Role[]).map((role) => (
               <button key={role} className={state.role === role ? 'selected' : ''} onClick={() => handleRoleChange(role)}>
@@ -276,7 +278,7 @@ function App() {
                 </SelectContent>
               </Select>
             </label>
-            <Button variant="outline" className="ghost-button" onClick={() => updateState(resetState())}>重置本機資料</Button>
+            <Button variant="outline" className="ghost-button" onClick={() => updateState(resetState())}>重置狀態</Button>
             {state.role === 'visitor' ? (
               <Button className="primary-button" onClick={() => setView('login')}><LogIn data-icon="inline-start" />登入</Button>
             ) : (
@@ -290,7 +292,20 @@ function App() {
             preset={runtimePreset}
             role={state.role}
             selectedPlan={selectedPlan}
-            onOpenContent={() => setView('content')}
+            onOpenBlog={() => setView('blog')}
+            onOpenJoin={() => setView('join')}
+          />
+        )}
+        {view === 'blog' && (
+          <BlogView
+            preset={runtimePreset}
+            hasPaidAccess={hasPaidAccess}
+            onJoin={() => setView('join')}
+          />
+        )}
+        {view === 'join' && (
+          <JoinView
+            preset={runtimePreset}
             onCheckout={handleCheckout}
           />
         )}
@@ -350,15 +365,19 @@ function HomeView({
   preset,
   role,
   selectedPlan,
-  onOpenContent,
-  onCheckout,
+  onOpenBlog,
+  onOpenJoin,
 }: {
   preset: ReturnType<typeof getPreset>
   role: Role
   selectedPlan: Plan
-  onOpenContent: () => void
-  onCheckout: (plan: Plan) => void
+  onOpenBlog: () => void
+  onOpenJoin: () => void
 }) {
+  const publicContent = preset.content.filter((item) => !item.isPaid).slice(0, 2)
+  const paidContent = preset.content.filter((item) => item.isPaid).slice(0, 2)
+  const firstCourse = preset.courses[0]
+
   return (
     <div className="view-stack">
       <section className="hero-band">
@@ -367,11 +386,11 @@ function HomeView({
           <h2>{preset.copy.heroTitle}</h2>
           <p>{preset.copy.heroBody}</p>
           <div className="button-row">
-            <Button className="primary-button" onClick={() => onCheckout(preset.plans.find((plan) => plan.highlighted) ?? preset.plans[1])}>
+            <Button className="primary-button" onClick={onOpenJoin}>
               <CircleDollarSign data-icon="inline-start" />
               {preset.copy.ctaPrimary}
             </Button>
-            <Button variant="outline" className="secondary-button" onClick={onOpenContent}>
+            <Button variant="outline" className="secondary-button" onClick={onOpenBlog}>
               <BookOpen data-icon="inline-start" />
               {preset.copy.ctaSecondary}
             </Button>
@@ -393,27 +412,146 @@ function HomeView({
 
       <section className="section-block">
         <div className="section-heading">
-          <span className="eyebrow">Plans</span>
-          <h3>會員可以理解並選擇的方案結構</h3>
+          <span className="eyebrow">Before joining</span>
+          <h3>加入前可以先看見的內容與社群節奏</h3>
         </div>
         <div className="plan-grid">
-          {preset.plans.map((plan) => (
-            <article key={plan.id} className={plan.highlighted ? 'plan-card highlighted' : 'plan-card'}>
-              <span className="plan-name">{plan.name}</span>
-              <strong>{plan.price}</strong>
-              <small>{plan.cadence}</small>
-              <p>{plan.description}</p>
-              <ul>
-                {plan.features.map((feature) => (
-                  <li key={feature}><CheckCircle2 size={16} />{feature}</li>
-                ))}
-              </ul>
-              <Button variant={plan.highlighted ? 'default' : 'outline'} onClick={() => onCheckout(plan)}>{plan.price === 'NT$0' ? '使用免費方案' : '模擬啟用方案'}</Button>
-            </article>
-          ))}
+          <article className="plan-card">
+            <span className="plan-name">公開內容</span>
+            <strong>{publicContent.length}</strong>
+            <small>可直接閱讀</small>
+            <p>{publicContent.map((item) => item.title.replace(/^公開文章：/, '')).join('、')}</p>
+            <Button variant="outline" onClick={onOpenBlog}>閱讀公開文章</Button>
+          </article>
+          <article className="plan-card highlighted">
+            <span className="plan-name">會員內容</span>
+            <strong>{paidContent.length}</strong>
+            <small>加入後解鎖</small>
+            <p>{paidContent.map((item) => item.category).join('、')}，適合想持續深入學習或追蹤的人。</p>
+            <Button onClick={onOpenJoin}>查看會員方案</Button>
+          </article>
+          <article className="plan-card">
+            <span className="plan-name">課程與社群</span>
+            <strong>{firstCourse?.progress ?? 0}%</strong>
+            <small>持續更新</small>
+            <p>{firstCourse?.description ?? preset.audience}</p>
+            <Button variant="outline" onClick={onOpenJoin}>加入後開始使用</Button>
+          </article>
         </div>
       </section>
     </div>
+  )
+}
+
+function BlogView({
+  preset,
+  hasPaidAccess,
+  onJoin,
+}: {
+  preset: ReturnType<typeof getPreset>
+  hasPaidAccess: boolean
+  onJoin: () => void
+}) {
+  const publicPosts = preset.content.filter((item) => !item.isPaid)
+  const memberPosts = preset.content.filter((item) => item.isPaid)
+  const featurePost = publicPosts[0] ?? preset.content[0]
+
+  return (
+    <section className="section-block">
+      <div className="section-heading horizontal">
+        <div>
+          <span className="eyebrow">{preset.id === 'superstake' ? 'Publication' : 'Public community page'}</span>
+          <h3>{preset.id === 'superstake' ? 'SuperStake 公開部落格' : 'Skills School 社群預覽頁'}</h3>
+        </div>
+        <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />加入會員</Button>
+      </div>
+
+      <article className="hero-product blog-feature">
+        <Badge variant="outline" className="pill">{featurePost.category}</Badge>
+        <h4>{featurePost.title}</h4>
+        <p>{featurePost.excerpt}</p>
+        <small>{featurePost.minutes} min read · {preset.brand.creatorName}</small>
+      </article>
+
+      <div className="content-list blog-list">
+        {publicPosts.map((item) => (
+          <article key={item.id} className="content-row">
+            <div>
+              <Badge variant="outline" className="pill">{item.type}</Badge>
+              <h4>{item.title}</h4>
+              <p>{item.excerpt}</p>
+              <small>{item.category} · {item.minutes} min · {item.source}</small>
+            </div>
+            <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span>
+          </article>
+        ))}
+        {memberPosts.slice(0, 3).map((item) => (
+          <article key={item.id} className="content-row">
+            <div>
+              <Badge variant="outline" className="pill">會員限定</Badge>
+              <h4>{item.title}</h4>
+              <p>{item.excerpt}</p>
+              <small>{item.category} · {item.minutes} min</small>
+            </div>
+            {hasPaidAccess ? <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span> : <Button className="lock-button" onClick={onJoin}><Lock data-icon="inline-start" />加入後閱讀</Button>}
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function JoinView({
+  preset,
+  onCheckout,
+}: {
+  preset: ReturnType<typeof getPreset>
+  onCheckout: (plan: Plan) => void
+}) {
+  const memberPlan = preset.plans.find((plan) => plan.highlighted) ?? preset.plans[1]
+
+  return (
+    <section className="section-block">
+      <div className="section-heading horizontal">
+        <div>
+          <span className="eyebrow">{preset.id === 'skills-school' ? 'Join the community' : 'Subscribe'}</span>
+          <h3>{preset.id === 'skills-school' ? '加入 Skills School，開始課程、社群與每週實作' : '訂閱 SuperStake，閱讀完整研究與會員專欄'}</h3>
+        </div>
+        <Button className="primary-button" onClick={() => onCheckout(memberPlan)}><CircleDollarSign data-icon="inline-start" />選擇 {memberPlan.name}</Button>
+      </div>
+      <div className="plan-grid">
+        {preset.plans.map((plan) => (
+          <article key={plan.id} className={plan.highlighted ? 'plan-card highlighted' : 'plan-card'}>
+            <span className="plan-name">{plan.name}</span>
+            <strong>{plan.price}</strong>
+            <small>{plan.cadence}</small>
+            <p>{plan.description}</p>
+            <ul>
+              {plan.features.map((feature) => (
+                <li key={feature}><CheckCircle2 size={16} />{feature}</li>
+              ))}
+            </ul>
+            <Button variant={plan.highlighted ? 'default' : 'outline'} onClick={() => onCheckout(plan)}>
+              {plan.price === 'NT$0' ? '加入免費方案' : '選擇此方案'}
+            </Button>
+          </article>
+        ))}
+      </div>
+      <div className="self-service-grid join-proof">
+        <article>
+          <h4>{preset.id === 'skills-school' ? '加入後會看到什麼' : '訂閱後會收到什麼'}</h4>
+          <ul className="check-list">
+            <li><CheckCircle2 size={16} />完整內容庫與會員限定文章</li>
+            <li><CheckCircle2 size={16} />課程、資源、直播或問答回放</li>
+            <li><CheckCircle2 size={16} />會員社群、討論與活動通知</li>
+          </ul>
+        </article>
+        <article>
+          <h4>適合的人</h4>
+          <p>{preset.audience}</p>
+        </article>
+      </div>
+    </section>
   )
 }
 
@@ -652,7 +790,7 @@ function LoginView({ preset, onLogin }: { preset: ReturnType<typeof getPreset>; 
       <article className="auth-card">
         <span className="eyebrow">Sign in</span>
         <h3>登入 {preset.brand.productName}</h3>
-        <p>先用預覽登入了解會員與管理員流程。正式部署時可接 InsForge Google OAuth、Magic Link 或 email/password。</p>
+        <p>使用會員身份進入內容區，或用管理員身份查看營運後台。正式部署時可接 InsForge Google OAuth、Magic Link 或 email/password。</p>
         <form
           className="auth-form"
           onSubmit={(event) => {

@@ -4,7 +4,7 @@
 
 ### 這個 repo 可以直接做什麼
 
-- 可以在本機免 key 跑完整 demo：登入、內容、付費牆、課程進度、社群、打卡、Newsletter、會員自助與後台。
+- 可以在本機免 key 跑完整體驗：登入、內容、付費牆、課程進度、社群、打卡、Newsletter、會員自助與後台。
 - 內建兩組正式案例：Skills School 學習社群與 SuperStake 內容訂閱站。
 - 可以先用 localStorage 驗證產品流程，再把資料層換成 InsForge。
 - 已包含 Portaly Vibe MCP 專案設定、InsForge migration、選配金流 function 範例、Playwright QA。
@@ -23,9 +23,9 @@
 - 不會自動建立正式收款方案。
 - 不會自動開立正式發票。
 - 不會自動寄送 Email 或 LINE 訊息。
-- 不會自動把 demo localStorage 資料變成 production database。
+- 不會自動把 localStorage 資料變成 production database。
 
-AI Agent 必須先完成本機 demo、前台、登入、InsForge、Portaly Vibe MCP 設定，再詢問：
+AI Agent 必須先完成本機體驗、前台、登入、InsForge、Portaly Vibe MCP 設定，再詢問：
 
 ```text
 是否需要啟用金流、訂閱方案與發票流程？
@@ -51,7 +51,7 @@ AI Agent 必須先完成本機 demo、前台、登入、InsForge、Portaly Vibe 
 - 若啟用金流，checkout 只能由受信任前端來源呼叫，不能使用 `*` CORS。
 - 若啟用付款 callback，必須驗證 signature 與 timestamp，避免重放或偽造請求。
 - RLS 必須依照會員身份、內容權限與 admin 角色測試；不要為了省事關閉 RLS。
-- Demo localStorage 只適合本機驗證，不適合保存正式會員、付款或發票資料。
+- localStorage 只適合本機驗證，不適合保存正式會員、付款或發票資料。
 - Live mode、正式付款、取消訂閱、恢復訂閱、手動補單都需要使用者再次明確同意。
 
 ### Fork 後最小流程
@@ -77,7 +77,7 @@ Production 前再做：
 
 ### 常見卡關
 
-- 沒有 key 不能上 production：本機 demo 可免 key；production 必須先申請 InsForge 與 Portaly。
+- 沒有 key 不能上 production：本機體驗可免 key；production 必須先申請 InsForge 與 Portaly。
 - 登入無法使用：先確認 InsForge Auth provider、redirect URL、allowed domain。
 - 金流呼叫被擋：檢查 `ALLOWED_ORIGINS` 是否包含目前前端網域。
 - 付款 callback 失敗：檢查 `PORTALY_CALLBACK_SECRET`、timestamp、signature 與 callback URL。
@@ -88,7 +88,7 @@ Production 前再做：
 
 ### What works immediately
 
-- The local demo runs without keys and includes login, content, paywalls, course progress, community, check-ins, newsletters, member self-service, and admin operations.
+- The local experience runs without keys and includes login, content, paywalls, course progress, community, check-ins, newsletters, member self-service, and admin operations.
 - Four presets can be adapted quickly: baking community, design education, fitness coaching, and finance newsletter.
 - You can validate product flows with localStorage first, then replace the data layer with InsForge.
 - The repo includes project-scoped Portaly Vibe MCP config, an InsForge migration, optional payment function examples, and Playwright QA.
@@ -107,9 +107,9 @@ Production 前再做：
 - Official paid plans.
 - Official invoice issuing.
 - Email or LINE sending.
-- Production database persistence for demo localStorage data.
+- Production database persistence for localStorage data.
 
-The AI agent must finish the local demo, frontend, login, InsForge, and Portaly Vibe MCP setup first, then ask whether to enable payments, subscription plans, and invoice flow.
+The AI agent must finish the local experience, frontend, login, InsForge, and Portaly Vibe MCP setup first, then ask whether to enable payments, subscription plans, and invoice flow.
 
 ### Possible costs
 
@@ -129,7 +129,7 @@ The AI agent must finish the local demo, frontend, login, InsForge, and Portaly 
 - If payments are enabled, checkout should only accept trusted frontend origins.
 - If payment callbacks are enabled, requests must verify signature and timestamp.
 - RLS must be tested for membership state, content access, and admin roles. Do not disable RLS for convenience.
-- localStorage is for demo validation only, not production member/payment/invoice records.
+- localStorage is for local validation only, not production member/payment/invoice records.
 - Live mode, real payment collection, subscription cancellation/resume, and manual payment completion require explicit user confirmation.
 
 ### Minimum fork flow

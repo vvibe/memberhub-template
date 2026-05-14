@@ -1,8 +1,10 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 
 const viewCases = [
-  { id: 'home', label: '首頁', expectedText: '會員可以理解並選擇的方案結構' },
-  { id: 'content', label: '內容', expectedText: '公開文章、會員內容與付費牆' },
+  { id: 'home', label: '預覽', expectedText: '加入前可以先看見的內容與社群節奏' },
+  { id: 'blog', label: '部落格', expectedText: 'Skills School 社群預覽頁' },
+  { id: 'join', label: '加入會員', expectedText: '加入 Skills School，開始課程、社群與每週實作' },
+  { id: 'content', label: '內容庫', expectedText: '公開文章、會員內容與付費牆' },
   { id: 'newsletter', label: '通訊', expectedText: 'Email/LINE 通訊、付費轉換與推薦贈閱' },
   { id: 'courses', label: '課程', expectedText: '課程、進度與等級解鎖' },
   { id: 'community', label: '社群', expectedText: '分類、權限、公告、留言與反應' },
@@ -33,6 +35,7 @@ for (const viewCase of viewCases) {
     await expect(page.getByText(viewCase.expectedText, { exact: true })).toBeVisible()
 
     await expectNoHorizontalOverflow(page)
+    await expectNoDemoCopy(page)
     await expectLayoutRhythmMatchesHome(page, homeRhythm)
     await expectSharedVisualTokens(page)
     await expectReadableTypography(page)
@@ -48,7 +51,7 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   const consoleErrors = collectConsoleErrors(page)
 
   await page.getByRole('button', { name: '管理員' }).click()
-  await openNav(page, '內容')
+  await openNav(page, '內容庫')
   await page.getByPlaceholder('輸入文章標題').fill('QA 測試文章')
   await page.getByPlaceholder('列表與分享時顯示的短摘要').fill('這是 Playwright QA 產生的測試摘要。')
   await page.getByPlaceholder('撰寫文章、課程公告或 newsletter 內容...').fill('這篇內容用來確認發文、搜尋與後台列表仍能正常運作。')
@@ -80,6 +83,7 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   await expect(page.getByRole('button', { name: '今日已打卡' }).first()).toBeVisible()
 
   await expectNoHorizontalOverflow(page)
+  await expectNoDemoCopy(page)
   await expectSharedVisualTokens(page)
   await expectReadableTypography(page)
   await expectConsistentSpacingAndTextMetrics(page)
@@ -93,7 +97,12 @@ test('Skills School and SuperStake reference cases are both usable', async ({ pa
   const consoleErrors = collectConsoleErrors(page)
 
   await expect(page.locator('.topbar h1')).toHaveText('Skills School 職能加速社群')
-  await openNav(page, '內容')
+  await openNav(page, '部落格')
+  await expect(page.getByText('Skills School 社群預覽頁')).toBeVisible()
+  await expect(page.getByText('課程預覽：第一週如何完成一份可被回饋的作品')).toBeVisible()
+  await openNav(page, '加入會員')
+  await expect(page.getByText('加入 Skills School，開始課程、社群與每週實作')).toBeVisible()
+  await openNav(page, '內容庫')
   await expect(page.getByText('公開文章：如何安排 30 天職能升級計畫')).toBeVisible()
   await expect(page.locator('.editor-panel')).toHaveCount(0)
 
@@ -101,15 +110,20 @@ test('Skills School and SuperStake reference cases are both usable', async ({ pa
   await page.getByRole('option', { name: 'SuperStake' }).click()
   await expect(page.locator('.topbar h1')).toHaveText('SuperStake 策略通訊')
 
-  await openNav(page, '內容')
-  await expect(page.getByText('公開文章：AI 工具從嘗鮮走向日常工作的三個訊號')).toBeVisible()
-  await expect(page.getByText('會員專欄：自動化內容工具的商業模式與留存風險')).toBeVisible()
+  await openNav(page, '部落格')
+  await expect(page.getByText('SuperStake 公開部落格')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '公開文章：AI 工具從嘗鮮走向日常工作的三個訊號' }).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: '會員專欄：自動化內容工具的商業模式與留存風險' })).toBeVisible()
+  await openNav(page, '加入會員')
+  await expect(page.getByText('訂閱 SuperStake，閱讀完整研究與會員專欄')).toBeVisible()
+  await openNav(page, '內容庫')
   await expect(page.locator('.editor-panel')).toHaveCount(0)
 
-  await openNav(page, '首頁')
+  await openNav(page, '預覽')
   await expect(page.getByRole('heading', { name: '把公開文章、深度專欄與會員社群放在自己的網站' })).toBeVisible()
 
   await expectNoHorizontalOverflow(page)
+  await expectNoDemoCopy(page)
   await expectSharedVisualTokens(page)
   await expectReadableTypography(page)
   await expectConsistentSpacingAndTextMetrics(page)
@@ -133,7 +147,7 @@ async function openView(page: Page, viewCase: (typeof viewCases)[number]) {
 }
 
 async function openNav(page: Page, label: string) {
-  await page.locator('.nav-list').getByRole('button', { name: label }).click()
+  await page.locator('.nav-list').getByRole('button', { name: label, exact: true }).click()
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
@@ -145,6 +159,15 @@ async function expectNoHorizontalOverflow(page: Page) {
 
   expect(overflow.documentWidth, JSON.stringify(overflow)).toBeLessThanOrEqual(overflow.viewportWidth + 1)
   expect(overflow.bodyWidth, JSON.stringify(overflow)).toBeLessThanOrEqual(overflow.viewportWidth + 1)
+}
+
+async function expectNoDemoCopy(page: Page) {
+  const forbiddenCopy = await page.evaluate(() => {
+    const text = document.body.innerText
+    return ['Demo', 'demo', '示範', '這是示範', '模擬'].filter((term) => text.includes(term))
+  })
+
+  expect(forbiddenCopy, 'public-facing pages should read like a real operating site').toEqual([])
 }
 
 async function getLayoutRhythm(page: Page) {

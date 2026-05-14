@@ -8,7 +8,7 @@ Use the user's answers to update `src/data/presets.ts`, labels, plans, seed cont
 
 Tell the user these facts first in simple language:
 
-- The local demo can run without keys.
+- The local experience can run without keys.
 - Production requires InsForge and Portaly Vibe accounts/keys.
 - Optional services may cost money: hosting, domain, Portaly Vibe, payment processing, Email/LINE, and invoice providers.
 - Live payments, official subscription plans, invoice issuing, and message sending are disabled until the user explicitly asks for them.
@@ -35,7 +35,7 @@ Ask in the user's language:
 6. 是否需要 Email 或 LINE 通知？如果需要，通知哪些事件？
 7. 是否需要入會問題、管理員審核、檢舉處理或 AutoMod 風險佇列？
 8. 先不啟用金流可以嗎？我會等前台、登入、內容、會員流程完成後，再問是否啟用 Portaly 金流、訂閱與發票。
-9. 你已經有 InsForge、Portaly Vibe、Email/LINE、發票服務或網域嗎？沒有也可以先跑本機 demo。
+9. 你已經有 InsForge、Portaly Vibe、Email/LINE、發票服務或網域嗎？沒有也可以先跑本機體驗。
 ```
 
 ## Output The Agent Should Produce
