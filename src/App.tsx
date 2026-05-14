@@ -377,6 +377,12 @@ function App() {
     [runtimePreset.id],
   )
 
+  useEffect(() => {
+    if (runtimePreset.id === 'superstake' && ['courses', 'community', 'challenges', 'events'].includes(view)) {
+      setView('blog')
+    }
+  }, [runtimePreset.id, view])
+
   const updateState = (patch: Partial<AppState>) => setState((prev) => ({ ...prev, ...patch }))
 
   const handlePresetChange = (presetId: PresetId) => {
