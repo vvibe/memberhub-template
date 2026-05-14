@@ -21,7 +21,18 @@ export function loadState(): AppState {
   if (typeof localStorage === 'undefined') return defaultState
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? { ...defaultState, ...JSON.parse(raw) } : defaultState
+    if (!raw) return defaultState
+    const parsed = JSON.parse(raw) as Partial<Omit<AppState, 'presetId'>> & { presetId?: string }
+    const presetId: PresetId = parsed.presetId === 'superstake'
+      ? 'signal-brief'
+      : parsed.presetId === 'skills-school' || parsed.presetId === 'signal-brief'
+        ? parsed.presetId
+        : defaultState.presetId
+    return {
+      ...defaultState,
+      ...parsed,
+      presetId,
+    }
   } catch {
     return defaultState
   }
@@ -46,7 +57,7 @@ export function roleLabel(role: Role) {
 export function presetLabel(id: PresetId) {
   const labels: Record<PresetId, string> = {
     'skills-school': 'Skills School',
-    superstake: 'SuperStake',
+    'signal-brief': 'Signal Brief',
   }
   return labels[id]
 }

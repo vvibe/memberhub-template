@@ -71,6 +71,12 @@ function isPresetId(value: string): value is PresetId {
   return validPresetIds.has(value as PresetId)
 }
 
+function normalizePresetId(value: string | null): PresetId | undefined {
+  if (!value) return undefined
+  if (value === 'superstake') return 'signal-brief'
+  return isPresetId(value) ? value : undefined
+}
+
 function isViewId(value: string): value is ViewId {
   return validViewIds.has(value as ViewId)
 }
@@ -82,21 +88,21 @@ function getInitialRoute() {
   const viewParam = params.get('view')
 
   return {
-    presetId: caseParam && isPresetId(caseParam) ? caseParam : undefined,
+    presetId: normalizePresetId(caseParam),
     view: viewParam && isViewId(viewParam) ? viewParam : undefined,
   }
 }
 
 function siteEyebrow(preset: ReturnType<typeof getPreset>) {
-  return preset.id === 'superstake' ? '獨立策略通訊' : '職能學習社群'
+  return preset.id === 'signal-brief' ? '獨立策略通訊' : '職能學習社群'
 }
 
 function brandMark(preset: ReturnType<typeof getPreset>) {
-  return preset.id === 'superstake' ? 'S' : 'S'
+  return preset.id === 'signal-brief' ? 'S' : 'S'
 }
 
 function homeMetrics(preset: ReturnType<typeof getPreset>, selectedPlan: Plan) {
-  if (preset.id === 'superstake') {
+  if (preset.id === 'signal-brief') {
     return [
       { label: '本月研究', value: '8 篇', icon: BarChart3 },
       { label: '讀者', value: String(preset.metrics.activeMembers), icon: UsersRound },
@@ -114,11 +120,11 @@ function homeMetrics(preset: ReturnType<typeof getPreset>, selectedPlan: Plan) {
 }
 
 function beforeJoinEyebrow(preset: ReturnType<typeof getPreset>) {
-  return preset.id === 'superstake' ? '訂閱前先閱讀' : '加入前先看看'
+  return preset.id === 'signal-brief' ? '訂閱前先閱讀' : '加入前先看看'
 }
 
 function beforeJoinHeading(preset: ReturnType<typeof getPreset>) {
-  return preset.id === 'superstake' ? '訂閱前可以先閱讀的公開文章與研究節奏' : '加入前可以先看見的內容與社群節奏'
+  return preset.id === 'signal-brief' ? '訂閱前可以先閱讀的公開文章與研究節奏' : '加入前可以先看見的內容與社群節奏'
 }
 
 function contentTypeLabel(type: ContentItem['type'] | string) {
@@ -371,14 +377,14 @@ function App() {
   const activeLevel = state.role === 'visitor' ? 0 : currentMember.level
   const hasPaidAccess = state.role === 'admin' || state.selectedPlanId !== 'free'
   const visibleNavItems = useMemo(
-    () => runtimePreset.id === 'superstake'
+    () => runtimePreset.id === 'signal-brief'
       ? navItems.filter((item) => !['courses', 'community', 'challenges', 'events'].includes(item.id))
       : navItems,
     [runtimePreset.id],
   )
 
   useEffect(() => {
-    if (runtimePreset.id === 'superstake' && ['courses', 'community', 'challenges', 'events'].includes(view)) {
+    if (runtimePreset.id === 'signal-brief' && ['courses', 'community', 'challenges', 'events'].includes(view)) {
       setView('blog')
     }
   }, [runtimePreset.id, view])
@@ -492,7 +498,7 @@ function App() {
     const member: Member = {
       id: `local_member_${Date.now()}`,
       name: `新會員 ${serial}`,
-      email: `new.member${serial}@${runtimePreset.id === 'superstake' ? 'superstake.tw' : 'skillsschool.tw'}`,
+      email: `new.member${serial}@${runtimePreset.id === 'signal-brief' ? 'signalbrief.tw' : 'skillsschool.tw'}`,
       role: 'member',
       groupRole: 'member',
       planId: 'free',
@@ -766,10 +772,10 @@ function BlogView({
     <section className="section-block">
       <div className="section-heading horizontal">
         <div>
-          <span className="eyebrow">{preset.id === 'superstake' ? '公開閱讀' : '社群預覽'}</span>
-          <h3>{preset.id === 'superstake' ? 'SuperStake 公開部落格' : 'Skills School 社群預覽頁'}</h3>
+          <span className="eyebrow">{preset.id === 'signal-brief' ? '公開閱讀' : '社群預覽'}</span>
+          <h3>{preset.id === 'signal-brief' ? 'Signal Brief 公開部落格' : 'Skills School 社群預覽頁'}</h3>
         </div>
-        <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />{preset.id === 'superstake' ? '訂閱完整研究' : '加入會員'}</Button>
+        <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />{preset.id === 'signal-brief' ? '訂閱完整研究' : '加入會員'}</Button>
       </div>
 
       <article className="hero-product blog-feature">
@@ -799,7 +805,7 @@ function BlogView({
               <p>{item.excerpt}</p>
               <small>{item.category} · {item.minutes} 分鐘</small>
             </div>
-            {hasPaidAccess ? <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span> : <Button className="lock-button" onClick={onJoin}><Lock data-icon="inline-start" />{preset.id === 'superstake' ? '訂閱後閱讀' : '加入後閱讀'}</Button>}
+            {hasPaidAccess ? <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span> : <Button className="lock-button" onClick={onJoin}><Lock data-icon="inline-start" />{preset.id === 'signal-brief' ? '訂閱後閱讀' : '加入後閱讀'}</Button>}
           </article>
         ))}
       </div>
@@ -821,7 +827,7 @@ function JoinView({
       <div className="section-heading horizontal">
         <div>
           <span className="eyebrow">{preset.id === 'skills-school' ? '加入社群' : '訂閱研究'}</span>
-          <h3>{preset.id === 'skills-school' ? '加入 Skills School，開始課程、社群與每週實作' : '訂閱 SuperStake，閱讀付費文章與每週電子報'}</h3>
+          <h3>{preset.id === 'skills-school' ? '加入 Skills School，開始課程、社群與每週實作' : '訂閱 Signal Brief，閱讀付費文章與每週電子報'}</h3>
         </div>
         <Button className="primary-button" onClick={() => onCheckout(memberPlan)}><CircleDollarSign data-icon="inline-start" />選擇 {memberPlan.name}</Button>
       </div>
@@ -838,7 +844,7 @@ function JoinView({
               ))}
             </ul>
             <Button variant={plan.highlighted ? 'default' : 'outline'} onClick={() => onCheckout(plan)}>
-              {plan.price === 'NT$0' ? (preset.id === 'superstake' ? '加入免費讀者' : '加入免費方案') : '選擇此方案'}
+              {plan.price === 'NT$0' ? (preset.id === 'signal-brief' ? '加入免費讀者' : '加入免費方案') : '選擇此方案'}
             </Button>
           </article>
         ))}
@@ -863,7 +869,7 @@ function JoinView({
           </ul>
         </article>
         <article>
-          <h4>{preset.id === 'superstake' ? '適合這樣的讀者' : '適合這樣的學員'}</h4>
+          <h4>{preset.id === 'signal-brief' ? '適合這樣的讀者' : '適合這樣的學員'}</h4>
           <p>{preset.audience}</p>
         </article>
       </div>
@@ -1032,8 +1038,8 @@ function NewsletterView({
         <article className="newsletter-panel span-2">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">{preset.id === 'superstake' ? '文章電子報' : '課程通訊'}</span>
-              <h4>{preset.id === 'superstake' ? '把文章寄給訂閱讀者' : '把文章、課程或活動寄給會員'}</h4>
+              <span className="eyebrow">{preset.id === 'signal-brief' ? '文章電子報' : '課程通訊'}</span>
+              <h4>{preset.id === 'signal-brief' ? '把文章寄給訂閱讀者' : '把文章、課程或活動寄給會員'}</h4>
             </div>
             <Mail size={18} aria-hidden="true" />
           </div>
@@ -1046,7 +1052,7 @@ function NewsletterView({
             <div>
               <span>2</span>
               <strong>選擇讀者</strong>
-              <small>{preset.id === 'superstake' ? '免費讀者、付費讀者或全部訂閱者' : '免費會員、付費會員或全部會員'}</small>
+              <small>{preset.id === 'signal-brief' ? '免費讀者、付費讀者或全部訂閱者' : '免費會員、付費會員或全部會員'}</small>
             </div>
             <div>
               <span>3</span>
@@ -1137,7 +1143,7 @@ function LoginView({ preset, onLogin }: { preset: ReturnType<typeof getPreset>; 
       <article className="auth-card">
         <span className="eyebrow">會員登入</span>
         <h3>登入 {preset.brand.productName}</h3>
-        <p>{preset.id === 'superstake' ? '登入後可以閱讀會員研究、下載資料表、參與讀者問答，並管理自己的訂閱狀態。' : '登入後可以繼續課程進度、參與討論區、完成每週打卡，並查看自己的會員方案。'}</p>
+        <p>{preset.id === 'signal-brief' ? '登入後可以閱讀會員研究、下載資料表、參與讀者問答，並管理自己的訂閱狀態。' : '登入後可以繼續課程進度、參與討論區、完成每週打卡，並查看自己的會員方案。'}</p>
         <form
           className="auth-form"
           onSubmit={(event) => {
@@ -1160,9 +1166,9 @@ function LoginView({ preset, onLogin }: { preset: ReturnType<typeof getPreset>; 
         </div>
       </article>
       <article className="auth-notes">
-        <h4>{preset.id === 'superstake' ? '登入後可以使用' : '登入後可以開始'}</h4>
+        <h4>{preset.id === 'signal-brief' ? '登入後可以使用' : '登入後可以開始'}</h4>
         <ul className="check-list">
-          {preset.id === 'superstake' ? (
+          {preset.id === 'signal-brief' ? (
             <>
               <li><CheckCircle2 size={16} />閱讀完整會員專欄與資料庫更新</li>
               <li><CheckCircle2 size={16} />查看每週摘要、問答回放與專題直播</li>
@@ -1195,7 +1201,7 @@ function CoursesView({
   return (
     <section className="section-block">
       <div className="section-heading">
-        <span className="eyebrow">{preset.id === 'superstake' ? '研究室課程' : '課程教室'}</span>
+        <span className="eyebrow">{preset.id === 'signal-brief' ? '研究室課程' : '課程教室'}</span>
         <h3>課程、進度與等級解鎖</h3>
       </div>
       <div className="course-grid">
@@ -1246,7 +1252,7 @@ function CommunityView({ preset, role }: { preset: ReturnType<typeof getPreset>;
   return (
     <section className="section-block">
       <div className="section-heading">
-        <span className="eyebrow">{preset.id === 'superstake' ? '讀者討論' : '社群討論'}</span>
+        <span className="eyebrow">{preset.id === 'signal-brief' ? '讀者討論' : '社群討論'}</span>
         <h3>分類、權限、公告、留言與反應</h3>
       </div>
       <div className="thread-list">
@@ -1283,7 +1289,7 @@ function MembersView({
     <section className="section-block">
       <div className="section-heading horizontal">
         <div>
-          <span className="eyebrow">{preset.id === 'superstake' ? '讀者社群' : '學員社群'}</span>
+          <span className="eyebrow">{preset.id === 'signal-brief' ? '讀者社群' : '學員社群'}</span>
           <h3>會員目錄、角色、個人頁與活躍度</h3>
         </div>
         {role === 'admin' && (
@@ -1572,7 +1578,7 @@ function AdminSettingsEditor({
       <div className="settings-editor-section">
         <div>
           <span className="eyebrow">文章與付費牆</span>
-          <h5>{preset.id === 'superstake' ? '公開文章與付費訂閱文章' : '公開內容、會員內容與課程素材'}</h5>
+          <h5>{preset.id === 'signal-brief' ? '公開文章與付費訂閱文章' : '公開內容、會員內容與課程素材'}</h5>
         </div>
         <div className="settings-stack">
           {preset.content.slice(0, 4).map((item) => (

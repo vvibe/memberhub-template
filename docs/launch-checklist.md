@@ -27,7 +27,7 @@
 - [ ] RLS policies protect member-only content and admin tables.
 - [ ] RLS policies have been tested with at least guest, free member, paid member, and admin roles.
 - [ ] Local case data can be loaded.
-- [ ] Skills School and SuperStake cases can be switched without source-code rewrites.
+- [ ] Skills School and Signal Brief cases can be switched without source-code rewrites.
 - [ ] Admin base editing can update site title, hero copy, plans, content/paywall state, course titles when enabled, and Newsletter send settings.
 
 ## Cost Disclosure

@@ -1,4 +1,4 @@
-export type PresetId = 'skills-school' | 'superstake'
+export type PresetId = 'skills-school' | 'signal-brief'
 export type Role = 'visitor' | 'member' | 'admin'
 export type ViewId = 'home' | 'blog' | 'join' | 'content' | 'newsletter' | 'courses' | 'community' | 'members' | 'search' | 'challenges' | 'events' | 'login' | 'member' | 'admin' | 'setup'
 export type PlanId = 'free' | 'monthly' | 'lifetime'

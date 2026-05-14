@@ -99,7 +99,7 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   expect(consoleErrors.errors).toEqual([])
 })
 
-test('Skills School and SuperStake reference cases are both usable', async ({ page }, testInfo) => {
+test('Skills School and Signal Brief reference cases are both usable', async ({ page }, testInfo) => {
   const consoleErrors = collectConsoleErrors(page)
 
   await expect(page.locator('.topbar h1')).toHaveText('Skills School 職能加速社群')
@@ -113,15 +113,15 @@ test('Skills School and SuperStake reference cases are both usable', async ({ pa
   await expect(page.locator('.editor-panel')).toHaveCount(0)
 
   await page.locator('.preset-select-trigger').click()
-  await page.getByRole('option', { name: 'SuperStake' }).click()
-  await expect(page.locator('.topbar h1')).toHaveText('SuperStake 策略通訊')
+  await page.getByRole('option', { name: 'Signal Brief' }).click()
+  await expect(page.locator('.topbar h1')).toHaveText('Signal Brief 策略通訊')
 
   await openNav(page, '部落格')
-  await expect(page.getByText('SuperStake 公開部落格')).toBeVisible()
+  await expect(page.getByText('Signal Brief 公開部落格')).toBeVisible()
   await expect(page.getByRole('heading', { name: '公開文章：AI 工具從嘗鮮走向日常工作的三個訊號' }).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: '付費文章：自動化內容工具的商業模式與留存風險' })).toBeVisible()
   await openNav(page, '加入會員')
-  await expect(page.getByText('訂閱 SuperStake，閱讀付費文章與每週電子報')).toBeVisible()
+  await expect(page.getByText('訂閱 Signal Brief，閱讀付費文章與每週電子報')).toBeVisible()
   await openNav(page, '內容庫')
   await expect(page.locator('.editor-panel')).toHaveCount(0)
   await expect(page.locator('.nav-list').getByRole('button', { name: '課程', exact: true })).toHaveCount(0)
@@ -151,14 +151,18 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
   await expect(page.locator('.topbar h1')).toHaveText('Skills School 職能加速社群')
   await expect(page.getByText('加入 Skills School，開始課程、社群與每週實作')).toBeVisible()
 
-  await page.goto('/?case=superstake&view=blog')
-  await expect(page.locator('.topbar h1')).toHaveText('SuperStake 策略通訊')
-  await expect(page.getByText('SuperStake 公開部落格')).toBeVisible()
+  await page.goto('/?case=signal-brief&view=blog')
+  await expect(page.locator('.topbar h1')).toHaveText('Signal Brief 策略通訊')
+  await expect(page.getByText('Signal Brief 公開部落格')).toBeVisible()
   await expect(page.getByRole('heading', { name: '公開文章：AI 工具從嘗鮮走向日常工作的三個訊號' }).first()).toBeVisible()
 
-  await page.goto('/?case=superstake&view=courses')
-  await expect(page.getByText('SuperStake 公開部落格')).toBeVisible()
+  await page.goto('/?case=signal-brief&view=courses')
+  await expect(page.getByText('Signal Brief 公開部落格')).toBeVisible()
   await expect(page.locator('.nav-list').getByRole('button', { name: '課程', exact: true })).toHaveCount(0)
+
+  await page.goto('/?case=superstake&view=blog')
+  await expect(page.locator('.topbar h1')).toHaveText('Signal Brief 策略通訊')
+  await expect(page.getByText('Signal Brief 公開部落格')).toBeVisible()
 
   await expectNoHorizontalOverflow(page)
   await expectMobileContentStartsInFirstViewport(page)

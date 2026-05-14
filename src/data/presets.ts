@@ -240,20 +240,20 @@ export const presets: VerticalPreset[] = [
     },
   },
   {
-    id: 'superstake',
-    name: 'SuperStake',
+    id: 'signal-brief',
+    name: 'Signal Brief',
     tagline: '公開部落格、付費文章與 Newsletter 訂閱',
     audience: '適合想用 Email 長期追蹤 AI 工具、內容產品與創作者商業模式的讀者。',
     brand: {
-      productName: 'SuperStake 策略通訊',
-      creatorName: 'SuperStake Editorial',
+      productName: 'Signal Brief 策略通訊',
+      creatorName: 'Signal Brief Editorial',
       primary: '#2f3437',
       accent: '#1f6c9f',
     },
     copy: {
       heroTitle: '一封信讀懂 AI 工具與內容產品的商業變化',
       heroBody:
-        'SuperStake 是一份獨立策略通訊。你可以先閱讀公開文章，喜歡觀點後再訂閱付費文章與每週 Newsletter，完整內容會直接寄到信箱。',
+        'Signal Brief 是一份獨立策略通訊。你可以先閱讀公開文章，喜歡觀點後再訂閱付費文章與每週 Newsletter，完整內容會直接寄到信箱。',
       ctaPrimary: '訂閱付費文章',
       ctaSecondary: '閱讀公開文章',
     },
@@ -287,7 +287,7 @@ export const presets: VerticalPreset[] = [
     ],
     content: [
       {
-        id: 'superstake-open-thesis',
+        id: 'signal-brief-open-thesis',
         title: '公開文章：AI 工具從嘗鮮走向日常工作的三個訊號',
         type: 'article',
         category: '公開部落格',
@@ -298,7 +298,7 @@ export const presets: VerticalPreset[] = [
         source: 'blog',
       },
       {
-        id: 'superstake-open-brief',
+        id: 'signal-brief-open-brief',
         title: '公開文章：本週值得追蹤的五個產品更新',
         type: 'newsletter',
         category: '公開摘要',
@@ -309,7 +309,7 @@ export const presets: VerticalPreset[] = [
         source: 'email',
       },
       {
-        id: 'superstake-paid-analysis',
+        id: 'signal-brief-paid-analysis',
         title: '付費文章：自動化內容工具的商業模式與留存風險',
         type: 'article',
         category: '付費文章',
@@ -320,7 +320,7 @@ export const presets: VerticalPreset[] = [
         source: 'newsletter',
       },
       {
-        id: 'superstake-paid-database',
+        id: 'signal-brief-paid-database',
         title: '付費文章：AI 內容產品追蹤資料表的使用方法',
         type: 'article',
         category: '付費文章',
@@ -331,7 +331,7 @@ export const presets: VerticalPreset[] = [
         source: 'newsletter',
       },
       {
-        id: 'superstake-podcast',
+        id: 'signal-brief-podcast',
         title: '付費文章：一人公司如何選擇值得長期使用的 AI 工具',
         type: 'article',
         category: '付費文章',
@@ -344,8 +344,8 @@ export const presets: VerticalPreset[] = [
     ],
     newsletter: [
       {
-        id: 'superstake-n1',
-        subject: 'SuperStake Weekly：五個產品更新與一個深度問題',
+        id: 'signal-brief-n1',
+        subject: 'Signal Brief Weekly：五個產品更新與一個深度問題',
         segment: 'all',
         status: 'scheduled',
         sendAt: '2026-05-20 08:30',
@@ -354,7 +354,7 @@ export const presets: VerticalPreset[] = [
         paidConversions: 21,
       },
       {
-        id: 'superstake-n2',
+        id: 'signal-brief-n2',
         subject: '會員專欄：AI 內容工具定價與留存拆解',
         segment: 'paid',
         status: 'draft',
@@ -364,8 +364,8 @@ export const presets: VerticalPreset[] = [
         paidConversions: 0,
       },
       {
-        id: 'superstake-n3',
-        subject: '歡迎閱讀 SuperStake：先從這三篇公開文章開始',
+        id: 'signal-brief-n3',
+        subject: '歡迎閱讀 Signal Brief：先從這三篇公開文章開始',
         segment: 'free',
         status: 'sent',
         sendAt: 'on signup',
@@ -379,27 +379,27 @@ export const presets: VerticalPreset[] = [
     challenges: [],
     events: [],
     members: [
-      { id: 'superstake-m1', name: 'Kai', email: 'kai.tsai@superstake.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 2, points: 460, source: 'blog', bio: '固定閱讀會員專欄，關注 AI 工具與內容產品。', joinedAt: '2026-02-18', contributions: { posts: 6, comments: 29, likesReceived: 460 }, risk: 'low' },
-      { id: 'superstake-m2', name: 'Lena', email: 'lena.chou@superstake.tw', role: 'member', groupRole: 'moderator', planId: 'lifetime', status: 'active', level: 4, points: 1180, source: 'newsletter', bio: '協助整理讀者提問與會員資料庫回饋。', joinedAt: '2025-11-28', contributions: { posts: 15, comments: 63, likesReceived: 1180 }, risk: 'low' },
-      { id: 'superstake-m3', name: 'Mika', email: 'mika.wang@superstake.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 3, points: 790, source: 'referral', bio: '每週參與研究筆記挑戰與公開討論。', joinedAt: '2026-01-17', contributions: { posts: 10, comments: 38, likesReceived: 790 }, risk: 'medium' },
-      { id: 'superstake-m4', name: 'Owen', email: 'owen.liu@superstake.tw', role: 'member', groupRole: 'member', planId: 'free', status: 'free', level: 1, points: 95, source: 'organic', bio: '免費讀者，主要閱讀公開文章與每週摘要。', joinedAt: '2026-04-22', contributions: { posts: 1, comments: 3, likesReceived: 95 }, risk: 'low' },
+      { id: 'signal-brief-m1', name: 'Kai', email: 'kai.tsai@signal.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 2, points: 460, source: 'blog', bio: '固定閱讀會員專欄，關注 AI 工具與內容產品。', joinedAt: '2026-02-18', contributions: { posts: 6, comments: 29, likesReceived: 460 }, risk: 'low' },
+      { id: 'signal-brief-m2', name: 'Lena', email: 'lena.chou@signal.tw', role: 'member', groupRole: 'moderator', planId: 'lifetime', status: 'active', level: 4, points: 1180, source: 'newsletter', bio: '協助整理讀者提問與會員資料庫回饋。', joinedAt: '2025-11-28', contributions: { posts: 15, comments: 63, likesReceived: 1180 }, risk: 'low' },
+      { id: 'signal-brief-m3', name: 'Mika', email: 'mika.wang@signal.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 3, points: 790, source: 'referral', bio: '每週參與研究筆記挑戰與公開討論。', joinedAt: '2026-01-17', contributions: { posts: 10, comments: 38, likesReceived: 790 }, risk: 'medium' },
+      { id: 'signal-brief-m4', name: 'Owen', email: 'owen.liu@signal.tw', role: 'member', groupRole: 'member', planId: 'free', status: 'free', level: 1, points: 95, source: 'organic', bio: '免費讀者，主要閱讀公開文章與每週摘要。', joinedAt: '2026-04-22', contributions: { posts: 1, comments: 3, likesReceived: 95 }, risk: 'low' },
     ],
     referrals: [
-      { id: 'superstake-ref1', code: 'STAKE7', label: '會員贈閱 7 天', source: 'subscriber gift', reward: '新讀者可體驗一週完整研究', freeTrials: 61, paidConversions: 19, revenueLabel: 'NT$7,980' },
-      { id: 'superstake-ref2', code: 'BRIEF20', label: '讀者推薦折扣', source: 'referral link', reward: '推薦人下月折抵', freeTrials: 37, paidConversions: 12, revenueLabel: 'NT$5,040' },
-      { id: 'superstake-ref3', code: 'RESEARCH-LIVE', label: '直播報名來源', source: 'live campaign', reward: '活動後升級信', freeTrials: 84, paidConversions: 22, revenueLabel: 'NT$9,240' },
+      { id: 'signal-brief-ref1', code: 'BRIEF7', label: '會員贈閱 7 天', source: 'subscriber gift', reward: '新讀者可體驗一週完整研究', freeTrials: 61, paidConversions: 19, revenueLabel: 'NT$7,980' },
+      { id: 'signal-brief-ref2', code: 'BRIEF20', label: '讀者推薦折扣', source: 'referral link', reward: '推薦人下月折抵', freeTrials: 37, paidConversions: 12, revenueLabel: 'NT$5,040' },
+      { id: 'signal-brief-ref3', code: 'RESEARCH-LIVE', label: '直播報名來源', source: 'live campaign', reward: '活動後升級信', freeTrials: 84, paidConversions: 22, revenueLabel: 'NT$9,240' },
     ],
     moderation: [
-      { id: 'superstake-mod1', kind: 'membership-question', title: '新會員入會問題待審', subject: 'Owen 想加入付費讀者', status: 'open', priority: 'medium', action: '確認研究主題、使用目的與資料需求' },
-      { id: 'superstake-mod2', kind: 'reported-post', title: '討論串被檢舉', subject: '五月 AI 內容產品追蹤表已更新', status: 'reviewing', priority: 'high', action: '確認留言是否包含未授權資料或不當轉載' },
-      { id: 'superstake-mod3', kind: 'automod-risk', title: '高風險會員行為', subject: '新帳號大量複製資料庫內容', status: 'open', priority: 'high', action: '暫停下載權限並確認使用條款' },
-      { id: 'superstake-mod4', kind: 'billing-dispute', title: '付款爭議資料準備', subject: '讀者要求退款', status: 'resolved', priority: 'low', action: '匯出閱讀紀錄、付款紀錄與資料庫存取紀錄' },
+      { id: 'signal-brief-mod1', kind: 'membership-question', title: '新會員入會問題待審', subject: 'Owen 想加入付費讀者', status: 'open', priority: 'medium', action: '確認研究主題、使用目的與資料需求' },
+      { id: 'signal-brief-mod2', kind: 'reported-post', title: '討論串被檢舉', subject: '五月 AI 內容產品追蹤表已更新', status: 'reviewing', priority: 'high', action: '確認留言是否包含未授權資料或不當轉載' },
+      { id: 'signal-brief-mod3', kind: 'automod-risk', title: '高風險會員行為', subject: '新帳號大量複製資料庫內容', status: 'open', priority: 'high', action: '暫停下載權限並確認使用條款' },
+      { id: 'signal-brief-mod4', kind: 'billing-dispute', title: '付款爭議資料準備', subject: '讀者要求退款', status: 'resolved', priority: 'low', action: '匯出閱讀紀錄、付款紀錄與資料庫存取紀錄' },
     ],
     notifications: [
-      { id: 'superstake-notify1', channel: 'email', trigger: 'new-post', audience: 'all', status: 'scheduled' },
-      { id: 'superstake-notify2', channel: 'line', trigger: 'live-start', audience: 'paid', status: 'ready' },
-      { id: 'superstake-notify3', channel: 'in-app', trigger: 'course-reminder', audience: 'paid', status: 'ready' },
-      { id: 'superstake-notify4', channel: 'email', trigger: 'payment-failed', audience: 'at-risk', status: 'ready' },
+      { id: 'signal-brief-notify1', channel: 'email', trigger: 'new-post', audience: 'all', status: 'scheduled' },
+      { id: 'signal-brief-notify2', channel: 'line', trigger: 'live-start', audience: 'paid', status: 'ready' },
+      { id: 'signal-brief-notify3', channel: 'in-app', trigger: 'course-reminder', audience: 'paid', status: 'ready' },
+      { id: 'signal-brief-notify4', channel: 'email', trigger: 'payment-failed', audience: 'at-risk', status: 'ready' },
     ],
     metrics: {
       mrr: 'NT$186,900',

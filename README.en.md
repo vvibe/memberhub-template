@@ -35,9 +35,9 @@ Full setup checklist: [`docs/fork-readiness.md`](./docs/fork-readiness.md)
 
 - Production preview: https://memberhub-coral.vercel.app/
 - Skool-style case: https://memberhub-coral.vercel.app/?case=skills-school&view=join
-- Substack-style case: https://memberhub-coral.vercel.app/?case=superstake&view=blog
+- Substack-style case: https://memberhub-coral.vercel.app/?case=signal-brief&view=blog
 - Vercel project: `memberhub`
-- Current examples: `Skills School 職能加速社群` and `SuperStake 策略通訊`.
+- Current examples: `Skills School 職能加速社群` and `Signal Brief 策略通訊`.
 
 ## What This Is
 
@@ -133,7 +133,7 @@ For production, replace `src/lib/store.ts` localStorage state with InsForge CRUD
 src/
   App.tsx                 # Complete public/member/admin UI
   components/ui/          # shadcn/ui primitives: button, card, badge, input, select, table, etc.
-  data/presets.ts         # Switchable cases: Skills School and SuperStake
+  data/presets.ts         # Switchable cases: Skills School and Signal Brief
   lib/insforge.ts         # InsForge browser SDK client factory
   lib/store.ts            # localStorage local state; replace with InsForge DB
   lib/portaly.ts          # Portaly payment status helper
@@ -228,7 +228,7 @@ If you are an AI agent, help the user in this order:
 3. Configure frontend pages and login. The default production recommendation is InsForge Google OAuth.
 4. Complete InsForge setup first: Auth, tables, RLS, Storage, Edge Functions.
 5. Complete Portaly Vibe MCP setup so supported Coding Agents can read project product context and help with setup checks.
-6. Make local data work and confirm the Skills School and SuperStake cases can switch.
+6. Make local data work and confirm the Skills School and Signal Brief cases can switch.
 7. Only after everything else is installed, ask the user: "Do you want to enable payments, subscription plans, and invoice flow?"
 8. If the user enables payments, default to a Portaly test key. Do not run live mode first.
 9. For live mode, official plan creation, subscription cancellation/resume, or manual payment completion, ask for explicit user confirmation again.
@@ -306,7 +306,7 @@ Conclusion: the MemberHub spec now covers the baseline features of Substack and 
 Current production-style examples:
 
 1. `skills-school`: courses, community, challenges, and join flow for a Skool/School-style learning community.
-2. `superstake`: public blog, paid articles, Email Newsletter, and subscription plans for a Substack-style publication.
+2. `signal-brief`: public blog, paid articles, Email Newsletter, and subscription plans for a Substack-style publication.
 
 ## Launch Checklist
 

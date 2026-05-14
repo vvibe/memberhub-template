@@ -5,7 +5,7 @@
 ### 這個 repo 可以直接做什麼
 
 - 可以在本機免 key 跑完整體驗：登入、內容、付費牆、課程進度、社群、打卡、Newsletter、會員自助與後台。
-- 內建兩組正式案例：Skills School 學習社群與 SuperStake 內容訂閱站。
+- 內建兩組正式案例：Skills School 學習社群與 Signal Brief 內容訂閱站。
 - 可以先用 localStorage 驗證產品流程，再把資料層換成 InsForge。
 - 已包含 Portaly Vibe MCP 專案設定、InsForge migration、選配金流 function 範例、Playwright QA。
 
