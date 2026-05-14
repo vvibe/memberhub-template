@@ -25,6 +25,7 @@ test.beforeEach(async ({ page }) => {
 for (const viewCase of viewCases) {
   test(`${viewCase.id} view renders with the shared visual system`, async ({ page }, testInfo) => {
     const consoleErrors = collectConsoleErrors(page)
+    const homeRhythm = await getLayoutRhythm(page)
 
     await openView(page, viewCase)
     await expect(page.locator('.workspace')).toBeVisible()
@@ -32,8 +33,11 @@ for (const viewCase of viewCases) {
     await expect(page.getByText(viewCase.expectedText, { exact: true })).toBeVisible()
 
     await expectNoHorizontalOverflow(page)
+    await expectLayoutRhythmMatchesHome(page, homeRhythm)
     await expectSharedVisualTokens(page)
     await expectReadableTypography(page)
+    await expectConsistentSpacingAndTextMetrics(page)
+    await expectNoLayoutCollisions(page)
     await attachViewportScreenshot(page, testInfo, viewCase.id)
 
     expect(consoleErrors.errors).toEqual([])
@@ -76,6 +80,9 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
 
   await expectNoHorizontalOverflow(page)
   await expectSharedVisualTokens(page)
+  await expectReadableTypography(page)
+  await expectConsistentSpacingAndTextMetrics(page)
+  await expectNoLayoutCollisions(page)
   await attachViewportScreenshot(page, testInfo, 'interactive-flows')
 
   expect(consoleErrors.errors).toEqual([])
@@ -107,6 +114,57 @@ async function expectNoHorizontalOverflow(page: Page) {
 
   expect(overflow.documentWidth, JSON.stringify(overflow)).toBeLessThanOrEqual(overflow.viewportWidth + 1)
   expect(overflow.bodyWidth, JSON.stringify(overflow)).toBeLessThanOrEqual(overflow.viewportWidth + 1)
+}
+
+async function getLayoutRhythm(page: Page) {
+  return page.evaluate(() => {
+    const getStyle = (selector: string) => {
+      const element = document.querySelector(selector)
+      if (!element) return null
+      const style = window.getComputedStyle(element)
+      return {
+        display: style.display,
+        gap: style.gap,
+        marginBottom: style.marginBottom,
+        paddingTop: style.paddingTop,
+        paddingRight: style.paddingRight,
+        paddingBottom: style.paddingBottom,
+        paddingLeft: style.paddingLeft,
+      }
+    }
+
+    const body = window.getComputedStyle(document.body)
+    const root = window.getComputedStyle(document.documentElement)
+
+    return {
+      viewport: window.innerWidth < 681 ? 'mobile' : 'desktop',
+      body: {
+        fontSize: body.fontSize,
+        lineHeight: body.lineHeight,
+        letterSpacing: body.letterSpacing,
+      },
+      workspace: getStyle('.workspace'),
+      topbar: getStyle('.topbar'),
+      tokens: {
+        fontXs: root.getPropertyValue('--font-xs').trim(),
+        fontSm: root.getPropertyValue('--font-sm').trim(),
+        fontBase: root.getPropertyValue('--font-base').trim(),
+        fontMd: root.getPropertyValue('--font-md').trim(),
+        fontLg: root.getPropertyValue('--font-lg').trim(),
+        fontXl: root.getPropertyValue('--font-xl').trim(),
+        fontTitle: root.getPropertyValue('--font-title').trim(),
+        fontHero: root.getPropertyValue('--font-hero').trim(),
+        radiusCard: root.getPropertyValue('--radius-card').trim(),
+        radiusControl: root.getPropertyValue('--radius-control').trim(),
+        controlHeight: root.getPropertyValue('--control-height').trim(),
+      },
+    }
+  })
+}
+
+async function expectLayoutRhythmMatchesHome(page: Page, homeRhythm: Awaited<ReturnType<typeof getLayoutRhythm>>) {
+  const currentRhythm = await getLayoutRhythm(page)
+  expect(currentRhythm, 'page-level spacing and type rhythm should match the home view').toEqual(homeRhythm)
 }
 
 async function expectSharedVisualTokens(page: Page) {
@@ -217,6 +275,184 @@ async function expectReadableTypography(page: Page) {
 
   expect(typography.heavyBodyText).toEqual([])
   expect(typography.oversizedPanelHeadings).toEqual([])
+}
+
+async function expectConsistentSpacingAndTextMetrics(page: Page) {
+  const report = await page.evaluate(() => {
+    const isVisible = (element: Element) => {
+      const rect = element.getBoundingClientRect()
+      const style = window.getComputedStyle(element)
+      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none'
+    }
+
+    const parsePixels = (value: string) => {
+      if (value === 'normal') return Number.NaN
+      return Number.parseFloat(value)
+    }
+
+    const allowedFontSizes = new Set([12, 13, 14, 15, 16, 18, 22, 24, 26, 30, 42])
+    const textElements = Array.from(
+      document.querySelectorAll('h1, h2, h3, h4, p, li, small, label, button, input, textarea, .pill, .status-pill, .eyebrow'),
+    ).filter(isVisible)
+
+    const textMetricIssues = textElements
+      .map((element) => {
+        const style = window.getComputedStyle(element)
+        const fontSize = Math.round(parsePixels(style.fontSize))
+        const lineHeight = parsePixels(style.lineHeight)
+        const lineHeightRatio = Number.isFinite(lineHeight) ? Number((lineHeight / fontSize).toFixed(2)) : null
+        const letterSpacing = style.letterSpacing
+        const isControl = element.matches('button, input, textarea, .pill, .status-pill')
+        const isBodyText = element.matches('p, li, textarea')
+        const isAuxiliaryText = element.matches('small')
+        const text = (element.textContent ?? (element as HTMLInputElement).placeholder ?? '').trim().slice(0, 80)
+
+        return {
+          tag: element.tagName.toLowerCase(),
+          text,
+          fontSize,
+          lineHeight: style.lineHeight,
+          lineHeightRatio,
+          letterSpacing,
+          fontWeight: Number(style.fontWeight),
+          issues: [
+            !allowedFontSizes.has(fontSize) ? `unexpected font size ${fontSize}` : null,
+            letterSpacing !== 'normal' && letterSpacing !== '0px' ? `unexpected letter spacing ${letterSpacing}` : null,
+            !isControl && isBodyText && lineHeightRatio !== null && (lineHeightRatio < 1.45 || lineHeightRatio > 1.75)
+              ? `body line-height ratio ${lineHeightRatio}`
+              : null,
+            !isControl && isAuxiliaryText && lineHeightRatio !== null && (lineHeightRatio < 1.3 || lineHeightRatio > 1.75)
+              ? `auxiliary line-height ratio ${lineHeightRatio}`
+              : null,
+            Number(style.fontWeight) > 600 ? `font weight ${style.fontWeight}` : null,
+          ].filter(Boolean),
+        }
+      })
+      .filter((item) => item.issues.length > 0)
+
+    const sectionBlocks = Array.from(document.querySelectorAll('.section-block')).filter(isVisible)
+    const sectionPaddingIssues = sectionBlocks
+      .map((element) => {
+        const style = window.getComputedStyle(element)
+        const padding = [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft]
+        return {
+          className: (element as HTMLElement).className,
+          padding,
+        }
+      })
+      .filter((item) => {
+        const expected = window.innerWidth <= 680 ? '18px' : '22px'
+        return item.padding.some((value) => value !== expected)
+      })
+
+    const surfaceSelectors = [
+      '.plan-card',
+      '.course-panel',
+      '.challenge-card',
+      '.event-card',
+      '.newsletter-panel',
+      '.member-card',
+      '.admin-panel',
+      '.auth-card',
+      '.setup-grid article',
+      '.self-service-grid article',
+    ].join(',')
+
+    const surfaceIssues = Array.from(document.querySelectorAll(surfaceSelectors))
+      .filter(isVisible)
+      .map((element) => {
+        const style = window.getComputedStyle(element)
+        return {
+          className: (element as HTMLElement).className,
+          padding: [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft],
+          radius: style.borderRadius,
+          borderStyle: style.borderStyle,
+        }
+      })
+      .filter((item) => item.padding.some((value) => value !== '18px') || item.radius !== '8px' || item.borderStyle !== 'solid')
+
+    const clippedControls = Array.from(document.querySelectorAll('button, .pill, .status-pill, [data-slot="select-trigger"]'))
+      .filter(isVisible)
+      .map((element) => ({
+        text: (element.textContent ?? '').trim().slice(0, 80),
+        scrollWidth: (element as HTMLElement).scrollWidth,
+        clientWidth: (element as HTMLElement).clientWidth,
+        scrollHeight: (element as HTMLElement).scrollHeight,
+        clientHeight: (element as HTMLElement).clientHeight,
+      }))
+      .filter((item) => item.scrollWidth > item.clientWidth + 1 || item.scrollHeight > item.clientHeight + 1)
+
+    return { textMetricIssues, sectionPaddingIssues, surfaceIssues, clippedControls }
+  })
+
+  expect(report.textMetricIssues, 'font sizes, line heights, weights, and letter spacing should stay on the shared scale').toEqual([])
+  expect(report.sectionPaddingIssues, 'section padding should be consistent across pages').toEqual([])
+  expect(report.surfaceIssues, 'card/panel spacing should stay consistent across pages').toEqual([])
+  expect(report.clippedControls, 'button and pill labels should not be clipped').toEqual([])
+}
+
+async function expectNoLayoutCollisions(page: Page) {
+  const collisions = await page.evaluate(() => {
+    const isVisible = (element: Element) => {
+      const rect = element.getBoundingClientRect()
+      const style = window.getComputedStyle(element)
+      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none'
+    }
+
+    const selector = [
+      '.topbar-actions > *',
+      '.nav-list button',
+      '.button-row > *',
+      '.plan-card',
+      '.course-panel',
+      '.challenge-card',
+      '.event-card',
+      '.newsletter-panel',
+      '.member-card',
+      '.content-row',
+      '.thread-row',
+      '.lesson-row',
+      '.search-result',
+      '.admin-panel',
+      '.auth-card',
+      '.setup-grid article',
+    ].join(',')
+
+    const elements = Array.from(document.querySelectorAll(selector)).filter(isVisible)
+    const rows = elements.map((element, index) => ({
+      index,
+      text: (element.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 80),
+      rect: element.getBoundingClientRect(),
+    }))
+
+    const result: Array<{ a: string; b: string; overlapWidth: number; overlapHeight: number }> = []
+
+    for (let a = 0; a < rows.length; a += 1) {
+      for (let b = a + 1; b < rows.length; b += 1) {
+        if (elements[a].contains(elements[b]) || elements[b].contains(elements[a])) continue
+
+        const left = Math.max(rows[a].rect.left, rows[b].rect.left)
+        const right = Math.min(rows[a].rect.right, rows[b].rect.right)
+        const top = Math.max(rows[a].rect.top, rows[b].rect.top)
+        const bottom = Math.min(rows[a].rect.bottom, rows[b].rect.bottom)
+        const overlapWidth = Math.max(0, right - left)
+        const overlapHeight = Math.max(0, bottom - top)
+
+        if (overlapWidth > 2 && overlapHeight > 2) {
+          result.push({
+            a: rows[a].text,
+            b: rows[b].text,
+            overlapWidth: Math.round(overlapWidth),
+            overlapHeight: Math.round(overlapHeight),
+          })
+        }
+      }
+    }
+
+    return result
+  })
+
+  expect(collisions, 'visible layout surfaces and controls should not overlap').toEqual([])
 }
 
 async function attachViewportScreenshot(page: Page, testInfo: TestInfo, name: string) {
