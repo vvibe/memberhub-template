@@ -183,6 +183,8 @@ export type VerticalPreset = {
   }
 }
 
+export type PresetOverrides = Record<string, Partial<VerticalPreset>>
+
 export type PaymentEvent = {
   id: string
   planId: PlanId
@@ -197,6 +199,7 @@ export type AppState = {
   presetId: PresetId
   role: Role
   selectedPlanId: PlanId
+  presetOverrides: PresetOverrides
   completedLessons: string[]
   checkedInChallenges: string[]
   paymentEvents: PaymentEvent[]

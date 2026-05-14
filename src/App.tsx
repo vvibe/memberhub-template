@@ -32,7 +32,7 @@ import {
 import { getPreset, presets } from './data/presets'
 import { createCheckoutSessionPreview, portalyIntegrationNotes } from './lib/portaly'
 import { createPaymentEvent, loadState, presetLabel, resetState, roleLabel, saveState } from './lib/store'
-import type { AppState, ContentItem, Member, ModerationItem, NewsletterIssue, Plan, PresetId, ReferralCampaign, Role, ViewId } from './types'
+import type { AppState, ContentItem, Course, Member, ModerationItem, NewsletterIssue, Plan, PresetId, ReferralCampaign, Role, VerticalPreset, ViewId } from './types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -294,6 +294,32 @@ function paymentValueLabel(value?: string) {
   return value ? labels[value] ?? value : '尚未產生'
 }
 
+function mergePresetOverrides(preset: VerticalPreset, override?: Partial<VerticalPreset>): VerticalPreset {
+  if (!override) return preset
+  return {
+    ...preset,
+    ...override,
+    brand: { ...preset.brand, ...override.brand },
+    copy: { ...preset.copy, ...override.copy },
+    metrics: { ...preset.metrics, ...override.metrics },
+    plans: override.plans ?? preset.plans,
+    content: override.content ?? preset.content,
+    newsletter: override.newsletter ?? preset.newsletter,
+    courses: override.courses ?? preset.courses,
+    threads: override.threads ?? preset.threads,
+    challenges: override.challenges ?? preset.challenges,
+    events: override.events ?? preset.events,
+    members: override.members ?? preset.members,
+    referrals: override.referrals ?? preset.referrals,
+    moderation: override.moderation ?? preset.moderation,
+    notifications: override.notifications ?? preset.notifications,
+  }
+}
+
+function updateById<T extends { id: string }>(items: T[], id: string, patch: Partial<T>) {
+  return items.map((item) => (item.id === id ? { ...item, ...patch } : item))
+}
+
 function App() {
   const initialRoute = useMemo(() => getInitialRoute(), [])
   const [state, setState] = useState<AppState>(() => {
@@ -327,20 +353,29 @@ function App() {
 
   const preset = useMemo(() => getPreset(state.presetId), [state.presetId])
   const runtimePreset = useMemo(
-    () => ({
-      ...preset,
-      content: [...state.localContentItems, ...preset.content],
-      newsletter: [...state.localNewsletterIssues, ...preset.newsletter],
-      referrals: [...state.localReferralCampaigns, ...preset.referrals],
-      members: [...state.localMembers, ...preset.members],
-      moderation: [...state.localModeration, ...preset.moderation],
-    }),
-    [preset, state.localContentItems, state.localMembers, state.localModeration, state.localNewsletterIssues, state.localReferralCampaigns],
+    () => {
+      const configuredPreset = mergePresetOverrides(preset, state.presetOverrides[preset.id])
+      return {
+        ...configuredPreset,
+        content: [...state.localContentItems, ...configuredPreset.content],
+        newsletter: [...state.localNewsletterIssues, ...configuredPreset.newsletter],
+        referrals: [...state.localReferralCampaigns, ...configuredPreset.referrals],
+        members: [...state.localMembers, ...configuredPreset.members],
+        moderation: [...state.localModeration, ...configuredPreset.moderation],
+      }
+    },
+    [preset, state.localContentItems, state.localMembers, state.localModeration, state.localNewsletterIssues, state.localReferralCampaigns, state.presetOverrides],
   )
   const selectedPlan = runtimePreset.plans.find((plan) => plan.id === state.selectedPlanId) ?? runtimePreset.plans[0]
   const currentMember = runtimePreset.members[0]
   const activeLevel = state.role === 'visitor' ? 0 : currentMember.level
   const hasPaidAccess = state.role === 'admin' || state.selectedPlanId !== 'free'
+  const visibleNavItems = useMemo(
+    () => runtimePreset.id === 'superstake'
+      ? navItems.filter((item) => !['courses', 'community', 'challenges', 'events'].includes(item.id))
+      : navItems,
+    [runtimePreset.id],
+  )
 
   const updateState = (patch: Partial<AppState>) => setState((prev) => ({ ...prev, ...patch }))
 
@@ -352,6 +387,7 @@ function App() {
       completedLessons: [],
       checkedInChallenges: [],
       paymentEvents: [],
+      presetOverrides: state.presetOverrides,
       localContentItems: [],
       localNewsletterIssues: [],
       localReferralCampaigns: [],
@@ -360,6 +396,20 @@ function App() {
     })
     document.documentElement.style.setProperty('--brand-primary', nextPreset.brand.primary)
     document.documentElement.style.setProperty('--brand-accent', nextPreset.brand.accent)
+  }
+
+  const handleUpdatePreset = (patch: Partial<VerticalPreset>) => {
+    updateState({
+      presetOverrides: {
+        ...state.presetOverrides,
+        [runtimePreset.id]: {
+          ...state.presetOverrides[runtimePreset.id],
+          ...patch,
+          brand: patch.brand ? { ...(state.presetOverrides[runtimePreset.id]?.brand ?? {}), ...patch.brand } : state.presetOverrides[runtimePreset.id]?.brand,
+          copy: patch.copy ? { ...(state.presetOverrides[runtimePreset.id]?.copy ?? {}), ...patch.copy } : state.presetOverrides[runtimePreset.id]?.copy,
+        },
+      },
+    })
   }
 
   const handleRoleChange = (role: Role) => {
@@ -482,7 +532,7 @@ function App() {
         </button>
 
         <nav className="nav-list" aria-label="Main navigation">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon
             return (
               <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => setView(item.id)}>
@@ -605,7 +655,7 @@ function App() {
         {view === 'events' && <EventsView preset={runtimePreset} />}
         {view === 'login' && <LoginView preset={runtimePreset} onLogin={handleLogin} />}
         {view === 'member' && <MemberView preset={runtimePreset} state={state} selectedPlan={selectedPlan} />}
-        {view === 'admin' && <AdminView preset={runtimePreset} state={state} />}
+        {view === 'admin' && <AdminView preset={runtimePreset} state={state} onUpdatePreset={handleUpdatePreset} />}
         {view === 'setup' && <SetupView presetId={state.presetId} />}
       </section>
     </main>
@@ -765,7 +815,7 @@ function JoinView({
       <div className="section-heading horizontal">
         <div>
           <span className="eyebrow">{preset.id === 'skills-school' ? '加入社群' : '訂閱研究'}</span>
-          <h3>{preset.id === 'skills-school' ? '加入 Skills School，開始課程、社群與每週實作' : '訂閱 SuperStake，閱讀完整研究與會員專欄'}</h3>
+          <h3>{preset.id === 'skills-school' ? '加入 Skills School，開始課程、社群與每週實作' : '訂閱 SuperStake，閱讀付費文章與每週電子報'}</h3>
         </div>
         <Button className="primary-button" onClick={() => onCheckout(memberPlan)}><CircleDollarSign data-icon="inline-start" />選擇 {memberPlan.name}</Button>
       </div>
@@ -973,6 +1023,37 @@ function NewsletterView({
       </div>
 
       <div className="newsletter-grid">
+        <article className="newsletter-panel span-2">
+          <div className="admin-panel-head">
+            <div>
+              <span className="eyebrow">{preset.id === 'superstake' ? '文章電子報' : '課程通訊'}</span>
+              <h4>{preset.id === 'superstake' ? '把文章寄給訂閱讀者' : '把文章、課程或活動寄給會員'}</h4>
+            </div>
+            <Mail size={18} aria-hidden="true" />
+          </div>
+          <div className="newsletter-send-flow">
+            <div>
+              <span>1</span>
+              <strong>選擇文章</strong>
+              <small>{preset.content[0]?.title ?? '尚未建立文章'}</small>
+            </div>
+            <div>
+              <span>2</span>
+              <strong>選擇讀者</strong>
+              <small>{preset.id === 'superstake' ? '免費讀者、付費讀者或全部訂閱者' : '免費會員、付費會員或全部會員'}</small>
+            </div>
+            <div>
+              <span>3</span>
+              <strong>安排發送</strong>
+              <small>立即寄出、排程發送或存成草稿</small>
+            </div>
+          </div>
+          <div className="button-row compact">
+            <Button variant="outline" className="secondary-button" onClick={onAddIssue}><FileText data-icon="inline-start" />建立文章電子報</Button>
+            <Button className="primary-button" onClick={onCreateReferral}><Gift data-icon="inline-start" />建立訂閱贈閱碼</Button>
+          </div>
+        </article>
+
         <article className="newsletter-panel span-2">
           <div className="admin-panel-head">
             <div>
@@ -1398,7 +1479,170 @@ function MemberView({ preset, state, selectedPlan }: { preset: ReturnType<typeof
   )
 }
 
-function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; state: AppState }) {
+function AdminSettingsEditor({
+  preset,
+  onUpdatePreset,
+}: {
+  preset: VerticalPreset
+  onUpdatePreset: (patch: Partial<VerticalPreset>) => void
+}) {
+  const updateBrand = (key: keyof VerticalPreset['brand'], value: string) => {
+    onUpdatePreset({ brand: { ...preset.brand, [key]: value } })
+  }
+  const updateCopy = (key: keyof VerticalPreset['copy'], value: string) => {
+    onUpdatePreset({ copy: { ...preset.copy, [key]: value } })
+  }
+  const updatePlan = (planId: string, patch: Partial<Plan>) => {
+    onUpdatePreset({ plans: updateById(preset.plans, planId, patch) })
+  }
+  const updateContent = (contentId: string, patch: Partial<ContentItem>) => {
+    onUpdatePreset({ content: updateById(preset.content, contentId, patch) })
+  }
+  const updateNewsletter = (issueId: string, patch: Partial<NewsletterIssue>) => {
+    onUpdatePreset({ newsletter: updateById(preset.newsletter, issueId, patch) })
+  }
+  const updateCourse = (courseId: string, patch: Partial<Course>) => {
+    onUpdatePreset({ courses: updateById(preset.courses, courseId, patch) })
+  }
+
+  return (
+    <article className="admin-panel span-3 settings-editor">
+      <div className="admin-panel-head">
+        <div>
+          <span className="eyebrow">基礎編輯</span>
+          <h4>Fork 後可調整的網站內容</h4>
+        </div>
+        <StatusPill tone="green">可編輯</StatusPill>
+      </div>
+
+      <div className="settings-editor-grid">
+        <label>
+          網站名稱
+          <Input name="productName" value={preset.brand.productName} onChange={(event) => updateBrand('productName', event.target.value)} autoComplete="off" />
+        </label>
+        <label>
+          作者 / 品牌名稱
+          <Input name="creatorName" value={preset.brand.creatorName} onChange={(event) => updateBrand('creatorName', event.target.value)} autoComplete="off" />
+        </label>
+        <label>
+          首頁主標題
+          <Input name="heroTitle" value={preset.copy.heroTitle} onChange={(event) => updateCopy('heroTitle', event.target.value)} autoComplete="off" />
+        </label>
+        <label>
+          主要按鈕
+          <Input name="ctaPrimary" value={preset.copy.ctaPrimary} onChange={(event) => updateCopy('ctaPrimary', event.target.value)} autoComplete="off" />
+        </label>
+        <label className="span-2">
+          首頁介紹
+          <Textarea name="heroBody" value={preset.copy.heroBody} onChange={(event) => updateCopy('heroBody', event.target.value)} autoComplete="off" />
+        </label>
+      </div>
+
+      <div className="settings-editor-section">
+        <div>
+          <span className="eyebrow">方案設定</span>
+          <h5>訂閱方案、價格與權益</h5>
+        </div>
+        <div className="settings-repeat-grid">
+          {preset.plans.map((plan) => (
+            <div key={plan.id} className="settings-card">
+              <label>
+                方案名稱
+                <Input name={`plan-${plan.id}-name`} value={plan.name} onChange={(event) => updatePlan(plan.id, { name: event.target.value })} autoComplete="off" />
+              </label>
+              <label>
+                價格
+                <Input name={`plan-${plan.id}-price`} value={plan.price} onChange={(event) => updatePlan(plan.id, { price: event.target.value })} autoComplete="off" />
+              </label>
+              <label>
+                說明
+                <Textarea name={`plan-${plan.id}-description`} value={plan.description} onChange={(event) => updatePlan(plan.id, { description: event.target.value })} autoComplete="off" />
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="settings-editor-section">
+        <div>
+          <span className="eyebrow">文章與付費牆</span>
+          <h5>{preset.id === 'superstake' ? '公開文章與付費訂閱文章' : '公開內容、會員內容與課程素材'}</h5>
+        </div>
+        <div className="settings-stack">
+          {preset.content.slice(0, 4).map((item) => (
+            <div key={item.id} className="settings-card compact">
+              <div className="settings-card-head">
+                <StatusPill tone={item.isPaid ? 'blue' : 'green'}>{item.isPaid ? '付費訂閱' : '公開'}</StatusPill>
+                <label className="editor-toggle compact-toggle">
+                  <input type="checkbox" checked={item.isPaid} onChange={(event) => updateContent(item.id, { isPaid: event.target.checked })} />
+                  訂閱制
+                </label>
+              </div>
+              <label>
+                標題
+                <Input name={`content-${item.id}-title`} value={item.title} onChange={(event) => updateContent(item.id, { title: event.target.value })} autoComplete="off" />
+              </label>
+              <label>
+                摘要
+                <Textarea name={`content-${item.id}-excerpt`} value={item.excerpt} onChange={(event) => updateContent(item.id, { excerpt: event.target.value })} autoComplete="off" />
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {preset.courses.length > 0 && (
+        <div className="settings-editor-section">
+          <div>
+            <span className="eyebrow">課程設定</span>
+            <h5>課程標題與說明</h5>
+          </div>
+          <div className="settings-repeat-grid">
+            {preset.courses.map((course) => (
+              <div key={course.id} className="settings-card">
+                <label>
+                  課程名稱
+                  <Input name={`course-${course.id}-title`} value={course.title} onChange={(event) => updateCourse(course.id, { title: event.target.value })} autoComplete="off" />
+                </label>
+                <label>
+                  課程說明
+                  <Textarea name={`course-${course.id}-description`} value={course.description} onChange={(event) => updateCourse(course.id, { description: event.target.value })} autoComplete="off" />
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="settings-editor-section">
+        <div>
+          <span className="eyebrow">電子報設定</span>
+          <h5>文章電子報、分眾與發送時間</h5>
+        </div>
+        <div className="settings-stack">
+          {preset.newsletter.map((issue) => (
+            <div key={issue.id} className="settings-card compact">
+              <div className="settings-card-head">
+                <StatusPill tone={issue.status === 'sent' ? 'green' : issue.status === 'scheduled' ? 'blue' : 'yellow'}>{statusLabel(issue.status)}</StatusPill>
+                <small>{segmentLabel(issue.segment)}</small>
+              </div>
+              <label>
+                主旨
+                <Input name={`newsletter-${issue.id}-subject`} value={issue.subject} onChange={(event) => updateNewsletter(issue.id, { subject: event.target.value })} autoComplete="off" />
+              </label>
+              <label>
+                發送時間
+                <Input name={`newsletter-${issue.id}-sendAt`} value={issue.sendAt} onChange={(event) => updateNewsletter(issue.id, { sendAt: event.target.value })} autoComplete="off" />
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; state: AppState; onUpdatePreset: (patch: Partial<VerticalPreset>) => void }) {
   const paidMembers = preset.members.filter((member) => member.status === 'active').length
   const paidContent = preset.content.filter((item) => item.isPaid).length
   const totalLessons = preset.courses.reduce((count, course) => count + course.lessons.length, 0)
@@ -1426,10 +1670,12 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
       </section>
 
       <section className="admin-dashboard-grid">
+        <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} />
+
         <article className="admin-panel span-2">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Members</span>
+              <span className="eyebrow">會員營運</span>
               <h4>會員與訂閱狀態</h4>
             </div>
             <Button variant="outline" className="ghost-button"><SlidersHorizontal data-icon="inline-start" />篩選</Button>
@@ -1558,62 +1804,68 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
           </div>
         </article>
 
-        <article className="admin-panel">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">課程</span>
-              <h4>課程與進度</h4>
-            </div>
-            <PlayCircle size={18} />
-          </div>
-          {preset.courses.map((course) => (
-            <div key={course.id} className="admin-course-summary">
+        {preset.courses.length > 0 && (
+          <article className="admin-panel">
+            <div className="admin-panel-head">
               <div>
-                <strong>{course.title}</strong>
-                <small>{course.lessons.length} 個單元 · 共 {totalLessons} 筆課程紀錄</small>
+                <span className="eyebrow">課程</span>
+                <h4>課程與進度</h4>
               </div>
-              <div className="progress-track"><span style={{ width: `${course.progress}%` }} /></div>
+              <PlayCircle size={18} />
             </div>
-          ))}
-        </article>
-
-        <article className="admin-panel">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">社群</span>
-              <h4>社群審核與互動</h4>
-            </div>
-            <MessageSquareText size={18} />
-          </div>
-          <div className="admin-content-stack">
-            {preset.threads.map((thread) => (
-              <div key={thread.id} className="admin-content-item">
-                <Badge variant="outline" className="pill">{thread.category}</Badge>
-                <strong>{thread.title}</strong>
-                <small>{thread.replies} 則回覆 · {thread.reactions} 個反應{thread.adminOnly ? ' · 會員限定' : ''}</small>
+            {preset.courses.map((course) => (
+              <div key={course.id} className="admin-course-summary">
+                <div>
+                  <strong>{course.title}</strong>
+                  <small>{course.lessons.length} 個單元 · 共 {totalLessons} 筆課程紀錄</small>
+                </div>
+                <div className="progress-track"><span style={{ width: `${course.progress}%` }} /></div>
               </div>
             ))}
-          </div>
-        </article>
+          </article>
+        )}
 
-        <article className="admin-panel">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">活動</span>
-              <h4>活動、直播與回放</h4>
-            </div>
-            <CalendarDays size={18} />
-          </div>
-          <div className="admin-content-stack">
-            {preset.events.map((event) => (
-              <div key={event.id} className="admin-content-item">
-                <Badge variant="outline" className="pill">{eventKindLabel(event.kind)}</Badge>
-                <strong>{event.title}</strong>
-                <small>{event.date} · {statusLabel(event.status)}</small>
+        {preset.threads.length > 0 && (
+          <article className="admin-panel">
+            <div className="admin-panel-head">
+              <div>
+                <span className="eyebrow">社群</span>
+                <h4>社群審核與互動</h4>
               </div>
-            ))}
-          </div>
-        </article>
+              <MessageSquareText size={18} />
+            </div>
+            <div className="admin-content-stack">
+              {preset.threads.map((thread) => (
+                <div key={thread.id} className="admin-content-item">
+                  <Badge variant="outline" className="pill">{thread.category}</Badge>
+                  <strong>{thread.title}</strong>
+                  <small>{thread.replies} 則回覆 · {thread.reactions} 個反應{thread.adminOnly ? ' · 會員限定' : ''}</small>
+                </div>
+              ))}
+            </div>
+          </article>
+        )}
+
+        {preset.events.length > 0 && (
+          <article className="admin-panel">
+            <div className="admin-panel-head">
+              <div>
+                <span className="eyebrow">活動</span>
+                <h4>活動、直播與回放</h4>
+              </div>
+              <CalendarDays size={18} />
+            </div>
+            <div className="admin-content-stack">
+              {preset.events.map((event) => (
+                <div key={event.id} className="admin-content-item">
+                  <Badge variant="outline" className="pill">{eventKindLabel(event.kind)}</Badge>
+                  <strong>{event.title}</strong>
+                  <small>{event.date} · {statusLabel(event.status)}</small>
+                </div>
+              ))}
+            </div>
+          </article>
+        )}
 
         <article className="admin-panel">
           <div className="admin-panel-head">

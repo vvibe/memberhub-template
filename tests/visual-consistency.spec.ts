@@ -119,14 +119,16 @@ test('Skills School and SuperStake reference cases are both usable', async ({ pa
   await openNav(page, '部落格')
   await expect(page.getByText('SuperStake 公開部落格')).toBeVisible()
   await expect(page.getByRole('heading', { name: '公開文章：AI 工具從嘗鮮走向日常工作的三個訊號' }).first()).toBeVisible()
-  await expect(page.getByRole('heading', { name: '會員專欄：自動化內容工具的商業模式與留存風險' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '付費文章：自動化內容工具的商業模式與留存風險' })).toBeVisible()
   await openNav(page, '加入會員')
-  await expect(page.getByText('訂閱 SuperStake，閱讀完整研究與會員專欄')).toBeVisible()
+  await expect(page.getByText('訂閱 SuperStake，閱讀付費文章與每週電子報')).toBeVisible()
   await openNav(page, '內容庫')
   await expect(page.locator('.editor-panel')).toHaveCount(0)
+  await expect(page.locator('.nav-list').getByRole('button', { name: '課程', exact: true })).toHaveCount(0)
+  await expect(page.locator('.nav-list').getByRole('button', { name: '社群', exact: true })).toHaveCount(0)
 
   await openNav(page, '預覽')
-  await expect(page.getByRole('heading', { name: '每週讀懂 AI 工具、內容產品與創作者商業模式' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '一封信讀懂 AI 工具與內容產品的商業變化' })).toBeVisible()
 
   await expectNoHorizontalOverflow(page)
   await expectMobileContentStartsInFirstViewport(page)
@@ -164,6 +166,41 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
   await expectNoLayoutCollisions(page)
   await expectDetailLayoutQuality(page)
   await attachViewportScreenshot(page, testInfo, 'direct-case-urls')
+
+  expect(consoleErrors.errors).toEqual([])
+})
+
+test('admin can edit fork-ready site settings and newsletter configuration', async ({ page }, testInfo) => {
+  const consoleErrors = collectConsoleErrors(page)
+
+  await page.getByRole('button', { name: '管理員' }).click()
+  await openNav(page, '後台')
+  await expect(page.getByText('Fork 後可調整的網站內容')).toBeVisible()
+
+  await page.getByLabel('網站名稱').fill('Kevin Growth Letter')
+  await page.getByLabel('首頁主標題').fill('把每週內容變成可訂閱的產品')
+  await page.getByLabel('主要按鈕').fill('開始訂閱')
+  await expect(page.locator('.topbar h1')).toHaveText('Kevin Growth Letter')
+
+  await openNav(page, '預覽')
+  await expect(page.getByRole('heading', { name: '把每週內容變成可訂閱的產品' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '開始訂閱' }).first()).toBeVisible()
+
+  await openNav(page, '後台')
+  await page.locator('input[name="newsletter-skills-school-n1-subject"]').fill('本週作品回饋與直播提醒')
+  await openNav(page, '通訊')
+  await expect(page.getByText('本週作品回饋與直播提醒')).toBeVisible()
+  await expect(page.getByText('把文章、課程或活動寄給會員')).toBeVisible()
+
+  await expectNoHorizontalOverflow(page)
+  await expectDesktopSpacingBreathes(page)
+  await expectNoDemoCopy(page)
+  await expectSharedVisualTokens(page)
+  await expectReadableTypography(page)
+  await expectConsistentSpacingAndTextMetrics(page)
+  await expectNoLayoutCollisions(page)
+  await expectDetailLayoutQuality(page)
+  await attachViewportScreenshot(page, testInfo, 'admin-editing')
 
   expect(consoleErrors.errors).toEqual([])
 })

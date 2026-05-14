@@ -28,6 +28,7 @@
 - [ ] RLS policies have been tested with at least guest, free member, paid member, and admin roles.
 - [ ] Local case data can be loaded.
 - [ ] Skills School and SuperStake cases can be switched without source-code rewrites.
+- [ ] Admin base editing can update site title, hero copy, plans, content/paywall state, course titles when enabled, and Newsletter send settings.
 
 ## Cost Disclosure
 
@@ -51,14 +52,15 @@
 - [ ] Visitor can read free preview content.
 - [ ] Non-paying user sees a paywall on protected content.
 - [ ] Member can access paid content.
-- [ ] Member can progress through courses.
-- [ ] Member can search content, lessons/transcripts, discussions, events, and members.
+- [ ] Skool-style member can progress through courses when courses are enabled.
+- [ ] Substack-style reader can browse public posts, see paid article gates, and subscribe to paid posts.
+- [ ] Member can search content, lessons/transcripts, discussions, events, and members when those modules are enabled.
 - [ ] Member can view member profiles/directory if enabled.
 - [ ] Newsletter issues can be drafted, scheduled, segmented, and archived.
 - [ ] Member can post or reply in discussions.
 - [ ] Member can complete check-ins.
 - [ ] Referral/gift campaigns track source, free trials, paid conversion, and revenue.
-- [ ] Admin can create content, courses, plans, webinars, newsletters, and announcements.
+- [ ] Admin can create or edit content, plans, course settings, newsletters, and announcements.
 - [ ] Admin can review membership questions, reports, AutoMod risk, and billing disputes.
 
 ## Portaly Vibe MCP

@@ -790,7 +790,7 @@ button:active {
 .lesson-list,
 .search-results {
   display: grid;
-  gap: 10px;
+  gap: 9px;
 }
 
 .blog-feature {
@@ -815,10 +815,10 @@ button:active {
 .newsletter-row,
 .search-result,
 .admin-content-item.horizontal {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
 }
 
 .newsletter-row {
@@ -885,7 +885,7 @@ button:active {
   min-height: 22px;
   align-items: center;
   width: fit-content;
-  padding: 0 8px;
+  padding: 0 7px;
   border-radius: 9999px;
   background: var(--soft-yellow);
   color: #956400;
@@ -936,8 +936,9 @@ button:active {
 
 .lesson-row {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
   align-items: center;
+  gap: 8px;
   width: 100%;
   text-align: left;
   background: #ffffff;
@@ -955,8 +956,8 @@ button:active {
 
 .lesson-card {
   display: grid;
-  gap: 8px;
-  padding: 10px;
+  gap: 7px;
+  padding: 9px;
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   background: #ffffff;
@@ -1026,8 +1027,9 @@ button:active {
 
 .leaderboard div {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
   align-items: center;
+  gap: 8px;
 }
 
 .leaderboard span {
@@ -1131,6 +1133,10 @@ button:active {
 
 .admin-panel.span-2 {
   grid-column: span 2;
+}
+
+.admin-panel.span-3 {
+  grid-column: 1 / -1;
 }
 
 .admin-panel-head {
@@ -1237,6 +1243,142 @@ button:active {
   gap: 6px;
 }
 
+.settings-editor {
+  display: grid;
+  gap: 18px;
+}
+
+.settings-editor-grid,
+.settings-repeat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.settings-editor label,
+.settings-card label {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+}
+
+.settings-editor .span-2 {
+  grid-column: span 2;
+}
+
+.settings-editor [data-slot="input"],
+.settings-editor [data-slot="textarea"] {
+  min-height: var(--control-height);
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: #ffffff;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--font-base);
+}
+
+.settings-editor [data-slot="textarea"] {
+  min-height: 92px;
+  padding: 10px 11px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.settings-editor [data-slot="input"]:focus-visible,
+.settings-editor [data-slot="textarea"]:focus-visible {
+  border-color: rgba(31, 108, 159, 0.56);
+  box-shadow: 0 0 0 3px rgba(31, 108, 159, 0.12);
+}
+
+.settings-editor-section {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.settings-editor-section h5 {
+  margin: 2px 0 0;
+  font-size: var(--font-md);
+}
+
+.settings-card {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-soft);
+}
+
+.settings-card.compact {
+  gap: 8px;
+}
+
+.settings-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-stack {
+  display: grid;
+  gap: 9px;
+}
+
+.compact-toggle {
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: var(--font-xs);
+}
+
+.newsletter-send-flow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.newsletter-send-flow div {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-soft);
+}
+
+.newsletter-send-flow span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: var(--soft-yellow);
+  color: #956400;
+  font-size: var(--font-xs);
+  font-weight: var(--weight-semibold);
+}
+
+.newsletter-send-flow strong,
+.newsletter-send-flow small {
+  min-width: 0;
+}
+
+.newsletter-send-flow small {
+  grid-column: 2;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
 .admin-course-summary {
   display: grid;
   gap: 10px;
@@ -1295,6 +1437,10 @@ button:active {
     grid-column: span 1;
   }
 
+  .admin-panel.span-3 {
+    grid-column: span 1;
+  }
+
   .newsletter-panel.span-2 {
     grid-column: span 1;
   }
@@ -1305,6 +1451,7 @@ button:active {
   .event-grid,
   .setup-grid,
   .newsletter-grid,
+  .newsletter-send-flow,
   .member-directory,
   .referral-grid,
   .self-service-grid,
@@ -1393,8 +1540,23 @@ button:active {
     flex-direction: column;
   }
 
+  .newsletter-row,
+  .search-result,
+  .admin-content-item.horizontal {
+    grid-template-columns: 1fr;
+  }
+
   .editor-grid {
     grid-template-columns: 1fr;
+  }
+
+  .settings-editor-grid,
+  .settings-repeat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-editor .span-2 {
+    grid-column: span 1;
   }
 
   .hero-band,

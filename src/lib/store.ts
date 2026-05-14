@@ -1,11 +1,12 @@
 import type { AppState, PaymentEvent, PlanId, PresetId, Role } from '../types'
 
-const STORAGE_KEY = 'memberhub-preview-state-v4'
+const STORAGE_KEY = 'memberhub-preview-state-v5'
 
 export const defaultState: AppState = {
   presetId: 'skills-school',
   role: 'visitor',
   selectedPlanId: 'free',
+  presetOverrides: {},
   completedLessons: [],
   checkedInChallenges: [],
   paymentEvents: [],

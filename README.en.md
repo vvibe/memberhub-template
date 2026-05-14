@@ -306,7 +306,7 @@ Conclusion: the MemberHub spec now covers the baseline features of Substack and 
 Current production-style examples:
 
 1. `skills-school`: courses, community, challenges, and join flow for a Skool/School-style learning community.
-2. `superstake`: public blog, paid columns, and member research library for a Substack-style subscription publication.
+2. `superstake`: public blog, paid articles, Email Newsletter, and subscription plans for a Substack-style publication.
 
 ## Launch Checklist
 
