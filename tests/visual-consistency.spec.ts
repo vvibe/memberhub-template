@@ -319,6 +319,10 @@ test('Signal Brief standalone article and limited-free rules work', async ({ pag
   const consoleErrors = collectConsoleErrors(page)
 
   await page.goto('http://signal-brief.localhost:5176/', { waitUntil: 'networkidle' })
+  await expect(page.getByText('關於創作者')).toBeVisible()
+  await expect(page.getByText('免費讀者')).toBeVisible()
+  await expect(page.getByText('付費讀者')).toBeVisible()
+  await expect(page.locator('.signal-author-card').getByText('付費轉換')).toHaveCount(0)
   await page.locator('.signal-feature-post').click()
   await expect(page.getByRole('heading', { name: 'AI 工具從嘗鮮走向日常工作的三個訊號' })).toBeVisible()
   await expect(page.getByText('想讀完整付費分析？')).toHaveCount(0)

@@ -1010,7 +1010,7 @@ button:active {
   display: grid;
   grid-template-columns: minmax(0, 1.18fr) minmax(300px, 0.82fr);
   gap: 56px;
-  align-items: end;
+  align-items: stretch;
   padding: 46px 0 30px;
 }
 
@@ -1123,26 +1123,64 @@ button:active {
 
 .signal-author-card {
   display: grid;
-  gap: 14px;
-  padding: 24px;
+  align-content: start;
+  gap: 22px;
+  min-height: 100%;
+  padding: 32px;
 }
 
-.signal-author-card strong {
+.signal-author-profile {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.signal-author-avatar {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 auto;
   font-size: 18px;
 }
 
-.signal-author-card div:last-child {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.signal-author-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #2e6e56;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0;
 }
 
-.signal-author-card div:last-child span {
-  padding: 7px 10px;
+.signal-author-card strong {
+  display: block;
+  color: #25282a;
+  font-size: 20px;
+  line-height: 1.3;
+}
+
+.signal-author-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.signal-author-stats span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 8px 12px;
   border-radius: 999px;
   background: #f1eee6;
   color: #4c514f;
   font-size: 13px;
+}
+
+.signal-author-stats strong {
+  display: inline;
+  color: #25282a;
+  font-size: 15px;
+  line-height: 1;
 }
 
 .signal-feature {

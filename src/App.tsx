@@ -1029,6 +1029,8 @@ function SignalBriefStandalone({
   const featurePost = publicPosts[0] ?? preset.content[0]
   const selectedPost = preset.content.find((item) => item.id === selectedPostId) ?? featurePost
   const paidPlan = preset.plans.find((plan) => plan.highlighted) ?? preset.plans[1] ?? preset.plans[0]
+  const paidReaderCount = Math.max(0, Math.round((preset.metrics.activeMembers * Number.parseFloat(preset.metrics.conversion)) / 100))
+  const freeReaderCount = Math.max(0, preset.metrics.activeMembers - paidReaderCount)
 
   const openPost = (postId: string) => {
     setSelectedPostId(postId)
@@ -1093,13 +1095,18 @@ function SignalBriefStandalone({
               </form>
               {subscribedEmail && <small className="signal-form-note">已記錄 {subscribedEmail}，正式串接後會加入 Newsletter 名單。</small>}
             </div>
-            <aside className="signal-author-card">
-              <div className="signal-author-mark">SB</div>
-              <strong>{preset.brand.creatorName}</strong>
+            <aside className="signal-author-card" aria-label="關於創作者">
+              <div className="signal-author-profile">
+                <div className="signal-author-mark signal-author-avatar">SB</div>
+                <div>
+                  <span className="signal-author-label">關於創作者</span>
+                  <strong>{preset.brand.creatorName}</strong>
+                </div>
+              </div>
               <p>每週整理 AI 工具、內容產品與創作者商業模式的變化，保留公開文章，也提供付費深度分析。</p>
-              <div>
-                <span>{preset.metrics.activeMembers} 位讀者</span>
-                <span>{preset.metrics.conversion} 付費轉換</span>
+              <div className="signal-author-stats">
+                <span><strong>{freeReaderCount}</strong> 免費讀者</span>
+                <span><strong>{paidReaderCount}</strong> 付費讀者</span>
               </div>
             </aside>
           </section>
