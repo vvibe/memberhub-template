@@ -145,6 +145,63 @@ function beforeJoinHeading(preset: ReturnType<typeof getPreset>) {
   return isPublicationPreset(preset) ? '訂閱前可以先閱讀的公開文章與研究節奏' : '加入前可以先看見的內容與社群節奏'
 }
 
+function defaultViewForRole(role: Role): ViewId {
+  if (role === 'admin') return 'admin'
+  if (role === 'member') return 'member'
+  return 'home'
+}
+
+function roleProfile(preset: ReturnType<typeof getPreset>, role: Role) {
+  const publication = isPublicationPreset(preset)
+  if (publication) {
+    if (role === 'admin') {
+      return {
+        label: '管理員視角',
+        title: '出版者後台開啟',
+        description: '可以管理文章、設定付費牆段落、排程 Newsletter、查看讀者與訂閱狀態。',
+        points: ['後台與設定可見', '可編輯付費牆', '可查看讀者資料'],
+      }
+    }
+    if (role === 'member') {
+      return {
+        label: '付費讀者視角',
+        title: '已解鎖完整文章',
+        description: '可以閱讀付費牆後的完整內容，並在我的訂閱中查看方案、收據與贈閱狀態。',
+        points: ['付費文章完整可讀', '可管理訂閱', '不顯示後台'],
+      }
+    }
+    return {
+      label: '訪客視角',
+      title: '先閱讀公開文章',
+      description: '可以直接閱讀免費文章；付費文章會停在創作者設定的付費牆位置。',
+      points: ['免費文章可讀', '付費文章被鎖定', '不顯示後台'],
+    }
+  }
+
+  if (role === 'admin') {
+    return {
+      label: '管理員視角',
+      title: '社群營運後台開啟',
+      description: '可以編輯內容與課程、邀請會員、查看審核佇列、管理活動與付款狀態。',
+      points: ['後台與設定可見', '可邀請會員', '可管理課程與社群'],
+    }
+  }
+  if (role === 'member') {
+    return {
+      label: '會員視角',
+      title: '課程與社群已解鎖',
+      description: '可以接續課程進度、進入會員討論、完成打卡，並查看自己的會員方案。',
+      points: ['會員內容可讀', '可更新課程進度', '可打卡與參與討論'],
+    }
+  }
+  return {
+    label: '訪客視角',
+    title: '只看到公開預覽',
+    description: '可以瀏覽公開內容與方案；課程進度、會員討論、打卡與後台功能會被保留給會員或管理員。',
+    points: ['公開內容可讀', '會員功能鎖定', '不顯示後台'],
+  }
+}
+
 function contentTypeLabel(type: ContentItem['type'] | string) {
   const labels: Record<string, string> = {
     article: '文章',
@@ -418,10 +475,17 @@ function App() {
   const activeLevel = state.role === 'visitor' ? 0 : currentMember.level
   const hasPaidAccess = state.role === 'admin' || state.selectedPlanId !== 'free'
   const visibleNavItems = useMemo(
-    () => isPublicationPreset(runtimePreset)
-      ? navItems.filter((item) => !publicationHiddenViews.includes(item.id))
-      : navItems,
-    [runtimePreset.id],
+    () => {
+      let items = isPublicationPreset(runtimePreset)
+        ? navItems.filter((item) => !publicationHiddenViews.includes(item.id))
+        : navItems
+
+      if (state.role !== 'admin') items = items.filter((item) => !['admin', 'setup', 'newsletter'].includes(item.id))
+      if (state.role === 'visitor') items = items.filter((item) => !['member', 'members'].includes(item.id))
+      if (state.role !== 'visitor') items = items.filter((item) => item.id !== 'login')
+      return items
+    },
+    [runtimePreset.id, state.role],
   )
 
   useEffect(() => {
@@ -429,6 +493,12 @@ function App() {
       setView('blog')
     }
   }, [runtimePreset.id, view])
+
+  useEffect(() => {
+    if (!visibleNavItems.some((item) => item.id === view)) {
+      setView(defaultViewForRole(state.role))
+    }
+  }, [state.role, view, visibleNavItems])
 
   const updateState = (patch: Partial<AppState>) => setState((prev) => ({ ...prev, ...patch }))
 
@@ -466,7 +536,12 @@ function App() {
   }
 
   const handleRoleChange = (role: Role) => {
-    updateState({ role, selectedPlanId: role === 'visitor' ? 'free' : state.selectedPlanId })
+    const memberPlan = runtimePreset.plans.find((plan) => plan.highlighted) ?? runtimePreset.plans[1] ?? runtimePreset.plans[0]
+    updateState({
+      role,
+      selectedPlanId: role === 'visitor' ? 'free' : memberPlan.id,
+    })
+    setView(defaultViewForRole(role))
   }
 
   const handleCheckout = (plan: Plan) => {
@@ -481,9 +556,10 @@ function App() {
   }
 
   const handleLogin = (role: Role = 'member') => {
+    const memberPlan = runtimePreset.plans.find((plan) => plan.highlighted) ?? runtimePreset.plans[1] ?? runtimePreset.plans[0]
     updateState({
       role,
-      selectedPlanId: role === 'admin' ? 'monthly' : state.selectedPlanId,
+      selectedPlanId: role === 'visitor' ? 'free' : memberPlan.id,
     })
     setView(role === 'admin' ? 'admin' : 'member')
   }
@@ -641,6 +717,8 @@ function App() {
           </div>
         </header>
 
+        <RoleStateBanner preset={runtimePreset} role={state.role} selectedPlan={selectedPlan} />
+
         {view === 'home' && (
           isPublicationPreset(runtimePreset) ? (
             <BlogView
@@ -669,6 +747,8 @@ function App() {
         {view === 'join' && (
           <JoinView
             preset={runtimePreset}
+            role={state.role}
+            selectedPlan={selectedPlan}
             onCheckout={handleCheckout}
           />
         )}
@@ -689,6 +769,7 @@ function App() {
           <CoursesView
             preset={runtimePreset}
             level={activeLevel}
+            role={state.role}
             completedLessons={state.completedLessons}
             onToggleLesson={(lessonId) =>
               updateState({
@@ -705,6 +786,7 @@ function App() {
         {view === 'challenges' && (
           <ChallengesView
             preset={runtimePreset}
+            role={state.role}
             checkedInChallenges={state.checkedInChallenges}
             onCheckIn={(challengeId) =>
               updateState({
@@ -803,6 +885,36 @@ function HomeView({
         </div>
       </section>
     </div>
+  )
+}
+
+function RoleStateBanner({
+  preset,
+  role,
+  selectedPlan,
+}: {
+  preset: ReturnType<typeof getPreset>
+  role: Role
+  selectedPlan: Plan
+}) {
+  const profile = roleProfile(preset, role)
+  return (
+    <section className={`role-state-banner role-${role}`}>
+      <div>
+        <span className="eyebrow">{profile.label}</span>
+        <h3>{profile.title}</h3>
+        <p>{profile.description}</p>
+      </div>
+      <div className="role-state-details">
+        <StatusPill tone={role === 'admin' ? 'blue' : role === 'member' ? 'green' : 'yellow'}>{roleLabel(role)}</StatusPill>
+        <small>{role === 'visitor' ? '目前方案：免費預覽' : `目前方案：${selectedPlan.name}`}</small>
+        <ul>
+          {profile.points.map((point) => (
+            <li key={point}><CheckCircle2 size={14} />{point}</li>
+          ))}
+        </ul>
+      </div>
+    </section>
   )
 }
 
@@ -940,12 +1052,17 @@ function ArticleReader({
 
 function JoinView({
   preset,
+  role,
+  selectedPlan,
   onCheckout,
 }: {
   preset: ReturnType<typeof getPreset>
+  role: Role
+  selectedPlan: Plan
   onCheckout: (plan: Plan) => void
 }) {
   const memberPlan = preset.plans.find((plan) => plan.highlighted) ?? preset.plans[1]
+  const roleCopy = roleProfile(preset, role)
 
   return (
     <section className="section-block join-section">
@@ -953,12 +1070,13 @@ function JoinView({
         <div>
           <span className="eyebrow">{preset.id === 'skills-school' ? '加入社群' : '訂閱研究'}</span>
           <h3>{preset.id === 'skills-school' ? '加入 Skills School，開始課程、社群與每週實作' : '訂閱 Signal Brief，閱讀付費文章與每週電子報'}</h3>
+          <p>{roleCopy.label}：{roleCopy.description}</p>
         </div>
         <Button className="primary-button" onClick={() => onCheckout(memberPlan)}><CircleDollarSign data-icon="inline-start" />選擇 {memberPlan.name}</Button>
       </div>
       <div className="plan-grid">
         {preset.plans.map((plan) => (
-          <article key={plan.id} className={plan.highlighted ? 'plan-card highlighted' : 'plan-card'}>
+          <article key={plan.id} className={`${plan.highlighted ? 'plan-card highlighted' : 'plan-card'} ${role !== 'visitor' && selectedPlan.id === plan.id ? 'current-plan' : ''}`}>
             <span className="plan-name">{plan.name}</span>
             <strong>{plan.price}</strong>
             <small>{plan.cadence}</small>
@@ -969,7 +1087,13 @@ function JoinView({
               ))}
             </ul>
             <Button variant={plan.highlighted ? 'default' : 'outline'} onClick={() => onCheckout(plan)}>
-              {plan.price === 'NT$0' ? (preset.id === 'signal-brief' ? '加入免費讀者' : '加入免費方案') : '選擇此方案'}
+              {role !== 'visitor' && selectedPlan.id === plan.id
+                ? '目前方案'
+                : plan.price === 'NT$0'
+                  ? (preset.id === 'signal-brief' ? '加入免費讀者' : '加入免費方案')
+                  : role === 'admin'
+                    ? '預覽此方案'
+                    : '選擇此方案'}
             </Button>
           </article>
         ))}
@@ -1333,19 +1457,24 @@ function LoginView({ preset, onLogin }: { preset: ReturnType<typeof getPreset>; 
 function CoursesView({
   preset,
   level,
+  role,
   completedLessons,
   onToggleLesson,
 }: {
   preset: ReturnType<typeof getPreset>
   level: number
+  role: Role
   completedLessons: string[]
   onToggleLesson: (lessonId: string) => void
 }) {
+  const canUseLessons = role !== 'visitor'
   return (
     <section className="section-block">
       <div className="section-heading">
         <span className="eyebrow">{preset.id === 'signal-brief' ? '研究室課程' : '課程教室'}</span>
         <h3>課程、進度與等級解鎖</h3>
+        {role === 'visitor' && <p>訪客可以看課程架構，但需要加入會員後才能標記進度、下載會員資源與進入討論。</p>}
+        {role === 'admin' && <p>管理員正在檢查課程內容、資源權限與學員進度。</p>}
       </div>
       <div className="course-grid">
         {preset.courses.map((course) => (
@@ -1364,10 +1493,10 @@ function CoursesView({
                 const complete = lesson.complete || completedLessons.includes(lesson.id)
                 return (
                   <div key={lesson.id} className={complete ? 'lesson-card complete' : 'lesson-card'}>
-                    <button className="lesson-row" disabled={locked} onClick={() => onToggleLesson(lesson.id)}>
-                      {locked ? <Lock size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
+                    <button className="lesson-row" disabled={locked || !canUseLessons} onClick={() => onToggleLesson(lesson.id)}>
+                      {locked || !canUseLessons ? <Lock size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
                       <span>{lesson.title}</span>
-                      <small>{locked ? `Level ${lesson.lockedLevel}` : `${lesson.minutes} 分鐘`}</small>
+                      <small>{!canUseLessons ? '會員限定' : locked ? `Level ${lesson.lockedLevel}` : `${lesson.minutes} 分鐘`}</small>
                     </button>
                     <div className="lesson-meta">
                       {lesson.transcript && <span><FileText size={14} aria-hidden="true" />逐字稿可搜尋</span>}
@@ -1397,10 +1526,13 @@ function CommunityView({ preset, role }: { preset: ReturnType<typeof getPreset>;
       <div className="section-heading">
         <span className="eyebrow">{preset.id === 'signal-brief' ? '讀者討論' : '社群討論'}</span>
         <h3>分類、權限、公告、留言與反應</h3>
+        {role === 'visitor' && <p>訪客只能看到公開討論與公告摘要；會員討論串會保留給已加入的人。</p>}
+        {role === 'member' && <p>會員可以閱讀公開與會員討論，並依照權限參與課程討論或活動公告。</p>}
+        {role === 'admin' && <p>管理員可以檢查置頂公告、發文權限、檢舉數與需要處理的討論串。</p>}
       </div>
       <div className="thread-list">
         {preset.threads.map((thread) => {
-          const hidden = thread.adminOnly && role === 'visitor'
+          const hidden = role === 'visitor' && (thread.adminOnly || thread.canStart === 'paid')
           return (
             <article key={thread.id} className={hidden ? 'thread-row locked' : 'thread-row'}>
               <div>
@@ -1434,6 +1566,8 @@ function MembersView({
         <div>
           <span className="eyebrow">{preset.id === 'signal-brief' ? '讀者社群' : '學員社群'}</span>
           <h3>會員目錄、角色、個人頁與活躍度</h3>
+          {role === 'member' && <p>會員可以看到社群成員與公開活躍度；Email、風險狀態與審核操作只會出現在管理員視角。</p>}
+          {role === 'admin' && <p>管理員可以邀請會員、查看 Email、風險狀態、入會問題與社群參與紀錄。</p>}
         </div>
         {role === 'admin' && (
           <div className="button-row compact">
@@ -1527,18 +1661,24 @@ function SearchView({
 
 function ChallengesView({
   preset,
+  role,
   checkedInChallenges,
   onCheckIn,
 }: {
   preset: ReturnType<typeof getPreset>
+  role: Role
   checkedInChallenges: string[]
   onCheckIn: (challengeId: string) => void
 }) {
+  const canCheckIn = role !== 'visitor'
   return (
     <section className="section-block">
       <div className="section-heading">
         <span className="eyebrow">打卡挑戰</span>
         <h3>打卡挑戰、積分、等級與排行榜</h3>
+        {role === 'visitor' && <p>訪客可以先看到挑戰節奏與排行榜；加入會員後才能完成打卡、累積積分與更新連續紀錄。</p>}
+        {role === 'member' && <p>會員可以完成每日或每週打卡，累積積分並在排行榜中追蹤自己的進度。</p>}
+        {role === 'admin' && <p>管理員可以檢查挑戰參與狀態、積分規則與排行榜呈現是否正常。</p>}
       </div>
       <div className="challenge-grid">
         {preset.challenges.map((challenge) => {
@@ -1549,7 +1689,9 @@ function ChallengesView({
               <h4>{challenge.title}</h4>
               <p>{challenge.cadence} · {challenge.participants} 位參與</p>
               <strong>連續 {challenge.streak} 次 · +{challenge.points} 分</strong>
-              <button disabled={done} onClick={() => onCheckIn(challenge.id)}>{done ? '今日已打卡' : '完成打卡'}</button>
+              <button disabled={done || !canCheckIn} onClick={() => onCheckIn(challenge.id)}>
+                {!canCheckIn ? '加入後打卡' : done ? '今日已打卡' : role === 'admin' ? '檢查打卡' : '完成打卡'}
+              </button>
             </article>
           )
         })}
@@ -1593,15 +1735,17 @@ function EventsView({ preset }: { preset: ReturnType<typeof getPreset> }) {
 
 function MemberView({ preset, state, selectedPlan }: { preset: ReturnType<typeof getPreset>; state: AppState; selectedPlan: Plan }) {
   const lastEvent = state.paymentEvents[0]
+  const isPublication = isPublicationPreset(preset)
   return (
     <section className="section-block">
       <div className="section-heading">
-        <span className="eyebrow">我的會員中心</span>
-        <h3>會員方案、收據/發票狀態與付款自助</h3>
+        <span className="eyebrow">{isPublication ? '我的訂閱' : '我的會員中心'}</span>
+        <h3>{isPublication ? '訂閱方案、收據/發票與付款自助' : '會員方案、收據/發票狀態與付款自助'}</h3>
+        <p>{isPublication ? '讀者可以在這裡確認目前訂閱、收據/發票、付款方式與推薦贈閱。' : '會員可以在這裡確認目前方案、收據/發票、付款方式與推薦贈閱。'}</p>
       </div>
       <div className="member-grid">
         <MetricTile label="目前方案" value={selectedPlan.name} icon={ShieldCheck} />
-        <MetricTile label="會員狀態" value={state.role === 'visitor' ? '訪客' : '有效'} icon={UserRound} />
+        <MetricTile label={isPublication ? '讀者狀態' : '會員狀態'} value={state.role === 'visitor' ? '訪客' : '有效'} icon={UserRound} />
         <MetricTile label="收據/發票" value={paymentValueLabel(lastEvent?.invoiceStatus)} icon={CircleDollarSign} />
         <MetricTile label="付款自助" value="可使用" icon={ChevronRight} />
       </div>

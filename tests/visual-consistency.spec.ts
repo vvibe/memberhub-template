@@ -53,7 +53,7 @@ for (const viewCase of viewCases) {
 test('interactive flows stay usable and visually stable', async ({ page }, testInfo) => {
   const consoleErrors = collectConsoleErrors(page)
 
-  await page.getByRole('button', { name: '管理員' }).click()
+  await setRole(page, '管理員')
   await openNav(page, '內容庫')
   await page.getByPlaceholder('輸入文章標題').fill('QA 測試文章')
   await page.getByPlaceholder('列表與分享時顯示的短摘要').fill('這是 Playwright QA 產生的測試摘要。')
@@ -82,7 +82,7 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   await expect(page.locator('.lesson-card.complete').filter({ hasText: '完成第一版作品頁' })).toBeVisible()
 
   await openNav(page, '打卡')
-  await page.getByRole('button', { name: '完成打卡' }).first().click()
+  await page.getByRole('button', { name: '檢查打卡' }).first().click()
   await expect(page.getByRole('button', { name: '今日已打卡' }).first()).toBeVisible()
 
   await expectNoHorizontalOverflow(page)
@@ -95,6 +95,77 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   await expectNoLayoutCollisions(page)
   await expectDetailLayoutQuality(page)
   await attachViewportScreenshot(page, testInfo, 'interactive-flows')
+
+  expect(consoleErrors.errors).toEqual([])
+})
+
+test('visitor, member, and admin states show different screens in both reference sites', async ({ page }, testInfo) => {
+  const consoleErrors = collectConsoleErrors(page)
+
+  await expect(page.getByText('訪客視角')).toBeVisible()
+  await expect(page.getByText('只看到公開預覽')).toBeVisible()
+  await expect(page.locator('.nav-list').getByRole('button', { name: '後台', exact: true })).toHaveCount(0)
+  await expect(page.locator('.nav-list').getByRole('button', { name: '會員', exact: true })).toHaveCount(0)
+  await expect(page.locator('.nav-list').getByRole('button', { name: '成員', exact: true })).toHaveCount(0)
+  await expect(page.locator('.nav-list').getByRole('button', { name: '通訊', exact: true })).toHaveCount(0)
+  await openNav(page, '課程')
+  await expect(page.getByText('訪客可以看課程架構')).toBeVisible()
+  await expect(page.getByRole('button', { name: /會員限定/ }).first()).toBeDisabled()
+  await openNav(page, '打卡')
+  await expect(page.getByRole('button', { name: '加入後打卡' }).first()).toBeDisabled()
+
+  await setRole(page, '會員')
+  await expect(page.getByText('會員視角')).toBeVisible()
+  await expect(page.getByText('課程與社群已解鎖')).toBeVisible()
+  await expect(page.locator('.nav-list').getByRole('button', { name: '會員', exact: true })).toBeVisible()
+  await expect(page.locator('.nav-list').getByRole('button', { name: '後台', exact: true })).toHaveCount(0)
+  await openNav(page, '課程')
+  await expect(page.getByRole('button', { name: /完成第一版作品頁/ }).first()).not.toBeDisabled()
+  await openNav(page, '打卡')
+  await page.getByRole('button', { name: '完成打卡' }).first().click()
+  await expect(page.getByRole('button', { name: '今日已打卡' }).first()).toBeVisible()
+
+  await setRole(page, '管理員')
+  await expect(page.getByText('管理員視角')).toBeVisible()
+  await expect(page.getByText('社群營運後台開啟')).toBeVisible()
+  await expect(page.locator('.nav-list').getByRole('button', { name: '後台', exact: true })).toBeVisible()
+  await expect(page.locator('.nav-list').getByRole('button', { name: '設定', exact: true })).toBeVisible()
+  await expect(page.getByText('Skills School 職能加速社群 營運後台')).toBeVisible()
+
+  await page.locator('.preset-select-trigger').click()
+  await page.getByRole('option', { name: 'Signal Brief' }).click()
+  await setRole(page, '訪客')
+  await expect(page.getByText('先閱讀公開文章')).toBeVisible()
+  await expect(page.locator('.nav-list').getByRole('button', { name: '我的訂閱', exact: true })).toHaveCount(0)
+  await expect(page.locator('.nav-list').getByRole('button', { name: '電子報', exact: true })).toHaveCount(0)
+  await openNav(page, '文章')
+  await page.getByRole('button', { name: /付費文章：自動化內容工具的商業模式與留存風險/ }).click()
+  await expect(page.getByText('付費牆已啟用')).toBeVisible()
+  await expect(page.getByText('付費牆後的完整分析')).toHaveCount(0)
+
+  await setRole(page, '會員')
+  await expect(page.getByText('付費讀者視角')).toBeVisible()
+  await expect(page.locator('.nav-list').getByRole('button', { name: '我的訂閱', exact: true })).toBeVisible()
+  await openNav(page, '文章')
+  await page.getByRole('button', { name: /付費文章：自動化內容工具的商業模式與留存風險/ }).click()
+  await expect(page.getByText('付費牆後的完整分析')).toBeVisible()
+  await expect(page.getByText('付費牆已啟用')).toHaveCount(0)
+
+  await setRole(page, '管理員')
+  await expect(page.getByText('出版者後台開啟')).toBeVisible()
+  await expect(page.locator('.nav-list').getByRole('button', { name: '電子報', exact: true })).toBeVisible()
+  await expect(page.getByText('出版站可調整的內容')).toBeVisible()
+  await expect(page.getByText('課程與進度')).toHaveCount(0)
+
+  await expectNoHorizontalOverflow(page)
+  await expectDesktopSpacingBreathes(page)
+  await expectNoDemoCopy(page)
+  await expectSharedVisualTokens(page)
+  await expectReadableTypography(page)
+  await expectConsistentSpacingAndTextMetrics(page)
+  await expectNoLayoutCollisions(page)
+  await expectDetailLayoutQuality(page)
+  await attachViewportScreenshot(page, testInfo, 'role-states')
 
   expect(consoleErrors.errors).toEqual([])
 })
@@ -177,10 +248,13 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
 
   await page.goto('/?case=signal-brief&view=admin')
   await expect(page.locator('.topbar h1')).toHaveText('Signal Brief 策略通訊')
+  await expect(page.getByText('先閱讀公開文章')).toBeVisible()
+  await expect(page.getByText('出版站可調整的內容')).toHaveCount(0)
+  await setRole(page, '管理員')
   await expect(page.getByText('只保留出版與訂閱需要的營運模組')).toBeVisible()
   await expect(page.getByText('出版站可調整的內容')).toBeVisible()
   await expect(page.getByText('付費牆段落位置').first()).toBeVisible()
-  await expect(page.getByText('讀者與訂閱狀態')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '讀者與訂閱狀態' })).toBeVisible()
   await expect(page.getByText('留言、讀者回覆與付款爭議')).toBeVisible()
   await expect(page.getByText('課程與進度')).toHaveCount(0)
   await expect(page.getByText('社群審核與互動')).toHaveCount(0)
@@ -207,7 +281,7 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
 test('admin can edit fork-ready site settings and newsletter configuration', async ({ page }, testInfo) => {
   const consoleErrors = collectConsoleErrors(page)
 
-  await page.getByRole('button', { name: '管理員' }).click()
+  await setRole(page, '管理員')
   await openNav(page, '後台')
   await expect(page.getByText('Fork 後可調整的網站內容')).toBeVisible()
 
@@ -249,7 +323,18 @@ function collectConsoleErrors(page: Page) {
 }
 
 async function openView(page: Page, viewCase: (typeof viewCases)[number]) {
+  if (viewCase.id === 'admin' || viewCase.id === 'setup' || viewCase.id === 'newsletter') {
+    await setRole(page, '管理員')
+  } else if (viewCase.id === 'member' || viewCase.id === 'members') {
+    await setRole(page, '會員')
+  } else if (viewCase.id === 'login') {
+    await setRole(page, '訪客')
+  }
   await openNav(page, viewCase.label)
+}
+
+async function setRole(page: Page, label: '訪客' | '會員' | '管理員') {
+  await page.locator('.segmented').getByRole('button', { name: label, exact: true }).click()
 }
 
 async function openNav(page: Page, label: string) {
