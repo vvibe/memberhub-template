@@ -976,7 +976,7 @@ function App() {
         )}
         {view === 'member' && <MemberView preset={runtimePreset} state={state} selectedPlan={selectedPlan} />}
         {view === 'admin' && <AdminView preset={runtimePreset} state={state} onUpdatePreset={handleUpdatePreset} />}
-        {view === 'setup' && <SetupView presetId={state.presetId} />}
+        {view === 'setup' && <SetupView presetId={state.presetId} onSelectPreset={handlePresetChange} />}
       </section>
     </main>
   )
@@ -2933,13 +2933,57 @@ function IntegrationItem({ label, value }: { label: string; value: string }) {
   )
 }
 
-function SetupView({ presetId }: { presetId: PresetId }) {
+function SetupView({ presetId, onSelectPreset }: { presetId: PresetId; onSelectPreset: (presetId: PresetId) => void }) {
   const isPublication = presetId === 'signal-brief'
+  const setupChoices: Array<{
+    id: PresetId
+    title: string
+    subtitle: string
+    description: string
+    includes: string[]
+  }> = [
+    {
+      id: 'skills-school',
+      title: '全功能會員社群',
+      subtitle: '類 Skool / School',
+      description: '適合課程、社群、陪跑、教練、挑戰活動與會員制學習產品。',
+      includes: ['課程進度與等級', '社群討論與會員目錄', '打卡挑戰、活動與後台審核'],
+    },
+    {
+      id: 'signal-brief',
+      title: '出版訂閱通訊',
+      subtitle: '類 Substack',
+      description: '適合 Newsletter、專欄、付費文章、研究報告與個人出版站。',
+      includes: ['公開文章與付費文章', '段落付費牆與限時免費', '訂閱方案、Newsletter 與讀者管理'],
+    },
+  ]
+
   return (
     <section className="section-block">
       <div className="section-heading">
         <span className="eyebrow">設定指南</span>
         <h3>{isPublication ? '調整出版品牌、文章與訂閱設定' : '調整品牌、內容與會員設定'}</h3>
+      </div>
+      <div className="setup-choice-grid" aria-label="選擇 fork 版本">
+        {setupChoices.map((choice) => (
+          <article key={choice.id} className={choice.id === presetId ? 'setup-choice-card selected' : 'setup-choice-card'}>
+            <div>
+              <span className="eyebrow">{choice.subtitle}</span>
+              <h4>{choice.title}</h4>
+              <p>{choice.description}</p>
+            </div>
+            <ul className="check-list">
+              {choice.includes.map((item) => <li key={item}><CheckCircle2 size={16} />{item}</li>)}
+            </ul>
+            <Button
+              className={choice.id === presetId ? 'primary-button' : 'ghost-button'}
+              variant={choice.id === presetId ? 'default' : 'outline'}
+              onClick={() => onSelectPreset(choice.id)}
+            >
+              {choice.id === presetId ? '目前選擇' : '切換到這個版本'}
+            </Button>
+          </article>
+        ))}
       </div>
       <div className="setup-grid">
         <article>

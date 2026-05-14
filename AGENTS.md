@@ -14,7 +14,7 @@ Before changing code for a forked install, read `docs/fork-readiness.md` and exp
 
 ## Required Order
 
-1. Ask the install intake questions in `docs/ai-install-intake.md` before changing presets or product configuration.
+1. Ask the install intake questions in `docs/ai-install-intake.md` before changing presets or product configuration. The first decision must be the product mode: `skills-school` full-feature membership community, similar to Skool / School; or `signal-brief` publication subscription, similar to Substack.
 2. Get the local app running.
 3. Confirm the frontend pages and content types the user wants.
 4. Configure the selected vertical in `src/data/presets.ts`.

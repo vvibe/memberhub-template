@@ -45,6 +45,11 @@ MemberHub is an open-source membership platform starter. It helps creators, coac
 
 This is not only documentation or a design spec. The project includes a runnable Vite + React service, two production-style examples, paywalls, newsletters, referral gifts, global search, subscriber/member self-service, and an editable admin dashboard. Each example shows only the features that fit that product: the Skool-style case includes courses, community, check-ins, and events; the Substack-style case only includes posts, paywalls, subscriptions, newsletters, subscribers, referral gifts, payments, and invoice status. It runs locally first, then can be connected to InsForge and the Portaly Vibe MCP for a self-hosted production deployment.
 
+After forking, choose one product mode first:
+
+- `skills-school`: full-feature membership community, similar to Skool / School, for courses, community, check-ins, events, member directory, and cohort-style services.
+- `signal-brief`: publication subscription, similar to Substack, for public posts, paid posts, paragraph paywalls, newsletters, and reader subscriptions.
+
 The frontend uses React throughout. UI components default to shadcn/ui primitives (`components.json` and `src/components/ui/*` are already set up). The visual direction is a clean, sharp product interface: white surfaces, fine borders, low shadows, clear hierarchy, 8px/12px radii, and black primary buttons so the template stays professional across verticals.
 
 The default README is Chinese-first; this file mirrors the same product intent for English readers and AI agents.
@@ -223,7 +228,7 @@ Never commit secrets to GitHub. Commit only `.env.example`; store real values in
 
 If you are an AI agent, help the user in this order:
 
-1. Ask the intake questions in `docs/ai-install-intake.md`: service type, frontend pages, content types, member features, login method, and notification channels.
+1. Ask the intake questions in `docs/ai-install-intake.md`. Start by asking which product mode they want: `skills-school` full-feature membership community, similar to Skool / School; or `signal-brief` publication subscription, similar to Substack. Then ask service type, frontend pages, content types, member features, login method, and notification channels.
 2. Confirm the app runs locally.
 3. Configure frontend pages and login. The default production recommendation is InsForge Google OAuth.
 4. Complete InsForge setup first: Auth, tables, RLS, Storage, Edge Functions.

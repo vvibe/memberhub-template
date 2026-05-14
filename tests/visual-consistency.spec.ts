@@ -280,6 +280,39 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
   expect(consoleErrors.errors).toEqual([])
 })
 
+test('setup page lets fork users choose the product mode', async ({ page }, testInfo) => {
+  const consoleErrors = collectConsoleErrors(page)
+
+  await setRole(page, '管理員')
+  await openNav(page, '設定')
+  await expect(page.getByRole('heading', { name: '全功能會員社群' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '出版訂閱通訊' })).toBeVisible()
+  await expect(page.getByText('類 Skool / School')).toBeVisible()
+  await expect(page.getByText('類 Substack')).toBeVisible()
+
+  await page.locator('.setup-choice-card').filter({ hasText: '出版訂閱通訊' }).getByRole('button').click()
+  await expect(page.locator('.topbar h1')).toHaveText('Signal Brief 策略通訊')
+  await expect(page.getByText('調整出版品牌、文章與訂閱設定')).toBeVisible()
+  await expect(page.locator('.nav-list').getByRole('button', { name: '課程', exact: true })).toHaveCount(0)
+
+  await page.locator('.setup-choice-card').filter({ hasText: '全功能會員社群' }).getByRole('button').click()
+  await expect(page.locator('.topbar h1')).toHaveText('Skills School 職能加速社群')
+  await expect(page.getByText('調整品牌、內容與會員設定')).toBeVisible()
+  await expect(page.locator('.nav-list').getByRole('button', { name: '課程', exact: true })).toBeVisible()
+
+  await expectNoHorizontalOverflow(page)
+  await expectDesktopSpacingBreathes(page)
+  await expectNoDemoCopy(page)
+  await expectSharedVisualTokens(page)
+  await expectReadableTypography(page)
+  await expectConsistentSpacingAndTextMetrics(page)
+  await expectNoLayoutCollisions(page)
+  await expectDetailLayoutQuality(page)
+  await attachViewportScreenshot(page, testInfo, 'setup-product-mode')
+
+  expect(consoleErrors.errors).toEqual([])
+})
+
 test('admin can edit fork-ready site settings and newsletter configuration', async ({ page }, testInfo) => {
   const consoleErrors = collectConsoleErrors(page)
 

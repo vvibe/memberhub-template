@@ -6,6 +6,7 @@
 
 - 可以在本機免 key 跑完整體驗：登入、內容、付費牆、課程進度、社群、打卡、Newsletter、會員自助與後台。
 - 內建兩組正式案例：Skills School 學習社群與 Signal Brief 內容訂閱站。
+- Fork 時應先選產品模式：`skills-school` 是全功能會員社群，類 Skool / School；`signal-brief` 是出版訂閱通訊，類 Substack。
 - 可以先用 localStorage 驗證產品流程，再把資料層換成 InsForge。
 - 已包含 Portaly Vibe MCP 專案設定、InsForge migration、選配金流 function 範例、Playwright QA。
 
@@ -54,6 +55,13 @@ AI Agent 必須先完成本機體驗、前台、登入、InsForge、Portaly Vibe
 - localStorage 只適合本機驗證，不適合保存正式會員、付款或發票資料。
 - Live mode、正式付款、取消訂閱、恢復訂閱、手動補單都需要使用者再次明確同意。
 
+### 產品模式選擇
+
+| 模式 | 適合誰 | 會啟用的主要功能 |
+| --- | --- | --- |
+| `skills-school` 全功能會員社群 | 課程、教練、陪跑、社群、挑戰活動、會員制學習產品 | 課程進度、社群討論、打卡挑戰、活動、會員目錄、Newsletter、方案與完整營運後台 |
+| `signal-brief` 出版訂閱通訊 | Newsletter、專欄、研究報告、付費文章、個人出版站 | 公開文章、付費文章、段落付費牆、限時免費公開、Newsletter、訂閱方案、讀者與出版後台 |
+
 ### Fork 後最小流程
 
 ```bash
@@ -89,7 +97,7 @@ Production 前再做：
 ### What works immediately
 
 - The local experience runs without keys and includes login, content, paywalls, course progress, community, check-ins, newsletters, member self-service, and admin operations.
-- Four presets can be adapted quickly: baking community, design education, fitness coaching, and finance newsletter.
+- Two production-style product modes can be adapted quickly: `skills-school` for a full-feature membership community, similar to Skool / School; and `signal-brief` for a publication subscription site, similar to Substack.
 - You can validate product flows with localStorage first, then replace the data layer with InsForge.
 - The repo includes project-scoped Portaly Vibe MCP config, an InsForge migration, optional payment function examples, and Playwright QA.
 
@@ -131,6 +139,13 @@ The AI agent must finish the local experience, frontend, login, InsForge, and Po
 - RLS must be tested for membership state, content access, and admin roles. Do not disable RLS for convenience.
 - localStorage is for local validation only, not production member/payment/invoice records.
 - Live mode, real payment collection, subscription cancellation/resume, and manual payment completion require explicit user confirmation.
+
+### Product Mode Choice
+
+| Mode | Best for | Main modules |
+| --- | --- | --- |
+| `skills-school` full-feature membership community | Courses, coaching, cohorts, community, challenges, and learning memberships | Course progress, community discussions, check-ins, events, member directory, newsletter, plans, and full operations admin |
+| `signal-brief` publication subscription | Newsletters, columns, research reports, paid posts, and personal publications | Public posts, paid posts, paragraph paywalls, limited-free publishing, newsletters, subscription plans, readers, and publisher admin |
 
 ### Minimum fork flow
 

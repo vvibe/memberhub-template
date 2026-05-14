@@ -7,8 +7,12 @@ fs.mkdirSync(outDir, { recursive: true })
 
 const payload = {
   generatedAt: new Date().toISOString(),
-  note: 'MemberHub ships demo presets in src/data/presets.ts. This file is a marker for deploy pipelines that expect a seed artifact.',
-  presets: ['baking-community', 'design-teacher', 'fitness-coach', 'finance-newsletter'],
+  note: 'MemberHub ships two fork-ready product modes in src/data/presets.ts. This file is a marker for deploy pipelines that expect a seed artifact.',
+  presets: ['skills-school', 'signal-brief'],
+  productModes: {
+    'skills-school': 'Full-feature membership community, similar to Skool / School.',
+    'signal-brief': 'Publication subscription, similar to Substack.',
+  },
 }
 
 fs.writeFileSync(path.join(outDir, 'preview-seed.json'), JSON.stringify(payload, null, 2))

@@ -18,6 +18,7 @@
 - [ ] `.env.local` is ignored by Git.
 - [ ] README starts with a clear user-facing explanation of what this project can do.
 - [ ] `docs/fork-readiness.md` is current and linked from both README files.
+- [ ] Fork user has selected one product mode before customization: `skills-school` full-feature membership community, or `signal-brief` publication subscription.
 - [ ] `.mcp.json` defines project-scoped `portaly-vibe` MCP over HTTP.
 - [ ] `.cursor/mcp.json` defines project-scoped `portaly-vibe` MCP for Cursor.
 - [ ] Real MCP tokens are kept out of Git.
@@ -28,6 +29,7 @@
 - [ ] RLS policies have been tested with at least guest, free member, paid member, and admin roles.
 - [ ] Local case data can be loaded.
 - [ ] Skills School and Signal Brief cases can be switched without source-code rewrites.
+- [ ] Setup page explains both product modes and can switch between them in the local preview.
 - [ ] Admin base editing can update site title, hero copy, plans, content/paywall state, Newsletter send settings, and course/community settings only when that case enables them.
 - [ ] Substack-style cases do not show unrelated course, community, check-in, member directory, or event modules in the frontend or admin.
 
