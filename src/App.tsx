@@ -555,7 +555,7 @@ function JoinView({
   const memberPlan = preset.plans.find((plan) => plan.highlighted) ?? preset.plans[1]
 
   return (
-    <section className="section-block">
+    <section className="section-block join-section">
       <div className="section-heading horizontal">
         <div>
           <span className="eyebrow">{preset.id === 'skills-school' ? 'Join the community' : 'Subscribe'}</span>

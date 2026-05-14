@@ -35,6 +35,8 @@ for (const viewCase of viewCases) {
     await expect(page.getByText(viewCase.expectedText, { exact: true })).toBeVisible()
 
     await expectNoHorizontalOverflow(page)
+    await expectMobileContentStartsInFirstViewport(page)
+    await expectDesktopSpacingBreathes(page)
     await expectNoDemoCopy(page)
     await expectLayoutRhythmMatchesHome(page, homeRhythm)
     await expectSharedVisualTokens(page)
@@ -83,6 +85,8 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   await expect(page.getByRole('button', { name: '今日已打卡' }).first()).toBeVisible()
 
   await expectNoHorizontalOverflow(page)
+  await expectMobileContentStartsInFirstViewport(page)
+  await expectDesktopSpacingBreathes(page)
   await expectNoDemoCopy(page)
   await expectSharedVisualTokens(page)
   await expectReadableTypography(page)
@@ -123,6 +127,8 @@ test('Skills School and SuperStake reference cases are both usable', async ({ pa
   await expect(page.getByRole('heading', { name: '把公開文章、深度專欄與會員社群放在自己的網站' })).toBeVisible()
 
   await expectNoHorizontalOverflow(page)
+  await expectMobileContentStartsInFirstViewport(page)
+  await expectDesktopSpacingBreathes(page)
   await expectNoDemoCopy(page)
   await expectSharedVisualTokens(page)
   await expectReadableTypography(page)
@@ -146,6 +152,8 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
   await expect(page.getByRole('heading', { name: '公開文章：AI 工具從嘗鮮走向日常工作的三個訊號' }).first()).toBeVisible()
 
   await expectNoHorizontalOverflow(page)
+  await expectMobileContentStartsInFirstViewport(page)
+  await expectDesktopSpacingBreathes(page)
   await expectNoDemoCopy(page)
   await expectSharedVisualTokens(page)
   await expectReadableTypography(page)
@@ -182,6 +190,80 @@ async function expectNoHorizontalOverflow(page: Page) {
 
   expect(overflow.documentWidth, JSON.stringify(overflow)).toBeLessThanOrEqual(overflow.viewportWidth + 1)
   expect(overflow.bodyWidth, JSON.stringify(overflow)).toBeLessThanOrEqual(overflow.viewportWidth + 1)
+}
+
+async function expectMobileContentStartsInFirstViewport(page: Page) {
+  const mobileLayout = await page.evaluate(() => {
+    if (window.innerWidth > 680) return null
+
+    const sidebar = document.querySelector('.sidebar')?.getBoundingClientRect()
+    const workspace = document.querySelector('.workspace')?.getBoundingClientRect()
+    const topbar = document.querySelector('.topbar')?.getBoundingClientRect()
+    const navList = document.querySelector('.nav-list') as HTMLElement | null
+
+    return {
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      sidebarHeight: Math.round(sidebar?.height ?? 0),
+      workspaceTop: Math.round(workspace?.top ?? 0),
+      topbarTop: Math.round(topbar?.top ?? 0),
+      navHeight: Math.round(navList?.getBoundingClientRect().height ?? 0),
+      navCanScrollWithinItself: navList ? navList.scrollWidth >= navList.clientWidth : false,
+    }
+  })
+
+  if (!mobileLayout) return
+
+  expect(mobileLayout.documentWidth, JSON.stringify(mobileLayout)).toBeLessThanOrEqual(mobileLayout.viewportWidth + 1)
+  expect(mobileLayout.sidebarHeight, 'mobile navigation should be compact enough for page content to enter the first viewport').toBeLessThanOrEqual(240)
+  expect(mobileLayout.workspaceTop, 'workspace should start shortly after the compact mobile navigation').toBeLessThanOrEqual(240)
+  expect(mobileLayout.topbarTop, 'page title and actions should not be pushed below the first mobile viewport').toBeLessThanOrEqual(260)
+  expect(mobileLayout.navHeight, 'mobile navigation should stay one compact horizontal row').toBeLessThanOrEqual(48)
+  expect(mobileLayout.navCanScrollWithinItself, 'mobile navigation should scroll horizontally instead of stretching the page').toBe(true)
+}
+
+async function expectDesktopSpacingBreathes(page: Page) {
+  const desktopLayout = await page.evaluate(() => {
+    if (window.innerWidth < 1081) return null
+
+    const readBox = (selector: string) => {
+      const element = document.querySelector(selector)
+      if (!element) return null
+      const rect = element.getBoundingClientRect()
+      const style = window.getComputedStyle(element)
+      return {
+        width: Math.round(rect.width),
+        paddingTop: Math.round(Number.parseFloat(style.paddingTop) || 0),
+        paddingRight: Math.round(Number.parseFloat(style.paddingRight) || 0),
+        paddingBottom: Math.round(Number.parseFloat(style.paddingBottom) || 0),
+        paddingLeft: Math.round(Number.parseFloat(style.paddingLeft) || 0),
+        gap: Math.round(Number.parseFloat(style.gap) || 0),
+        marginBottom: Math.round(Number.parseFloat(style.marginBottom) || 0),
+      }
+    }
+
+    return {
+      workspace: readBox('.workspace'),
+      topbar: readBox('.topbar'),
+      section: readBox('.section-block'),
+      sectionHeading: readBox('.section-heading'),
+      grid: readBox('.plan-grid, .course-grid, .challenge-grid, .event-grid, .newsletter-grid, .setup-grid, .self-service-grid, .auth-layout'),
+      panel: readBox('.plan-card, .course-panel, .challenge-card, .event-card, .newsletter-panel, .member-card, .admin-panel, .auth-card'),
+    }
+  })
+
+  if (!desktopLayout) return
+
+  expect(desktopLayout.workspace?.width, JSON.stringify(desktopLayout)).toBeLessThanOrEqual(1360)
+  expect(desktopLayout.workspace?.paddingLeft, JSON.stringify(desktopLayout)).toBeGreaterThanOrEqual(34)
+  expect(desktopLayout.topbar?.marginBottom, JSON.stringify(desktopLayout)).toBeGreaterThanOrEqual(24)
+  if (desktopLayout.section) {
+    expect(desktopLayout.section.paddingLeft, JSON.stringify(desktopLayout)).toBeGreaterThanOrEqual(28)
+    expect(desktopLayout.section.paddingRight, JSON.stringify(desktopLayout)).toBeGreaterThanOrEqual(28)
+  }
+  if (desktopLayout.sectionHeading) expect(desktopLayout.sectionHeading.marginBottom, JSON.stringify(desktopLayout)).toBeGreaterThanOrEqual(24)
+  if (desktopLayout.grid) expect(desktopLayout.grid.gap, JSON.stringify(desktopLayout)).toBeGreaterThanOrEqual(18)
+  if (desktopLayout.panel) expect(desktopLayout.panel.paddingLeft, JSON.stringify(desktopLayout)).toBeGreaterThanOrEqual(22)
 }
 
 async function expectNoDemoCopy(page: Page) {
@@ -418,7 +500,7 @@ async function expectConsistentSpacingAndTextMetrics(page: Page) {
         }
       })
       .filter((item) => {
-        const expected = window.innerWidth <= 680 ? '18px' : '22px'
+        const expected = window.innerWidth <= 680 ? '18px' : '28px'
         return item.padding.some((value) => value !== expected)
       })
 
@@ -446,7 +528,10 @@ async function expectConsistentSpacingAndTextMetrics(page: Page) {
           borderStyle: style.borderStyle,
         }
       })
-      .filter((item) => item.padding.some((value) => value !== '18px') || item.radius !== '8px' || item.borderStyle !== 'solid')
+      .filter((item) => {
+        const expectedPadding = window.innerWidth <= 680 ? '18px' : '22px'
+        return item.padding.some((value) => value !== expectedPadding) || item.radius !== '8px' || item.borderStyle !== 'solid'
+      })
 
     const clippedControls = Array.from(document.querySelectorAll('button, .pill, .status-pill, [data-slot="select-trigger"]'))
       .filter(isVisible)

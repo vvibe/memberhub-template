@@ -53,6 +53,27 @@ Default to shadcn/ui for interface work.
 - Compose pages from shadcn primitives first. Avoid adding one-off custom controls when a shadcn primitive exists.
 - Keep the clean MemberHub visual direction: white surfaces, fine borders, low shadow, compact product-dashboard spacing.
 
+## UI Design QA Method
+
+Before finishing any web design or frontend layout change, use `docs/ui-system.md` as the canonical UI checklist. Do not rely on `npm run build` alone.
+
+Use this order:
+
+1. Confirm the change uses the shared tokens and page primitives before adding new one-off spacing.
+2. Check desktop density at `1440x1000` and wide desktop at `2048x1152`; content must stay centered and must not stretch endlessly on wide screens.
+3. Check mobile at `390x844`; the main content must enter the first viewport and navigation must not push the page below the fold.
+4. Verify CSS layout guardrails: `max-width`, `min-width: 0`, `minmax(0, 1fr)`, `overflow-wrap`, consistent grid gaps, and no horizontal overflow.
+5. Run geometry-based Playwright assertions for spacing, text scale, control clipping, and layout collisions.
+6. Use screenshots as evidence for key surfaces, but prefer measured assertions for spacing regressions because screenshots alone can miss the reason a layout feels crowded.
+
+Required command before calling UI work complete:
+
+```bash
+npm run test:qa
+```
+
+This suite must pass at 100%. It covers mobile, desktop, and wide desktop viewports.
+
 ## Install Intake
 
 Before implementation, ask what the user wants to build:

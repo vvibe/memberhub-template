@@ -2,6 +2,33 @@
 
 MemberHub uses a restrained product UI system so forked verticals stay coherent. Follow this file before changing component styles.
 
+## UI QA Method
+
+Use this method for every layout or visual change. The goal is to catch crowded desktop layouts, mobile navigation pushing content out of view, hidden overflow, and inconsistent component spacing before the change ships.
+
+1. **Token first**: change shared CSS variables or existing primitives before adding one-off spacing.
+2. **Page width first**: desktop content should be centered and capped; wide screens should add outer whitespace, not stretch cards forever.
+3. **Density by viewport**: mobile is compact, desktop is comfortable, wide desktop is constrained.
+4. **Layout guardrails**: use `max-width`, `min-width: 0`, `minmax(0, 1fr)`, `overflow-wrap: anywhere`, and CSS Grid instead of fragile flex width math.
+5. **Measured QA**: Playwright must check geometry, not only screenshots.
+6. **Visual evidence**: capture screenshots for key pages after measured tests pass.
+
+Required viewport coverage:
+
+- Mobile: `390x844`
+- Desktop: `1440x1000`
+- Wide desktop: `2048x1152`
+
+Required Playwright checks:
+
+- No document or body horizontal overflow.
+- Mobile navigation stays compact and main content starts in the first viewport.
+- Desktop workspace width is capped and centered.
+- Section padding, panel padding, grid gap, and section heading spacing meet the shared density rules.
+- Text uses approved font sizes, line heights, letter spacing, and weights.
+- Buttons, pills, and select triggers do not clip text.
+- Visible panels, rows, controls, and cards do not overlap.
+
 ## Typography
 
 - Body copy: 14px, regular weight.
@@ -26,6 +53,13 @@ MemberHub uses a restrained product UI system so forked verticals stay coherent.
 
 - Card radius: 8px.
 - Section and panel borders use `--border`.
+- Desktop workspace max width: 1360px.
+- Desktop workspace padding: 34px.
+- Desktop section padding: 28px.
+- Desktop panel/card padding: 22px.
+- Desktop grid gap: 18px.
+- Mobile workspace padding: 14px.
+- Mobile section and panel/card padding: 18px.
 - Avoid nested card styling unless the inner item is a repeated list row.
 - Use low shadows only on hover or popovers.
 
