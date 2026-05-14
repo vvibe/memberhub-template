@@ -1,0 +1,13 @@
+node_modules
+node_modules*
+dist
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+seed/generated
+.vercel
+test-results
+playwright-report
+.mcp.local.json
+.cursor/mcp.local.json

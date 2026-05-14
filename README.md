@@ -1,0 +1,366 @@
+# MemberHub - 訂閱會員 / 課程 / 社群平台
+
+> 給創作者 fork 出自家的「Substack + Patreon + Skool」：付費牆內容、訂閱方案、課程進度、社群討論、打卡挑戰、Newsletter 與 Webinar 都先準備好。
+
+[English README](./README.en.md)
+
+## 最上面先看
+
+- 可以直接 fork、`npm ci`、`npm run dev` 跑 demo；本機 demo 不需要任何 API key。
+- 要上 production 才需要申請 InsForge 和 Portaly Vibe key，並把值放在 `.env.local` 或部署平台 secret manager。
+- 可能產生成本的項目：InsForge、Portaly Vibe / 金流手續費、部署平台、網域、Email/LINE 通知、發票或電子發票服務。這個 repo 不會替你自動開啟任何付費服務。
+- 預設不啟用 live 金流。AI Agent 必須在前台、登入、InsForge、Portaly Vibe 都設定完成後，才詢問是否啟用金流、訂閱方案與發票流程。
+- 安全重點：不要 commit 真實 key；`ALLOWED_ORIGINS` 要改成正式網域；RLS policy、付款 webhook、發票流程要在 test mode 驗證後才能上線。
+- 完成標準：`npm run check:integrations`、`npm run build`、`npm run test:qa` 都要通過。
+
+完整 fork 檢查表：[`docs/fork-readiness.md`](./docs/fork-readiness.md)
+
+## 線上示範
+
+- Production demo: https://memberhub-coral.vercel.app/
+- Vercel project: `memberhub`
+- 目前預設範例：`SweetCrumb 烘焙研究室`，示範料理 / 烘焙會員站如何使用同一套前台、登入、會員自助與後台營運系統。
+
+## 這是什麼
+
+MemberHub 是一個可以放到 GitHub 的完整開源輪子，目標是讓創作者、教練、老師、顧問和社群經營者快速 fork 出自己的付費會員平台。
+
+這不是只有文件或設計稿。這個資料夾已包含可執行的 Vite + React 服務、四組可切換 vertical presets、demo data、付費牆、Newsletter、推薦贈閱、全站搜尋、會員目錄、課程資源、社群審核、打卡、活動、會員自助、完整營運後台、InsForge migration 與 Portaly webhook 骨架。下載後可以先用 mock/localStorage 跑完整 demo，再接 InsForge 和 Portaly 變成 production 服務。
+
+前端統一使用 React。UI 組件預設使用 shadcn/ui primitives（`components.json` 與 `src/components/ui/*` 已建立），視覺方向是簡潔俐落的產品工具介面：白底、細線、低陰影、清楚資訊層級、8px/12px 圓角與黑色主按鈕，方便 fork 到不同領域時保留專業感。
+
+這個 repo 的首頁先用中文，因為主要使用者會是中文創作者與 vibe coder；英文版放在 `README.en.md`，方便國際使用者、AI agent 和 GitHub 訪客理解同一套架構。
+
+## 文案撰寫角度
+
+所有網站、demo、preset、seed data 與 README 產出的文案，預設都要站在使用這套系統的創作者、老師、教練或社群經營者角度撰寫。前台文案要像他們對自己的會員、學員、讀者說話；後台文案要像他們自己每天營運服務時會看到的工作介面。
+
+避免把文案寫成「我們把這套輪子賣給客戶」或「代理商交付專案」的角度。只有在 repo 說明、AI 安裝指引或商業模式文件需要解釋 fork/adapt 時，才使用輪子、模板、安裝、串接這類工程語言。
+
+## 適合誰使用
+
+- 設計師教學：付費文章、作品講評、直播課、學員作業牆
+- 健身教練：月費會員、訓練課表、打卡挑戰、Webinar
+- 料理 / 烘焙社群：食譜付費牆、課程進度、會員討論區
+- 財經 newsletter：免費/付費文章、年度訂閱、專屬社群
+- 語言教師：課程單元、作業回饋、班級討論、學習進度
+- 心靈成長社群：內容庫、打卡、月費會員、活動報名
+- 任何想把知識、陪跑、內容或社群包裝成訂閱產品的人
+
+## 可以經營哪些服務
+
+這個輪子不是只做單一課程網站，而是可垂直化的會員商業系統。使用者可以把自己的內容、課程、社群或陪跑服務經營成：
+
+- 線上課程平台
+- 付費 newsletter 平台
+- 會員社群平台
+- 教練陪跑系統
+- 專家訂閱內容庫
+- 行業顧問會員站
+- 自有品牌會員服務
+- 企業內訓 / 會員學院
+
+改不同領域時，優先修改 `src/data/presets.ts`、`src/types.ts`、`src/lib/store.ts` 的預設 preset、`docs/ai-install-intake.md` 的安裝詢問清單，以及首頁/後台文案，不要先重寫核心邏輯。
+
+## 立即啟動
+
+```bash
+npm ci
+cp .env.example .env.local
+npm run dev
+```
+
+打開：
+
+```text
+http://127.0.0.1:5176/
+```
+
+建置 production bundle：
+
+```bash
+npm run build
+```
+
+跑完整 Playwright QA：
+
+```bash
+npm run test:qa
+```
+
+`test:qa` 會先建置最新 production bundle，再用 Vite preview 跑 Playwright。完成條件是 100% 通過：目前測試涵蓋 13 個主要 view、desktop `1440x1000`、mobile `390x844`、console error、橫向溢出、共享 UI tokens、字重/字級規範、viewport screenshot 與主要互動流程。
+
+目前 demo 不需要任何 key 就能跑；production 才需要 InsForge 和 Portaly Vibe key。
+
+建議 Node 版本：`^22.13.0 || ^20.12.0`。
+
+## Demo 中可實際操作的功能
+
+這個 repo 不是靜態展示頁。下載後不接任何後端，也可以用 localStorage 操作以下流程：
+
+- 登入 / 登出 demo 會員或管理員
+- 切換不同 vertical preset
+- 使用發文編輯器新增文章、摘要、分類、內容類型與付費牆狀態
+- 新文章發布後會出現在內容列表、全站搜尋與後台內容管理
+- 模擬加入付費方案並解鎖付費牆內容
+- 搜尋內容庫與全站搜尋
+- 完成課程單元並保留完成狀態
+- 完成打卡挑戰並保留今日打卡狀態
+- 新增 Newsletter issue 草稿
+- 建立推薦 / 贈閱活動碼
+- 邀請 demo 會員
+- 從邀請會員產生入會審核待辦
+- 從「入會問題」進入後台 moderation queue
+- 查看會員自助、收據/發票 webhook fixture、推薦贈閱與後台營運面板
+
+Production 時，把 `src/lib/store.ts` 的 localStorage state 替換為 InsForge CRUD；金流、訂閱、發票和 Portaly Portal 則等核心功能完成後，再依照 README 的 AI Agent 順序詢問使用者是否啟用。
+
+## 專案結構
+
+```text
+src/
+  App.tsx                 # 完整前台/會員/後台 UI
+  components/ui/          # shadcn/ui primitives：button、card、badge、input、select、table 等
+  data/presets.ts         # 可切換業態：烘焙會員社群、設計教學、健身教練、財經 newsletter
+  lib/insforge.ts         # InsForge browser SDK client factory
+  lib/store.ts            # localStorage demo state，可替換成 InsForge DB
+  lib/portaly.ts          # Portaly checkout/webhook fixture helper
+  styles.css              # 產品 UI 樣式
+migrations/
+  20260511210000_memberhub.sql
+insforge/functions/
+  portaly-checkout/index.ts
+  portaly-webhook/index.ts
+docs/
+  ai-install-intake.md
+  launch-checklist.md
+  mcp-setup.md
+  substack-skool-feature-check.md
+```
+
+## 核心功能
+
+- 付費牆內容：免費預覽、會員限定文章、鎖定影片、資源下載
+- 訂閱方案：月繳、年繳、終身買斷、免費會員、試用方案
+- Newsletter：issue 排程、免費/付費分眾、歡迎信、Email/LINE/站內通知狀態
+- 成長機制：推薦碼、付費會員贈閱、來源歸因、付費轉換記錄
+- 課程進度：章節、單元、完成狀態、進度百分比、學習記錄
+- 課程資源：檔案、連結、逐字稿、template、課程討論串連結
+- 社群討論：主題串、留言、公告、會員專屬討論區
+- 社群管理：分類、置頂、公告、管理員限定分類、排序、入會問題、檢舉、AutoMod 風險、封鎖
+- 互動機制：留言、回覆、按讚/反應、會員個人頁、站內通知
+- 搜尋：搜尋文章、課程、討論串、留言、會員
+- 會員目錄：會員 profile、角色、等級、貢獻、來源、風險狀態
+- 打卡挑戰：每日/每週打卡、連續天數、挑戰任務、排行榜
+- 遊戲化：積分、等級、排行榜、等級解鎖課程或社群權限
+- Email / LINE Newsletter：新內容通知、課程提醒、活動通知
+- Podcast / Video / Live：影片內容、音訊內容、直播、回放、付費預覽
+- Webinar / Calendar：活動頁、報名、行事曆、提醒、回放內容
+- 完整管理後台：營運總覽、會員表、訂閱狀態、內容排程、課程進度、社群審核、活動管理、金流/發票狀態、整合設定
+- 會員自助：更新付款方式、查看收據/發票狀態、取消訂閱、查看會員方案
+- Portaly Vibe 面板：產品優化建議、會員狀態、金流狀態、風險提醒
+
+## 系統架構
+
+建議使用以下系統組合：
+
+- Frontend: Vite React（目前模板已實作），也可改成 Next.js React
+- UI Components: shadcn/ui（目前已初始化 `components.json`，並安裝 button、card、badge、input、select、table、separator、alert）
+- Backend: InsForge Auth、Postgres、RLS、Edge Functions、Storage
+- Product optimization: Portaly Vibe 產品優化工具
+- Payment: Portaly Vibe hosted checkout，可接訂閱、一次性付款、折扣碼
+- Invoice: 可接發票 / 電子發票流程；由 Portaly、發票服務或商家既有系統處理，MemberHub 保存付款、發票任務與 webhook 狀態
+- Analytics: Portaly Vibe + GA4 事件追蹤
+- Messaging: Email provider、LINE Messaging API 或 webhook adapter
+
+## 已預設整合
+
+這個輪子假設已經安裝 Portaly Vibe 產品優化工具。使用者只需要申請並填入：
+
+- InsForge 專案 URL
+- InsForge anon key
+- InsForge server/API key（只放 server-side secrets）
+- Portaly Vibe API key
+- Portaly callback secret
+- Allowed origins，例如 production 網域與本機開發網址
+
+`npm ci` 會一起安裝 `@insforge/sdk`、`@insforge/cli` 與 Playwright QA 工具；fork 的人不需要另外猜要裝哪些套件。InsForge migration、browser SDK client、Portaly checkout Edge Function、Portaly callback Edge Function、AI 安裝問答與 launch checklist 都已放在 repo 內。
+
+這個輪子也包含 project-scoped Portaly Vibe MCP 設定：
+
+- `.mcp.json`
+- `.cursor/mcp.json`
+
+MCP server 名稱是 `portaly-vibe`，HTTP URL 是 `https://mcp.portaly.ai`，Authorization header 範本是 `Bearer <YOUR_TOKEN>`。請在 fork 後把 `<YOUR_TOKEN>` 換成自己的 Portaly Vibe MCP token；不要把真 token commit 到 GitHub。更多說明見 `docs/mcp-setup.md`。
+
+可用指令：
+
+```bash
+npm run check:integrations
+npm run insforge:link
+npm run insforge:migrate
+npm run insforge:functions:deploy
+```
+
+不要把任何 secret commit 到 GitHub。請只提交 `.env.example`，把真正的值放在 `.env.local` 或部署平台的 secret manager。
+
+## AI Agent 必讀
+
+如果你是 AI agent，請照這個順序協助使用者：
+
+1. 先照 `docs/ai-install-intake.md` 詢問使用者想建立哪種會員服務、需要哪些前台頁面、內容類型、會員功能、登入方式與通知通道。
+2. 先確認 app 可以在本機跑起來。
+3. 先設定前台功能與登入功能；production 預設建議 InsForge Google OAuth。
+4. 先完成 InsForge 設定：Auth、資料表、RLS、Storage、Edge Functions。
+5. 先完成 Portaly Vibe 產品優化工具設定：會員同步、產品狀態、分析事件、安全檢查狀態。
+6. 先讓 demo seed data 可用，並確認三個 vertical presets 可以切換。
+7. 在其他系統都裝好後，才詢問使用者：「是否需要啟用金流、訂閱方案與發票流程？」
+8. 如果使用者要啟用金流，預設先用 Portaly test key，不要直接跑 live mode。
+9. 如果要 live mode、建立正式方案、取消訂閱、恢復訂閱、手動完成付款，都必須再次取得使用者明確同意。
+10. 不要要求使用者把 API key 或 callback secret 貼到聊天裡；請引導他們自行放到 `.env.local` 或 secret manager。
+
+### 安裝時 AI 必問
+
+安裝或 fork 時，AI 需要先問：
+
+- 要建立哪一種會員服務？
+- 需要哪些前台頁面？
+- 需要哪些內容類型？例如文章、影片、Podcast、直播回放、下載資源、課程單元、打卡挑戰、討論串、Newsletter。
+- 需要哪些會員功能？例如免費會員、月費、年費、終身方案、課程進度、積分等級、排行榜、會員自助。
+- 登入方式要用 Google OAuth、email magic link 還是 email/password？
+- 是否需要 Email 或 LINE 通知？
+- 金流、訂閱與發票是否先等核心功能完成後再啟用？
+
+### 建議問使用者的金流問題
+
+在核心系統完成後再問：
+
+```text
+是否需要啟用金流、訂閱方案與發票流程？
+
+如果需要，我會使用 Portaly Vibe hosted checkout，先從 test key 開始，並設定月繳、年繳、終身方案、付款 callback、訂閱狀態同步與發票任務記錄。
+```
+
+## 環境變數
+
+複製 `.env.example` 成 `.env.local`：
+
+```bash
+cp .env.example .env.local
+```
+
+| Variable | Purpose | Client exposed |
+| --- | --- | --- |
+| `VITE_INSFORGE_URL` | InsForge frontend/API base URL | Yes |
+| `VITE_INSFORGE_ANON_KEY` | InsForge anon key for browser SDK | Yes |
+| `INSFORGE_API_KEY` | Server-side InsForge admin/API operations | No |
+| `PORTALY_API_KEY` | Portaly Vibe server-side API calls | No |
+| `PORTALY_CALLBACK_SECRET` | Verify Portaly payment callbacks | No |
+| `PORTALY_API_HOST` | Portaly API host, default `https://portaly.cc` | No |
+| `PORTALY_MCP_TOKEN` | Portaly Vibe MCP token for local Coding Agent setup | No |
+| `APP_BASE_URL` | Local or production app URL | No |
+| `ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call checkout function | No |
+| `GA_MEASUREMENT_ID` | Optional GA4 tracking ID | Yes/optional |
+| `LINE_CHANNEL_ACCESS_TOKEN` | Optional LINE notifications | No/optional |
+
+## 建議資料模型
+
+- `profiles`: 使用者基本資料與角色
+- `memberships`: 會員身份、方案、狀態、到期日
+- `plans`: 免費、月繳、年繳、終身、企業方案
+- `content_items`: 文章、影片、下載資源、付費牆設定；demo 發文編輯器對應這張表
+- `media_items`: Podcast、Video、Live replay、付費預覽設定
+- `newsletter_issues`: Email issue、分眾、排程、開信/點擊與付費轉換
+- `courses`: 課程與章節集合
+- `lessons`: 單元內容、排序、預覽權限
+- `course_resources`: 課程檔案、連結、逐字稿與模板
+- `lesson_progress`: 會員課程進度
+- `communities`: 社群空間或 cohort
+- `community_categories`: 討論分類、權限、排序
+- `discussion_threads`: 討論串與公告
+- `discussion_comments`: 留言與回覆
+- `reactions`: 按讚、表情反應、積分來源
+- `member_points`: 積分、等級、排行榜
+- `challenges`: 打卡挑戰
+- `checkins`: 打卡紀錄
+- `events`: Webinar、Live、社群活動、行事曆
+- `notifications`: Email、LINE、站內通知記錄
+- `referrals`: 推薦碼、來源、折扣碼歸因
+- `moderation_items`: 入會審核、檢舉、AutoMod、付款爭議處理
+- `membership_questions`: Skool-style 入會問題與審核
+- `payment_events`: Portaly callback、付款、訂閱與發票任務狀態
+- `subscriber_metrics`: 訂閱者成長、內容表現、來源分析
+- `vibe_sync_state`: Portaly Vibe 同步狀態、安全檢查、產品建議
+
+## Substack / Skool 基礎功能對照
+
+已整理研究與功能對照：
+
+- [Substack / Skool Competitive Feature Check](./docs/substack-skool-feature-check.md)
+
+結論：MemberHub 的規格已覆蓋 Substack 和 Skool 的基礎功能。需要注意的是，Substack 的平台推薦網路與 Skool 的平台 discovery/affiliate 屬於平台網路效應，MemberHub 以 referral、來源追蹤、推薦碼、分享與 Portaly/GA4 analytics 方式提供可自架的替代能力。
+
+## Vertical Presets
+
+第一版建議至少附三組 seed presets：
+
+1. `design-teacher`: 設計師教學會員站
+2. `fitness-coach`: 健身教練月費社群
+3. `finance-newsletter`: 財經付費 newsletter
+
+後續可以再加：
+
+- `cooking-community`
+- `language-teacher`
+- `wellness-community`
+- `b2b-training-academy`
+
+## Fork 後如何客製
+
+1. 複製 `src/data/presets.ts` 裡任一 preset。
+2. 修改品牌名稱、主色、文案、方案、內容、課程、討論串、挑戰、活動與會員 seed。
+3. 新增 UI 時先使用 `src/components/ui/*` 裡的 shadcn components；需要新元件時用 `npx shadcn@latest add <component>`。
+4. 確認本機 demo 可以用新 preset 跑起來。
+5. 套用 `migrations/20260511210000_memberhub.sql` 到 InsForge。
+6. 把 `src/lib/store.ts` 的 localStorage demo state 換成 InsForge SDK CRUD。
+7. 部署 `insforge/functions/portaly-checkout/index.ts` 與 `insforge/functions/portaly-webhook/index.ts`。
+8. 等核心流程跑通後，再接 Portaly hosted checkout、發票與正式訂閱方案。
+
+## 上線檢查
+
+- 本機可以完成登入、瀏覽免費內容、查看付費牆。
+- `npm run check:integrations` 通過。
+- `npm run test:qa` 通過率 100%。
+- 已閱讀 [`docs/fork-readiness.md`](./docs/fork-readiness.md)，並把可能費用、production 前置設定與安全界線說清楚。
+- `ALLOWED_ORIGINS` 已改成正式網域，不保留不需要的測試來源。
+- RLS policies 已依照內容權限、會員身份與 admin 角色完成測試。
+- 會員可以進入課程、更新進度、留言、打卡。
+- 管理員可以建立內容、方案、課程、活動。
+- Portaly Vibe 可以看到會員同步、產品狀態與分析事件。
+- Payment callback fixture 可以更新會員方案狀態。
+- 發票任務或發票狀態有資料表記錄。
+- README、`.env.example`、demo seed、screenshots 都已更新。
+
+## GitHub 發布建議
+
+建議 repo 名稱：
+
+```text
+memberhub-insforge-portaly
+```
+
+建議描述：
+
+```text
+A forkable membership, course, and community platform powered by InsForge and Portaly Vibe.
+```
+
+建議 topics：
+
+```text
+membership, courses, community, creator-economy, subscriptions, insforge, portaly, paid-content, newsletter, lms
+```
+
+## License
+
+MIT
