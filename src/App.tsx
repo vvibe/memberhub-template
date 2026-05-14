@@ -2442,11 +2442,24 @@ function MemberView({ preset, state, selectedPlan }: { preset: ReturnType<typeof
 function AdminSettingsEditor({
   preset,
   onUpdatePreset,
+  section = 'all',
 }: {
   preset: VerticalPreset
   onUpdatePreset: (patch: Partial<VerticalPreset>) => void
+  section?: 'all' | 'site' | 'content' | 'newsletter' | 'courses'
 }) {
   const isPublication = isPublicationPreset(preset)
+  const showSite = section === 'all' || section === 'site'
+  const showContent = section === 'all' || section === 'content'
+  const showNewsletter = section === 'all' || section === 'newsletter'
+  const showCourses = section === 'all' || section === 'courses'
+  const editorTitle = {
+    all: isPublication ? '出版站可調整的內容' : 'Fork 後可調整的網站內容',
+    site: isPublication ? '站點、品牌與訂閱方案' : '網站、品牌與會員方案',
+    content: isPublication ? '文章、付費牆與限時免費' : '內容、權限與素材',
+    newsletter: isPublication ? 'Newsletter 發送設定' : '通訊發送設定',
+    courses: '課程標題與說明',
+  }[section]
   const updateBrand = (key: keyof VerticalPreset['brand'], value: string) => {
     onUpdatePreset({ brand: { ...preset.brand, [key]: value } })
   }
@@ -2467,127 +2480,133 @@ function AdminSettingsEditor({
   }
 
   return (
-    <article className="admin-panel span-3 settings-editor">
+    <article className={`admin-panel ${section === 'all' ? 'span-3' : 'span-2'} settings-editor`}>
       <div className="admin-panel-head">
         <div>
           <span className="eyebrow">基礎編輯</span>
-          <h4>{isPublication ? '出版站可調整的內容' : 'Fork 後可調整的網站內容'}</h4>
+          <h4>{editorTitle}</h4>
         </div>
         <StatusPill tone="green">可編輯</StatusPill>
       </div>
 
-      <div className="settings-editor-grid">
-        <label>
-          網站名稱
-          <Input name="productName" value={preset.brand.productName} onChange={(event) => updateBrand('productName', event.target.value)} autoComplete="off" />
-        </label>
-        <label>
-          作者 / 品牌名稱
-          <Input name="creatorName" value={preset.brand.creatorName} onChange={(event) => updateBrand('creatorName', event.target.value)} autoComplete="off" />
-        </label>
-        <label>
-          首頁主標題
-          <Input name="heroTitle" value={preset.copy.heroTitle} onChange={(event) => updateCopy('heroTitle', event.target.value)} autoComplete="off" />
-        </label>
-        <label>
-          主要按鈕
-          <Input name="ctaPrimary" value={preset.copy.ctaPrimary} onChange={(event) => updateCopy('ctaPrimary', event.target.value)} autoComplete="off" />
-        </label>
-        <label className="span-2">
-          首頁介紹
-          <Textarea name="heroBody" value={preset.copy.heroBody} onChange={(event) => updateCopy('heroBody', event.target.value)} autoComplete="off" />
-        </label>
-      </div>
+      {showSite && (
+        <>
+          <div className="settings-editor-grid">
+            <label>
+              網站名稱
+              <Input name="productName" value={preset.brand.productName} onChange={(event) => updateBrand('productName', event.target.value)} autoComplete="off" />
+            </label>
+            <label>
+              作者 / 品牌名稱
+              <Input name="creatorName" value={preset.brand.creatorName} onChange={(event) => updateBrand('creatorName', event.target.value)} autoComplete="off" />
+            </label>
+            <label>
+              首頁主標題
+              <Input name="heroTitle" value={preset.copy.heroTitle} onChange={(event) => updateCopy('heroTitle', event.target.value)} autoComplete="off" />
+            </label>
+            <label>
+              主要按鈕
+              <Input name="ctaPrimary" value={preset.copy.ctaPrimary} onChange={(event) => updateCopy('ctaPrimary', event.target.value)} autoComplete="off" />
+            </label>
+            <label className="span-2">
+              首頁介紹
+              <Textarea name="heroBody" value={preset.copy.heroBody} onChange={(event) => updateCopy('heroBody', event.target.value)} autoComplete="off" />
+            </label>
+          </div>
 
-      <div className="settings-editor-section">
-        <div>
-          <span className="eyebrow">方案設定</span>
-          <h5>訂閱方案、價格與權益</h5>
-        </div>
-        <div className="settings-repeat-grid">
-          {preset.plans.map((plan) => (
-            <div key={plan.id} className="settings-card">
-              <label>
-                方案名稱
-                <Input name={`plan-${plan.id}-name`} value={plan.name} onChange={(event) => updatePlan(plan.id, { name: event.target.value })} autoComplete="off" />
-              </label>
-              <label>
-                價格
-                <Input name={`plan-${plan.id}-price`} value={plan.price} onChange={(event) => updatePlan(plan.id, { price: event.target.value })} autoComplete="off" />
-              </label>
-              <label>
-                說明
-                <Textarea name={`plan-${plan.id}-description`} value={plan.description} onChange={(event) => updatePlan(plan.id, { description: event.target.value })} autoComplete="off" />
-              </label>
+          <div className="settings-editor-section">
+            <div>
+              <span className="eyebrow">方案設定</span>
+              <h5>訂閱方案、價格與權益</h5>
             </div>
-          ))}
-        </div>
-      </div>
+            <div className="settings-repeat-grid">
+              {preset.plans.map((plan) => (
+                <div key={plan.id} className="settings-card">
+                  <label>
+                    方案名稱
+                    <Input name={`plan-${plan.id}-name`} value={plan.name} onChange={(event) => updatePlan(plan.id, { name: event.target.value })} autoComplete="off" />
+                  </label>
+                  <label>
+                    價格
+                    <Input name={`plan-${plan.id}-price`} value={plan.price} onChange={(event) => updatePlan(plan.id, { price: event.target.value })} autoComplete="off" />
+                  </label>
+                  <label>
+                    說明
+                    <Textarea name={`plan-${plan.id}-description`} value={plan.description} onChange={(event) => updatePlan(plan.id, { description: event.target.value })} autoComplete="off" />
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
-      <div className="settings-editor-section">
-        <div>
-          <span className="eyebrow">文章與付費牆</span>
-          <h5>{isPublication ? '公開文章、付費文章與付費牆' : '公開內容、會員內容與課程素材'}</h5>
-        </div>
-        <div className="settings-stack">
-          {preset.content.slice(0, 4).map((item) => (
-            <div key={item.id} className="settings-card compact">
-              <div className="settings-card-head">
-                <StatusPill tone={item.isPaid ? 'blue' : 'green'}>{item.isPaid ? '付費訂閱' : '公開'}</StatusPill>
-                <label className="editor-toggle compact-toggle">
-                  <input
-                    type="checkbox"
-                    checked={item.isPaid}
-                    onChange={(event) => updateContent(item.id, {
-                      isPaid: event.target.checked,
-                      limitedFreeUntil: event.target.checked ? item.limitedFreeUntil : undefined,
-                    })}
-                  />
-                  訂閱制
+      {showContent && (
+        <div className="settings-editor-section">
+          <div>
+            <span className="eyebrow">文章與付費牆</span>
+            <h5>{isPublication ? '公開文章、付費文章與付費牆' : '公開內容、會員內容與課程素材'}</h5>
+          </div>
+          <div className="settings-stack">
+            {preset.content.slice(0, 4).map((item) => (
+              <div key={item.id} className="settings-card compact">
+                <div className="settings-card-head">
+                  <StatusPill tone={item.isPaid ? 'blue' : 'green'}>{item.isPaid ? '付費訂閱' : '公開'}</StatusPill>
+                  <label className="editor-toggle compact-toggle">
+                    <input
+                      type="checkbox"
+                      checked={item.isPaid}
+                      onChange={(event) => updateContent(item.id, {
+                        isPaid: event.target.checked,
+                        limitedFreeUntil: event.target.checked ? item.limitedFreeUntil : undefined,
+                      })}
+                    />
+                    訂閱制
+                  </label>
+                </div>
+                {isPublication && item.isPaid && (
+                  <div className="settings-inline-grid">
+                    <label>
+                      付費牆段落位置
+                      <Input
+                        name={`content-${item.id}-paywall`}
+                        type="number"
+                        min={1}
+                        value={paywallParagraph(item)}
+                        onChange={(event) => updateContent(item.id, { paywallAfterParagraph: Math.max(1, Number(event.target.value) || 1) })}
+                        autoComplete="off"
+                      />
+                    </label>
+                    <label>
+                      限時免費公開到
+                      <Input
+                        name={`content-${item.id}-limited-free`}
+                        type="datetime-local"
+                        value={datetimeLocalValue(item.limitedFreeUntil)}
+                        onChange={(event) => updateContent(item.id, { limitedFreeUntil: event.target.value || undefined })}
+                        autoComplete="off"
+                      />
+                    </label>
+                    <small className="settings-helper span-2">
+                      設定後，這篇付費文章會在期限前開放閱讀；時間過後會自動回到付費牆。
+                    </small>
+                  </div>
+                )}
+                <label>
+                  標題
+                  <Input name={`content-${item.id}-title`} value={item.title} onChange={(event) => updateContent(item.id, { title: event.target.value })} autoComplete="off" />
+                </label>
+                <label>
+                  摘要
+                  <Textarea name={`content-${item.id}-excerpt`} value={item.excerpt} onChange={(event) => updateContent(item.id, { excerpt: event.target.value })} autoComplete="off" />
                 </label>
               </div>
-              {isPublication && item.isPaid && (
-                <div className="settings-inline-grid">
-                  <label>
-                    付費牆段落位置
-                    <Input
-                      name={`content-${item.id}-paywall`}
-                      type="number"
-                      min={1}
-                      value={paywallParagraph(item)}
-                      onChange={(event) => updateContent(item.id, { paywallAfterParagraph: Math.max(1, Number(event.target.value) || 1) })}
-                      autoComplete="off"
-                    />
-                  </label>
-                  <label>
-                    限時免費公開到
-                    <Input
-                      name={`content-${item.id}-limited-free`}
-                      type="datetime-local"
-                      value={datetimeLocalValue(item.limitedFreeUntil)}
-                      onChange={(event) => updateContent(item.id, { limitedFreeUntil: event.target.value || undefined })}
-                      autoComplete="off"
-                    />
-                  </label>
-                  <small className="settings-helper span-2">
-                    設定後，這篇付費文章會在期限前開放閱讀；時間過後會自動回到付費牆。
-                  </small>
-                </div>
-              )}
-              <label>
-                標題
-                <Input name={`content-${item.id}-title`} value={item.title} onChange={(event) => updateContent(item.id, { title: event.target.value })} autoComplete="off" />
-              </label>
-              <label>
-                摘要
-                <Textarea name={`content-${item.id}-excerpt`} value={item.excerpt} onChange={(event) => updateContent(item.id, { excerpt: event.target.value })} autoComplete="off" />
-              </label>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {preset.courses.length > 0 && (
+      {showCourses && preset.courses.length > 0 && (
         <div className="settings-editor-section">
           <div>
             <span className="eyebrow">課程設定</span>
@@ -2610,31 +2629,340 @@ function AdminSettingsEditor({
         </div>
       )}
 
-      <div className="settings-editor-section">
-        <div>
-          <span className="eyebrow">電子報設定</span>
-          <h5>{isPublication ? 'Newsletter 發送、分眾與歡迎信' : '文章電子報、分眾與發送時間'}</h5>
-        </div>
-        <div className="settings-stack">
-          {preset.newsletter.map((issue) => (
-            <div key={issue.id} className="settings-card compact">
-              <div className="settings-card-head">
-                <StatusPill tone={issue.status === 'sent' ? 'green' : issue.status === 'scheduled' ? 'blue' : 'yellow'}>{statusLabel(issue.status)}</StatusPill>
-                <small>{segmentLabel(issue.segment)}</small>
+      {showNewsletter && (
+        <div className="settings-editor-section">
+          <div>
+            <span className="eyebrow">電子報設定</span>
+            <h5>{isPublication ? 'Newsletter 發送、分眾與歡迎信' : '文章電子報、分眾與發送時間'}</h5>
+          </div>
+          <div className="settings-stack">
+            {preset.newsletter.map((issue) => (
+              <div key={issue.id} className="settings-card compact">
+                <div className="settings-card-head">
+                  <StatusPill tone={issue.status === 'sent' ? 'green' : issue.status === 'scheduled' ? 'blue' : 'yellow'}>{statusLabel(issue.status)}</StatusPill>
+                  <small>{segmentLabel(issue.segment)}</small>
+                </div>
+                <label>
+                  主旨
+                  <Input name={`newsletter-${issue.id}-subject`} value={issue.subject} onChange={(event) => updateNewsletter(issue.id, { subject: event.target.value })} autoComplete="off" />
+                </label>
+                <label>
+                  發送時間
+                  <Input name={`newsletter-${issue.id}-sendAt`} value={issue.sendAt} onChange={(event) => updateNewsletter(issue.id, { sendAt: event.target.value })} autoComplete="off" />
+                </label>
               </div>
-              <label>
-                主旨
-                <Input name={`newsletter-${issue.id}-subject`} value={issue.subject} onChange={(event) => updateNewsletter(issue.id, { subject: event.target.value })} autoComplete="off" />
-              </label>
-              <label>
-                發送時間
-                <Input name={`newsletter-${issue.id}-sendAt`} value={issue.sendAt} onChange={(event) => updateNewsletter(issue.id, { sendAt: event.target.value })} autoComplete="off" />
-              </label>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </article>
+  )
+}
+
+type PublicationAdminTabId = 'overview' | 'articles' | 'newsletter' | 'readers' | 'growth' | 'system' | 'settings'
+
+const publicationAdminTabs: Array<{ id: PublicationAdminTabId; label: string; description: string; icon: typeof LayoutDashboard }> = [
+  { id: 'overview', label: '總覽', description: '今日狀態與待處理事項', icon: LayoutDashboard },
+  { id: 'articles', label: '文章與付費牆', description: '公開、付費、限時免費', icon: BookOpen },
+  { id: 'newsletter', label: 'Newsletter', description: '發送、分眾與歡迎信', icon: Megaphone },
+  { id: 'readers', label: '讀者', description: '免費與付費讀者狀態', icon: UsersRound },
+  { id: 'growth', label: '成長', description: '推薦、贈閱與升級', icon: Gift },
+  { id: 'system', label: '金流與系統', description: '付款、發票與整合狀態', icon: ShieldCheck },
+  { id: 'settings', label: '設定', description: '品牌、首頁與方案', icon: Settings2 },
+]
+
+function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; state: AppState; onUpdatePreset: (patch: Partial<VerticalPreset>) => void }) {
+  const [activeTab, setActiveTab] = useState<PublicationAdminTabId>('overview')
+  const activeTabMeta = publicationAdminTabs.find((tab) => tab.id === activeTab) ?? publicationAdminTabs[0]
+  const paidMembers = preset.members.filter((member) => member.status === 'active').length
+  const freeMembers = preset.members.filter((member) => member.status === 'free').length
+  const paidContent = preset.content.filter((item) => item.isPaid).length
+  const publicContent = preset.content.filter((item) => !item.isPaid).length
+  const openModeration = preset.moderation.filter((item) => item.status !== 'resolved').length
+  const scheduledNewsletter = preset.newsletter.filter((issue) => issue.status === 'scheduled').length
+  const adminQueue = [
+    { label: '付費文章', value: `${paidContent}`, tone: 'yellow' },
+    { label: '讀者回覆待處理', value: `${openModeration}`, tone: 'red' },
+    { label: '付款狀態待確認', value: `${state.paymentEvents.length}`, tone: 'blue' },
+    { label: 'Newsletter 排程', value: `${scheduledNewsletter}`, tone: 'green' },
+  ]
+
+  return (
+    <div className="admin-workspace publication-admin-workspace">
+      <section className="section-block admin-hero publication-admin-hero">
+        <div className="section-heading">
+          <span className="eyebrow">出版後台</span>
+          <h3>{preset.brand.productName} 出版後台</h3>
+          <p>用分頁管理出版站日常工作：文章與付費牆、Newsletter、讀者、推薦成長、付款發票與站點設定各自獨立，避免所有功能擠在同一頁。</p>
+        </div>
+        <div className="admin-grid">
+          <MetricTile label="月訂閱收入" value={preset.metrics.mrr} icon={BarChart3} />
+          <MetricTile label="免費讀者" value={String(freeMembers)} icon={UsersRound} />
+          <MetricTile label="付費讀者" value={String(paidMembers)} icon={ShieldCheck} />
+          <MetricTile label="公開 / 付費文章" value={`${publicContent} / ${paidContent}`} icon={BookOpen} />
+        </div>
+      </section>
+
+      <section className="publication-admin-shell">
+        <aside className="publication-admin-tabs" aria-label="Signal Brief 後台分頁">
+          {publicationAdminTabs.map((tab) => {
+            const Icon = tab.icon
+            return (
+              <button key={tab.id} type="button" className={activeTab === tab.id ? 'active' : ''} onClick={() => setActiveTab(tab.id)}>
+                <Icon size={17} />
+                <span>
+                  <strong>{tab.label}</strong>
+                  <small>{tab.description}</small>
+                </span>
+              </button>
+            )
+          })}
+        </aside>
+
+        <div className="publication-admin-content">
+          <div className="publication-admin-tab-head">
+            <span className="eyebrow">目前分頁</span>
+            <h4>{activeTabMeta.label}</h4>
+            <p>{activeTabMeta.description}</p>
+          </div>
+
+          {activeTab === 'overview' && (
+            <div className="publication-admin-tab-grid">
+              <article className="admin-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <span className="eyebrow">待辦</span>
+                    <h4>今日待辦</h4>
+                  </div>
+                  <AlertCircle size={18} />
+                </div>
+                <div className="admin-queue">
+                  {adminQueue.map((item) => (
+                    <div key={item.label}>
+                      <StatusPill tone={item.tone}>{item.value}</StatusPill>
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="admin-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <span className="eyebrow">審核</span>
+                    <h4>留言、讀者回覆與付款爭議</h4>
+                  </div>
+                  <ShieldCheck size={18} />
+                </div>
+                <div className="admin-content-stack">
+                  {preset.moderation.map((item) => (
+                    <div key={item.id} className="admin-content-item">
+                      <Badge variant="outline" className="pill">{moderationKindLabel(item.kind, true)} · {statusLabel(item.status)}</Badge>
+                      <strong>{item.title}</strong>
+                      <small>{item.subject} · 優先度 {priorityLabel(item.priority)}</small>
+                      <small>{item.action}</small>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </div>
+          )}
+
+          {activeTab === 'articles' && (
+            <div className="publication-admin-tab-grid">
+              <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="content" />
+              <article className="admin-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <span className="eyebrow">文章狀態</span>
+                    <h4>內容與付費牆總覽</h4>
+                  </div>
+                  <BookOpen size={18} />
+                </div>
+                <div className="admin-content-stack">
+                  {preset.content.map((item) => (
+                    <div key={item.id} className="admin-content-item">
+                      <Badge variant="outline" className="pill">{item.isPaid ? '付費文章' : '公開文章'} · {contentTypeLabel(item.type)}</Badge>
+                      <strong>{item.title}</strong>
+                      <small>{item.isPaid ? `第 ${paywallParagraph(item)} 段後啟用付費牆` : '公開可閱讀'} · {item.minutes} 分鐘</small>
+                      {item.limitedFreeUntil && <small>限時免費至 {item.limitedFreeUntil}</small>}
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </div>
+          )}
+
+          {activeTab === 'newsletter' && (
+            <div className="publication-admin-tab-grid">
+              <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="newsletter" />
+              <article className="admin-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <span className="eyebrow">成效</span>
+                    <h4>發信、分眾與升級</h4>
+                  </div>
+                  <Megaphone size={18} />
+                </div>
+                <div className="admin-content-stack">
+                  {preset.newsletter.map((issue) => (
+                    <div key={issue.id} className="admin-content-item horizontal">
+                      <span>
+                        <Badge variant="outline" className="pill">{segmentLabel(issue.segment)} · {statusLabel(issue.status)}</Badge>
+                        <strong>{issue.subject}</strong>
+                        <small>{issue.sendAt === 'on signup' ? '註冊後自動寄送' : issue.sendAt} · 開信 {issue.openRate} · 點擊 {issue.clickRate}</small>
+                      </span>
+                      <StatusPill tone={issue.paidConversions > 0 ? 'green' : 'yellow'}>{`${issue.paidConversions} 人升級`}</StatusPill>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </div>
+          )}
+
+          {activeTab === 'readers' && (
+            <article className="admin-panel publication-admin-table-panel">
+              <div className="admin-panel-head">
+                <div>
+                  <span className="eyebrow">讀者營運</span>
+                  <h4>讀者與訂閱狀態</h4>
+                </div>
+                <Button variant="outline" className="ghost-button"><SlidersHorizontal data-icon="inline-start" />篩選</Button>
+              </div>
+              <div className="admin-table">
+                <div className="admin-table-head">
+                  <span>讀者</span>
+                  <span>方案</span>
+                  <span>狀態</span>
+                  <span>來源</span>
+                  <span>互動</span>
+                </div>
+                {preset.members.map((member) => {
+                  const plan = preset.plans.find((item) => item.id === member.planId)
+                  return (
+                    <div key={member.id} className="admin-table-row">
+                      <span>
+                        <strong>{member.name}</strong>
+                        <small>{member.email}</small>
+                      </span>
+                      <span>{plan?.name ?? member.planId}</span>
+                      <span><StatusPill tone={member.status === 'active' ? 'green' : 'yellow'}>{statusLabel(member.status)}</StatusPill></span>
+                      <span>{sourceLabel(member.source)}</span>
+                      <span>{member.contributions.posts} 則留言 · {member.contributions.comments} 次互動</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </article>
+          )}
+
+          {activeTab === 'growth' && (
+            <div className="publication-admin-tab-grid">
+              <article className="admin-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <span className="eyebrow">成長</span>
+                    <h4>推薦、贈閱與來源成長</h4>
+                  </div>
+                  <Gift size={18} />
+                </div>
+                <div className="admin-content-stack">
+                  {preset.referrals.map((campaign) => (
+                    <div key={campaign.id} className="admin-content-item">
+                      <Badge variant="outline" className="pill">{campaign.code}</Badge>
+                      <strong>{campaign.label}</strong>
+                      <small>{campaign.freeTrials} 人體驗 · {campaign.paidConversions} 人升級 · {campaign.revenueLabel}</small>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="admin-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <span className="eyebrow">來源</span>
+                    <h4>讀者來源與轉換</h4>
+                  </div>
+                  <Globe2 size={18} />
+                </div>
+                <div className="integration-grid">
+                  <IntegrationItem label="主要來源" value={sourceLabel(preset.metrics.topSource)} />
+                  <IntegrationItem label="付費轉換率" value={preset.metrics.conversion} />
+                  <IntegrationItem label="流失風險" value={`${preset.metrics.churnRisk} 位需追蹤`} />
+                  <IntegrationItem label="推薦碼" value={`${preset.referrals.length} 組活動中`} />
+                </div>
+              </article>
+            </div>
+          )}
+
+          {activeTab === 'system' && (
+            <div className="publication-admin-tab-grid">
+              <article className="admin-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <span className="eyebrow">付款</span>
+                    <h4>金流、訂閱與發票</h4>
+                  </div>
+                  <CircleDollarSign size={18} />
+                </div>
+                {state.paymentEvents.length === 0 ? (
+                  <div className="empty-state">
+                    <strong>尚未啟用正式金流</strong>
+                    <small>等文章、讀者、登入與訂閱流程確認後，再啟用金流與發票。</small>
+                  </div>
+                ) : (
+                  state.paymentEvents.map((event) => (
+                    <div key={event.id} className="event-line">
+                      <strong>{event.planId}</strong>
+                      <small>{event.amountLabel} · {event.invoiceStatus}</small>
+                    </div>
+                  ))
+                )}
+              </article>
+
+              <article className="admin-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <span className="eyebrow">系統狀態</span>
+                    <h4>InsForge / Portaly Vibe 設定狀態</h4>
+                  </div>
+                  <ShieldCheck size={18} />
+                </div>
+                <div className="integration-grid">
+                  <IntegrationItem label="登入" value="正式測試登入已可使用" />
+                  <IntegrationItem label="資料庫權限" value="文章、讀者與訂閱表已準備" />
+                  <IntegrationItem label="檔案儲存" value="文章圖片與付費附件" />
+                  <IntegrationItem label="Portaly Vibe MCP" value="專案層級設定已加入" />
+                  <IntegrationItem label="金流" value="核心流程完成後再啟用" />
+                  <IntegrationItem label="發票狀態" value="可同步到付款紀錄" />
+                </div>
+              </article>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="publication-admin-tab-grid">
+              <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="site" />
+              <article className="admin-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <span className="eyebrow">設定檢查</span>
+                    <h4>目前出版站設定</h4>
+                  </div>
+                  <Settings2 size={18} />
+                </div>
+                <div className="integration-grid">
+                  <IntegrationItem label="網站名稱" value={preset.brand.productName} />
+                  <IntegrationItem label="作者名稱" value={preset.brand.creatorName} />
+                  <IntegrationItem label="訂閱方案" value={`${preset.plans.length} 種方案`} />
+                  <IntegrationItem label="主要按鈕" value={preset.copy.ctaPrimary} />
+                </div>
+              </article>
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
   )
 }
 
@@ -2657,6 +2985,10 @@ function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; 
         { label: '付款狀態待確認', value: `${state.paymentEvents.length}`, tone: 'blue' },
         { label: '通訊排程', value: `${preset.newsletter.filter((issue) => issue.status === 'scheduled').length}`, tone: 'green' },
       ]
+
+  if (isPublication) {
+    return <PublicationAdminView preset={preset} state={state} onUpdatePreset={onUpdatePreset} />
+  }
 
   return (
     <div className="admin-workspace">

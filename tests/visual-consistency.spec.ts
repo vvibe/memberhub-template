@@ -156,7 +156,10 @@ test('visitor, member, and admin states show different screens in both reference
   await setRole(page, '管理員')
   await expect(page.getByText('出版者後台開啟')).toBeVisible()
   await expect(page.locator('.nav-list').getByRole('button', { name: '電子報', exact: true })).toBeVisible()
-  await expect(page.getByText('出版站可調整的內容')).toBeVisible()
+  await expect(page.getByText('Signal Brief 策略通訊 出版後台')).toBeVisible()
+  await expect(page.locator('.publication-admin-tabs').getByRole('button', { name: /文章與付費牆/ })).toBeVisible()
+  await page.locator('.publication-admin-tabs').getByRole('button', { name: /設定/ }).click()
+  await expect(page.getByText('站點、品牌與訂閱方案')).toBeVisible()
   await expect(page.getByText('課程與進度')).toHaveCount(0)
 
   await expectNoHorizontalOverflow(page)
@@ -257,10 +260,13 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
   await expect(page.getByRole('heading', { name: '先閱讀公開文章' })).toBeVisible()
   await expect(page.getByText('出版站可調整的內容')).toHaveCount(0)
   await setRole(page, '管理員')
-  await expect(page.getByText('只保留出版與訂閱需要的營運模組')).toBeVisible()
-  await expect(page.getByText('出版站可調整的內容')).toBeVisible()
+  await expect(page.getByText('用分頁管理出版站日常工作')).toBeVisible()
+  await expectPublicationAdminTabs(page)
+  await page.locator('.publication-admin-tabs').getByRole('button', { name: /文章與付費牆/ }).click()
   await expect(page.getByText('付費牆段落位置').first()).toBeVisible()
+  await page.locator('.publication-admin-tabs').getByRole('button', { name: /讀者/ }).click()
   await expect(page.getByRole('heading', { name: '讀者與訂閱狀態' })).toBeVisible()
+  await page.locator('.publication-admin-tabs').getByRole('button', { name: /總覽/ }).click()
   await expect(page.getByText('留言、讀者回覆與付款爭議')).toBeVisible()
   await expect(page.getByText('課程與進度')).toHaveCount(0)
   await expect(page.getByText('社群審核與互動')).toHaveCount(0)
@@ -281,6 +287,40 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
   await expectNoLayoutCollisions(page)
   await expectDetailLayoutQuality(page)
   await attachViewportScreenshot(page, testInfo, 'direct-case-urls')
+
+  expect(consoleErrors.errors).toEqual([])
+})
+
+test('Signal Brief admin separates functions into consistent tabs', async ({ page }, testInfo) => {
+  const consoleErrors = collectConsoleErrors(page)
+  const tabChecks = [
+    { button: /總覽/, expected: '今日待辦' },
+    { button: /文章與付費牆/, expected: '文章、付費牆與限時免費' },
+    { button: /Newsletter/, expected: 'Newsletter 發送設定' },
+    { button: /讀者/, expected: '讀者與訂閱狀態' },
+    { button: /成長/, expected: '推薦、贈閱與來源成長' },
+    { button: /金流與系統/, expected: 'InsForge / Portaly Vibe 設定狀態' },
+    { button: /設定/, expected: '站點、品牌與訂閱方案' },
+  ]
+
+  await page.goto('/?case=signal-brief&view=admin')
+  await setRole(page, '管理員')
+  await expect(page.getByText('Signal Brief 策略通訊 出版後台')).toBeVisible()
+  await expectPublicationAdminTabs(page)
+
+  for (const item of tabChecks) {
+    await page.locator('.publication-admin-tabs').getByRole('button', { name: item.button }).click()
+    await expect(page.getByText(item.expected).first()).toBeVisible()
+    await expectPublicationAdminVisualConsistency(page)
+    await expectNoHorizontalOverflow(page)
+  }
+
+  await expectSharedVisualTokens(page)
+  await expectFormControlConsistency(page)
+  await expectReadableTypography(page)
+  await expectConsistentSpacingAndTextMetrics(page)
+  await expectNoLayoutCollisions(page)
+  await attachViewportScreenshot(page, testInfo, 'signal-brief-admin-tabs')
 
   expect(consoleErrors.errors).toEqual([])
 })
@@ -410,6 +450,7 @@ test('Signal Brief standalone article and limited-free rules work', async ({ pag
 
   await page.goto('/?case=signal-brief&view=admin')
   await setRole(page, '管理員')
+  await page.locator('.publication-admin-tabs').getByRole('button', { name: /文章與付費牆/ }).click()
   await expect(page.getByText('限時免費公開到').first()).toBeVisible()
   await expect(page.getByText('時間過後會自動回到付費牆').first()).toBeVisible()
 
@@ -735,6 +776,68 @@ async function expectFormControlConsistency(page: Page) {
   })
 
   expect(report.controls, 'form controls should use the shared input/textarea styling instead of browser defaults').toEqual([])
+}
+
+async function expectPublicationAdminTabs(page: Page) {
+  const tabLabels = ['總覽', '文章與付費牆', 'Newsletter', '讀者', '成長', '金流與系統', '設定']
+  const tabs = page.locator('.publication-admin-tabs')
+  await expect(tabs).toBeVisible()
+  for (const label of tabLabels) {
+    await expect(tabs.getByRole('button', { name: new RegExp(label) })).toBeVisible()
+  }
+  await expect(tabs.getByRole('button')).toHaveCount(tabLabels.length)
+}
+
+async function expectPublicationAdminVisualConsistency(page: Page) {
+  const report = await page.evaluate(() => {
+    const isVisible = (element: Element) => {
+      const rect = element.getBoundingClientRect()
+      const style = window.getComputedStyle(element)
+      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none'
+    }
+
+    const tabButtons = Array.from(document.querySelectorAll('.publication-admin-tabs button'))
+      .filter(isVisible)
+      .map((element) => {
+        const style = window.getComputedStyle(element)
+        const rect = element.getBoundingClientRect()
+        return {
+          text: element.textContent?.trim() ?? '',
+          height: Math.round(rect.height),
+          radius: style.borderRadius,
+          fontSize: style.fontSize,
+          textAlign: style.textAlign,
+        }
+      })
+
+    const panels = Array.from(document.querySelectorAll('.publication-admin-content .admin-panel, .publication-admin-tab-head'))
+      .filter(isVisible)
+      .map((element) => {
+        const style = window.getComputedStyle(element)
+        return {
+          className: (element as HTMLElement).className,
+          radius: style.borderRadius,
+          borderStyle: style.borderStyle,
+          backgroundColor: style.backgroundColor,
+        }
+      })
+
+    return {
+      tabIssues: tabButtons.filter((button) => (
+        button.height < 48 ||
+        button.radius !== '8px' ||
+        button.textAlign !== 'left'
+      )),
+      panelIssues: panels.filter((panel) => (
+        panel.radius !== '8px' ||
+        panel.borderStyle !== 'solid' ||
+        panel.backgroundColor === 'rgba(0, 0, 0, 0)'
+      )),
+    }
+  })
+
+  expect(report.tabIssues, 'publication admin tabs should use stable left-aligned navigation rows').toEqual([])
+  expect(report.panelIssues, 'publication admin panels should match the shared panel visual system').toEqual([])
 }
 
 async function expectReadableTypography(page: Page) {
