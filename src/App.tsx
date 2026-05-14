@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   AlertCircle,
   BarChart3,
@@ -443,13 +443,15 @@ function App() {
     if (typeof window === 'undefined') return undefined
     return presetIdFromHost(window.location.hostname)
   }, [])
-  const formalSkillsAuth = standalonePresetId === 'skills-school'
+  const formalAuthPresetId = standalonePresetId === 'skills-school' || standalonePresetId === 'signal-brief' ? standalonePresetId : undefined
+  const formalAuth = Boolean(formalAuthPresetId)
+  const formalSkillsAuth = formalAuthPresetId === 'skills-school'
   const [state, setState] = useState<AppState>(() => {
     const storedState = loadState()
-    if (formalSkillsAuth) {
+    if (formalAuthPresetId) {
       return {
         ...storedState,
-        presetId: 'skills-school',
+        presetId: formalAuthPresetId,
         role: 'visitor',
         selectedPlanId: 'free',
       }
@@ -470,14 +472,14 @@ function App() {
   const [query, setQuery] = useState('')
   const [globalQuery, setGlobalQuery] = useState('')
   const [authEmail, setAuthEmail] = useState<string | null>(null)
-  const [authChecking, setAuthChecking] = useState(formalSkillsAuth)
+  const [authChecking, setAuthChecking] = useState(formalAuth)
 
   useEffect(() => {
     saveState(state)
   }, [state])
 
   useEffect(() => {
-    if (!formalSkillsAuth) return
+    if (!formalAuthPresetId) return
     let active = true
 
     fetch('/api/auth/me')
@@ -486,11 +488,11 @@ function App() {
         if (!active) return
         if (payload?.authenticated && payload?.user?.email) {
           const role: Role = payload.user.role === 'member' ? 'member' : 'admin'
-          const skillsPreset = getPreset('skills-school')
-          const memberPlan = skillsPreset.plans.find((plan) => plan.highlighted) ?? skillsPreset.plans[1] ?? skillsPreset.plans[0]
+          const authenticatedPreset = getPreset(formalAuthPresetId)
+          const memberPlan = authenticatedPreset.plans.find((plan) => plan.highlighted) ?? authenticatedPreset.plans[1] ?? authenticatedPreset.plans[0]
           setState((prev) => ({
             ...prev,
-            presetId: 'skills-school',
+            presetId: formalAuthPresetId,
             role,
             selectedPlanId: memberPlan.id,
           }))
@@ -499,12 +501,12 @@ function App() {
           return
         }
         setAuthEmail(null)
-        setState((prev) => ({ ...prev, presetId: 'skills-school', role: 'visitor', selectedPlanId: 'free' }))
+        setState((prev) => ({ ...prev, presetId: formalAuthPresetId, role: 'visitor', selectedPlanId: 'free' }))
       })
       .catch(() => {
         if (!active) return
         setAuthEmail(null)
-        setState((prev) => ({ ...prev, presetId: 'skills-school', role: 'visitor', selectedPlanId: 'free' }))
+        setState((prev) => ({ ...prev, presetId: formalAuthPresetId, role: 'visitor', selectedPlanId: 'free' }))
       })
       .finally(() => {
         if (active) setAuthChecking(false)
@@ -513,7 +515,7 @@ function App() {
     return () => {
       active = false
     }
-  }, [formalSkillsAuth])
+  }, [formalAuthPresetId])
 
   useEffect(() => {
     const params = new URLSearchParams()
@@ -660,7 +662,7 @@ function App() {
   }
 
   const handleLogout = async () => {
-    if (formalSkillsAuth) {
+    if (formalAuth) {
       await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined)
       setAuthEmail(null)
     }
@@ -747,6 +749,28 @@ function App() {
     const haystack = `${item.title} ${item.category} ${item.excerpt} ${item.type}`.toLowerCase()
     return haystack.includes(query.toLowerCase())
   })
+
+  if (standalonePresetId === 'signal-brief') {
+    return (
+      <SignalBriefStandalone
+        preset={runtimePreset}
+        state={state}
+        role={state.role}
+        selectedPlan={selectedPlan}
+        hasPaidAccess={hasPaidAccess}
+        authEmail={authEmail}
+        authChecking={authChecking}
+        query={query}
+        visibleContent={visibleContent}
+        onQuery={setQuery}
+        onCredentialsLogin={handleCredentialsLogin}
+        onLogout={handleLogout}
+        onCheckout={handleCheckout}
+        onUpdatePreset={handleUpdatePreset}
+        onCreateContent={handleCreateContent}
+      />
+    )
+  }
 
   return (
     <main className="app-shell" style={{ ['--brand-primary' as string]: runtimePreset.brand.primary, ['--brand-accent' as string]: runtimePreset.brand.accent }}>
@@ -922,6 +946,344 @@ function App() {
         {view === 'setup' && <SetupView presetId={state.presetId} />}
       </section>
     </main>
+  )
+}
+
+type SignalScreen = 'home' | 'post' | 'subscribe' | 'login' | 'account' | 'admin'
+
+function SignalBriefStandalone({
+  preset,
+  state,
+  role,
+  selectedPlan,
+  hasPaidAccess,
+  authEmail,
+  authChecking,
+  query,
+  visibleContent,
+  onQuery,
+  onCredentialsLogin,
+  onLogout,
+  onCheckout,
+  onUpdatePreset,
+  onCreateContent,
+}: {
+  preset: VerticalPreset
+  state: AppState
+  role: Role
+  selectedPlan: Plan
+  hasPaidAccess: boolean
+  authEmail: string | null
+  authChecking: boolean
+  query: string
+  visibleContent: ContentItem[]
+  onQuery: (value: string) => void
+  onCredentialsLogin: (email: string, password: string) => Promise<AuthResult>
+  onLogout: () => Promise<void>
+  onCheckout: (plan: Plan) => void
+  onUpdatePreset: (patch: Partial<VerticalPreset>) => void
+  onCreateContent: (item: Omit<ContentItem, 'id' | 'source' | 'minutes'>) => void
+}) {
+  const [screen, setScreen] = useState<SignalScreen>('home')
+  const [selectedPostId, setSelectedPostId] = useState<string>(preset.content[0]?.id ?? '')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
+  const [subscribedEmail, setSubscribedEmail] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const publicPosts = preset.content.filter((item) => !item.isPaid)
+  const paidPosts = preset.content.filter((item) => item.isPaid)
+  const featurePost = publicPosts[0] ?? preset.content[0]
+  const selectedPost = preset.content.find((item) => item.id === selectedPostId) ?? featurePost
+  const paidPlan = preset.plans.find((plan) => plan.highlighted) ?? preset.plans[1] ?? preset.plans[0]
+
+  const openPost = (postId: string) => {
+    setSelectedPostId(postId)
+    setScreen('post')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const submitLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setLoginError('')
+    setIsSubmitting(true)
+    const result = await onCredentialsLogin(email, password)
+    setIsSubmitting(false)
+    if (!result.ok) {
+      setLoginError(result.error ?? '登入失敗，請稍後再試。')
+      return
+    }
+    setScreen('admin')
+  }
+
+  const submitSubscribe = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    const nextEmail = String(form.get('email') ?? '').trim()
+    if (nextEmail) setSubscribedEmail(nextEmail)
+  }
+
+  const handleLogout = async () => {
+    await onLogout()
+    setScreen('home')
+  }
+
+  return (
+    <main className="signal-site">
+      <header className="signal-header">
+        <button className="signal-brand" type="button" onClick={() => setScreen('home')} aria-label="Signal Brief home">
+          <span>SB</span>
+          <strong>Signal Brief</strong>
+        </button>
+        <nav aria-label="Signal Brief navigation">
+          <button type="button" className={screen === 'home' ? 'active' : ''} onClick={() => setScreen('home')}>文章</button>
+          <button type="button" className={screen === 'subscribe' ? 'active' : ''} onClick={() => setScreen('subscribe')}>訂閱</button>
+          {role === 'admin' && <button type="button" className={screen === 'admin' ? 'active' : ''} onClick={() => setScreen('admin')}>出版後台</button>}
+          {role === 'visitor' ? (
+            <button type="button" className="signal-login-link" onClick={() => setScreen('login')}>登入</button>
+          ) : (
+            <button type="button" className="signal-login-link" onClick={() => setScreen('account')}>{authEmail ?? roleLabel(role)}</button>
+          )}
+        </nav>
+      </header>
+
+      {screen === 'home' && (
+        <div className="signal-page">
+          <section className="signal-hero">
+            <div className="signal-hero-copy">
+              <span className="signal-kicker">Independent brief on AI products</span>
+              <h1>{preset.copy.heroTitle}</h1>
+              <p>{preset.copy.heroBody}</p>
+              <form className="signal-subscribe-form" onSubmit={submitSubscribe}>
+                <Input name="email" type="email" placeholder="輸入 Email，收到每週摘要" required />
+                <Button className="primary-button" type="submit"><Mail data-icon="inline-start" />訂閱免費信</Button>
+              </form>
+              {subscribedEmail && <small className="signal-form-note">已記錄 {subscribedEmail}，正式串接後會加入 Newsletter 名單。</small>}
+            </div>
+            <aside className="signal-author-card">
+              <div className="signal-author-mark">SB</div>
+              <strong>{preset.brand.creatorName}</strong>
+              <p>每週整理 AI 工具、內容產品與創作者商業模式的變化，保留公開文章，也提供付費深度分析。</p>
+              <div>
+                <span>{preset.metrics.activeMembers} 位讀者</span>
+                <span>{preset.metrics.conversion} 付費轉換</span>
+              </div>
+            </aside>
+          </section>
+
+          <section className="signal-feature">
+            <button type="button" className="signal-feature-post" onClick={() => featurePost && openPost(featurePost.id)}>
+              <span className="signal-kicker">Featured</span>
+              <h2>{featurePost ? cleanPostTitle(featurePost.title) : '最新公開文章'}</h2>
+              <p>{featurePost?.excerpt}</p>
+              <small>{featurePost && postMeta(featurePost, preset)}</small>
+            </button>
+            <div className="signal-paid-panel">
+              <span className="signal-kicker">For subscribers</span>
+              <h3>付費牆不是整篇鎖住，而是由作者指定段落位置。</h3>
+              <p>你可以先讀公開段落；到了付費牆後，再決定是否訂閱完整研究與資料補充。</p>
+              <Button className="primary-button" onClick={() => setScreen('subscribe')}>查看訂閱方案</Button>
+            </div>
+          </section>
+
+          <section className="signal-feed-layout">
+            <div className="signal-feed-main">
+              <div className="signal-section-head">
+                <div>
+                  <span className="signal-kicker">Latest writing</span>
+                  <h2>最新文章</h2>
+                </div>
+                <label className="signal-search">
+                  <Search size={16} />
+                  <Input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="搜尋文章" />
+                </label>
+              </div>
+              <div className="signal-post-list">
+                {visibleContent.map((item) => (
+                  <button key={item.id} type="button" className="signal-post-row" onClick={() => openPost(item.id)}>
+                    <span>
+                      <small>{item.isPaid ? '付費文章' : item.category} · {item.minutes} 分鐘閱讀</small>
+                      <strong>{cleanPostTitle(item.title)}</strong>
+                      <p>{item.excerpt}</p>
+                    </span>
+                    {item.isPaid ? <Lock size={18} /> : <ChevronRight size={18} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <aside className="signal-sidebar">
+              <article>
+                <span className="signal-kicker">Start here</span>
+                <h3>第一次閱讀 Signal Brief</h3>
+                <p>先讀兩篇公開文章，了解這份信的判斷方式；需要完整拆解時再升級付費方案。</p>
+              </article>
+              <article>
+                <span className="signal-kicker">Paid archive</span>
+                <div className="signal-mini-list">
+                  {paidPosts.slice(0, 3).map((item) => (
+                    <button key={item.id} type="button" onClick={() => openPost(item.id)}>
+                      <strong>{cleanPostTitle(item.title)}</strong>
+                      <small>付費牆在第 {paywallParagraph(item)} 段後</small>
+                    </button>
+                  ))}
+                </div>
+              </article>
+            </aside>
+          </section>
+        </div>
+      )}
+
+      {screen === 'post' && selectedPost && (
+        <SignalPostArticle
+          item={selectedPost}
+          preset={preset}
+          hasPaidAccess={hasPaidAccess}
+          onBack={() => setScreen('home')}
+          onJoin={() => setScreen('subscribe')}
+        />
+      )}
+
+      {screen === 'subscribe' && (
+        <section className="signal-page signal-subscribe-page">
+          <div className="signal-section-head wide">
+            <div>
+              <span className="signal-kicker">Subscribe</span>
+              <h1>訂閱後閱讀完整研究與每週 Newsletter</h1>
+              <p>免費讀者可以閱讀公開文章；付費讀者可以解鎖付費牆後內容、資料補充與完整電子報。</p>
+            </div>
+          </div>
+          <div className="signal-plan-grid">
+            {preset.plans.map((plan) => (
+              <article key={plan.id} className={plan.highlighted ? 'signal-plan-card highlighted' : 'signal-plan-card'}>
+                <span>{plan.name}</span>
+                <strong>{plan.price}</strong>
+                <small>{plan.cadence}</small>
+                <p>{plan.description}</p>
+                <ul>
+                  {plan.features.map((feature) => <li key={feature}><CheckCircle2 size={16} />{feature}</li>)}
+                </ul>
+                <Button className={plan.highlighted ? 'primary-button' : 'ghost-button'} onClick={() => onCheckout(plan)}>
+                  {plan.id === selectedPlan.id && role !== 'visitor' ? '目前方案' : plan.id === 'free' ? '加入免費讀者' : '選擇此方案'}
+                </Button>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {screen === 'login' && (
+        <section className="signal-auth-page">
+          <form className="signal-auth-card" onSubmit={submitLogin}>
+            <span className="signal-kicker">Publisher login</span>
+            <h1>登入 Signal Brief</h1>
+            <p>登入後可以測試付費文章完整閱讀、Newsletter 管理、付費牆設定與出版者後台。</p>
+            <label>
+              Email
+              <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="輸入你的 Email" required />
+            </label>
+            <label>
+              密碼
+              <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="輸入測試密碼" required />
+            </label>
+            {loginError && <p className="auth-error" role="alert">{loginError}</p>}
+            <Button className="primary-button" type="submit" disabled={isSubmitting}>
+              <LogIn data-icon="inline-start" />{isSubmitting ? '登入中' : '登入正式測試站'}
+            </Button>
+          </form>
+        </section>
+      )}
+
+      {screen === 'account' && (
+        <section className="signal-page signal-account-page">
+          <div className="signal-account-card">
+            <span className="signal-kicker">Account</span>
+            <h1>{authChecking ? '確認登入狀態中' : authEmail ?? '尚未登入'}</h1>
+            <p>目前是 {roleLabel(role)} 視角，方案為 {selectedPlan.name}。</p>
+            <div className="button-row">
+              {role === 'admin' && <Button className="primary-button" onClick={() => setScreen('admin')}>進入出版後台</Button>}
+              <Button variant="outline" className="ghost-button" onClick={handleLogout}>登出</Button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {screen === 'admin' && role === 'admin' && (
+        <section className="signal-admin-page">
+          <div className="signal-section-head wide">
+            <div>
+              <span className="signal-kicker">Publisher studio</span>
+              <h1>Signal Brief 出版後台</h1>
+              <p>管理文章、付費牆、訂閱方案、Newsletter、讀者與付款狀態。</p>
+            </div>
+          </div>
+          <AdminView preset={preset} state={state} onUpdatePreset={onUpdatePreset} />
+          <ContentView
+            preset={preset}
+            items={visibleContent}
+            query={query}
+            onQuery={onQuery}
+            hasPaidAccess={hasPaidAccess}
+            canCreateContent
+            onCreateContent={onCreateContent}
+            onCheckout={() => onCheckout(paidPlan)}
+          />
+        </section>
+      )}
+    </main>
+  )
+}
+
+function SignalPostArticle({
+  item,
+  preset,
+  hasPaidAccess,
+  onBack,
+  onJoin,
+}: {
+  item: ContentItem
+  preset: VerticalPreset
+  hasPaidAccess: boolean
+  onBack: () => void
+  onJoin: () => void
+}) {
+  const paragraphs = contentParagraphs(item)
+  const gateAfter = paywallParagraph(item)
+  const locked = item.isPaid && !hasPaidAccess
+  const visibleParagraphs = locked ? paragraphs.slice(0, gateAfter) : paragraphs
+
+  return (
+    <article className="signal-article-page">
+      <button type="button" className="signal-back-button" onClick={onBack}>回到文章列表</button>
+      <header className="signal-article-header">
+        <span className="signal-kicker">{item.isPaid ? 'Paid essay' : item.category}</span>
+        <h1>{cleanPostTitle(item.title)}</h1>
+        <p>{item.excerpt}</p>
+        <small>{postMeta(item, preset)}{item.isPaid ? ` · 付費牆在第 ${gateAfter} 段後` : ''}</small>
+      </header>
+      <div className="signal-article-body">
+        {visibleParagraphs.map((paragraph, index) => (
+          <p key={`${item.id}-signal-paragraph-${index}`}>{paragraph}</p>
+        ))}
+      </div>
+      {locked ? (
+        <div className="signal-paywall">
+          <span><Lock size={18} /></span>
+          <div>
+            <strong>付費牆已啟用</strong>
+            <p>作者把這篇文章設定在第 {gateAfter} 段後進入付費牆。訂閱後可繼續閱讀完整分析與資料補充。</p>
+          </div>
+          <Button className="primary-button" onClick={onJoin}>訂閱後繼續閱讀</Button>
+        </div>
+      ) : !item.isPaid && !hasPaidAccess ? (
+        <div className="signal-reader-cta">
+          <div>
+            <strong>想讀完整付費分析？</strong>
+            <p>升級後可以閱讀會員專欄、資料補充與每週完整 Newsletter。</p>
+          </div>
+          <Button className="primary-button" onClick={onJoin}>查看訂閱方案</Button>
+        </div>
+      ) : null}
+    </article>
   )
 }
 

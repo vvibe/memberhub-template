@@ -1,7 +1,10 @@
-import { clearSessionCookie } from './shared.js'
+import { clearSessionCookie, siteFromHost } from './shared.js'
 
 type VercelRequest = {
   method?: string
+  headers?: {
+    host?: string
+  }
 }
 
 type VercelResponse = {
@@ -16,6 +19,6 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  res.setHeader('Set-Cookie', clearSessionCookie())
+  res.setHeader('Set-Cookie', clearSessionCookie(siteFromHost(req.headers?.host)))
   res.status(200).json({ ok: true })
 }
