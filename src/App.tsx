@@ -161,6 +161,18 @@ function contentTypeLabel(type: ContentItem['type'] | string) {
   return labels[type] ?? type
 }
 
+function contentParagraphs(item: Pick<ContentItem, 'body'>) {
+  return item.body
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+}
+
+function paywallParagraph(item: ContentItem) {
+  const paragraphCount = Math.max(1, contentParagraphs(item).length)
+  return Math.min(Math.max(1, item.paywallAfterParagraph ?? 1), paragraphCount)
+}
+
 function sourceLabel(source: string) {
   const labels: Record<string, string> = {
     blog: '公開網站',
@@ -630,13 +642,22 @@ function App() {
         </header>
 
         {view === 'home' && (
-          <HomeView
-            preset={runtimePreset}
-            role={state.role}
-            selectedPlan={selectedPlan}
-            onOpenBlog={() => setView('blog')}
-            onOpenJoin={() => setView('join')}
-          />
+          isPublicationPreset(runtimePreset) ? (
+            <BlogView
+              preset={runtimePreset}
+              hasPaidAccess={hasPaidAccess}
+              onJoin={() => setView('join')}
+              publicationHome
+            />
+          ) : (
+            <HomeView
+              preset={runtimePreset}
+              role={state.role}
+              selectedPlan={selectedPlan}
+              onOpenBlog={() => setView('blog')}
+              onOpenJoin={() => setView('join')}
+            />
+          )
         )}
         {view === 'blog' && (
           <BlogView
@@ -789,35 +810,52 @@ function BlogView({
   preset,
   hasPaidAccess,
   onJoin,
+  publicationHome = false,
 }: {
   preset: ReturnType<typeof getPreset>
   hasPaidAccess: boolean
   onJoin: () => void
+  publicationHome?: boolean
 }) {
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
+  const selectedPost = preset.content.find((item) => item.id === selectedPostId)
   const publicPosts = preset.content.filter((item) => !item.isPaid)
   const memberPosts = preset.content.filter((item) => item.isPaid)
   const featurePost = publicPosts[0] ?? preset.content[0]
 
+  if (selectedPost && isPublicationPreset(preset)) {
+    return (
+      <ArticleReader
+        item={selectedPost}
+        preset={preset}
+        hasPaidAccess={hasPaidAccess}
+        onBack={() => setSelectedPostId(null)}
+        onJoin={onJoin}
+      />
+    )
+  }
+
   return (
-    <section className="section-block">
+    <section className={publicationHome ? 'section-block publication-home' : 'section-block'}>
       <div className="section-heading horizontal">
         <div>
           <span className="eyebrow">{preset.id === 'signal-brief' ? '公開閱讀' : '社群預覽'}</span>
           <h3>{preset.id === 'signal-brief' ? 'Signal Brief 公開部落格' : 'Skills School 社群預覽頁'}</h3>
+          {publicationHome && <p>閱讀公開文章，或訂閱後解鎖完整研究、資料補充與每週 Newsletter。</p>}
         </div>
         <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />{preset.id === 'signal-brief' ? '訂閱完整研究' : '加入會員'}</Button>
       </div>
 
-      <article className="hero-product blog-feature">
+      <button className="hero-product blog-feature article-card-button" type="button" onClick={() => isPublicationPreset(preset) && featurePost && setSelectedPostId(featurePost.id)}>
         <Badge variant="outline" className="pill">{featurePost.category}</Badge>
         <h4>{featurePost.title}</h4>
         <p>{featurePost.excerpt}</p>
         <small>{featurePost.minutes} 分鐘閱讀 · {preset.brand.creatorName}</small>
-      </article>
+      </button>
 
       <div className="content-list blog-list">
         {publicPosts.map((item) => (
-          <article key={item.id} className="content-row">
+          <button key={item.id} type="button" className="content-row article-card-button" onClick={() => isPublicationPreset(preset) && setSelectedPostId(item.id)}>
             <div>
               <Badge variant="outline" className="pill">{contentTypeLabel(item.type)}</Badge>
               <h4>{item.title}</h4>
@@ -825,21 +863,78 @@ function BlogView({
               <small>{item.category} · {item.minutes} 分鐘 · {sourceLabel(item.source)}</small>
             </div>
             <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span>
-          </article>
+          </button>
         ))}
         {memberPosts.slice(0, 3).map((item) => (
-          <article key={item.id} className="content-row">
+          <button key={item.id} type="button" className="content-row article-card-button" onClick={() => isPublicationPreset(preset) && setSelectedPostId(item.id)}>
             <div>
               <Badge variant="outline" className="pill">會員限定</Badge>
               <h4>{item.title}</h4>
               <p>{item.excerpt}</p>
-              <small>{item.category} · {item.minutes} 分鐘</small>
+              <small>{item.category} · {item.minutes} 分鐘 · 付費牆在第 {paywallParagraph(item)} 段後</small>
             </div>
-            {hasPaidAccess ? <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span> : <Button className="lock-button" onClick={onJoin}><Lock data-icon="inline-start" />{preset.id === 'signal-brief' ? '訂閱後閱讀' : '加入後閱讀'}</Button>}
-          </article>
+            {hasPaidAccess ? <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span> : <span className="lock-button lock-label"><Lock data-icon="inline-start" />{preset.id === 'signal-brief' ? '訂閱後閱讀' : '加入後閱讀'}</span>}
+          </button>
         ))}
       </div>
     </section>
+  )
+}
+
+function ArticleReader({
+  item,
+  preset,
+  hasPaidAccess,
+  onBack,
+  onJoin,
+}: {
+  item: ContentItem
+  preset: ReturnType<typeof getPreset>
+  hasPaidAccess: boolean
+  onBack: () => void
+  onJoin: () => void
+}) {
+  const paragraphs = contentParagraphs(item)
+  const gateAfter = paywallParagraph(item)
+  const locked = item.isPaid && !hasPaidAccess
+  const visibleParagraphs = locked ? paragraphs.slice(0, gateAfter) : paragraphs
+
+  return (
+    <article className="section-block article-reader">
+      <div className="article-reader-top">
+        <Button variant="outline" className="ghost-button" onClick={onBack}>回到文章列表</Button>
+        <Badge variant="outline" className="pill">{item.isPaid ? '付費文章' : '免費文章'}</Badge>
+      </div>
+      <header className="article-header">
+        <span className="eyebrow">{item.category}</span>
+        <h3>{item.title}</h3>
+        <p>{item.excerpt}</p>
+        <small>{preset.brand.creatorName} · {item.minutes} 分鐘閱讀 · {sourceLabel(item.source)}</small>
+      </header>
+      <div className="article-body">
+        {visibleParagraphs.map((paragraph, index) => (
+          <p key={`${item.id}-paragraph-${index}`}>{paragraph}</p>
+        ))}
+      </div>
+      {locked ? (
+        <div className="paywall-box">
+          <Lock size={18} />
+          <div>
+            <strong>付費牆已啟用</strong>
+            <p>這篇文章由創作者設定在第 {gateAfter} 段後進入付費牆。訂閱後可以繼續閱讀完整內容、資料補充與每週 Newsletter。</p>
+          </div>
+          <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />訂閱後繼續閱讀</Button>
+        </div>
+      ) : !item.isPaid && !hasPaidAccess ? (
+        <div className="subscribe-callout">
+          <div>
+            <strong>喜歡這篇文章？</strong>
+            <p>訂閱後可以閱讀付費分析、資料補充與每週完整 Newsletter。</p>
+          </div>
+          <Button className="primary-button" onClick={onJoin}>查看訂閱方案</Button>
+        </div>
+      ) : null}
+    </article>
   )
 }
 
@@ -934,6 +1029,7 @@ function ContentView({
     excerpt: '',
     body: '',
     isPaid: false,
+    paywallAfterParagraph: 1,
   })
 
   const canPublish = draft.title.trim() && draft.excerpt.trim() && draft.body.trim()
@@ -949,6 +1045,7 @@ function ContentView({
       excerpt: draft.excerpt.trim(),
       body: draft.body.trim(),
       isPaid: draft.isPaid,
+      paywallAfterParagraph: draft.isPaid ? draft.paywallAfterParagraph : undefined,
     })
     setDraft({
       title: '',
@@ -957,6 +1054,7 @@ function ContentView({
       excerpt: '',
       body: '',
       isPaid: false,
+      paywallAfterParagraph: 1,
     })
   }
 
@@ -1005,6 +1103,17 @@ function ContentView({
               <input type="checkbox" checked={draft.isPaid} onChange={(event) => updateDraft({ isPaid: event.target.checked })} />
               {isPublication ? '付費訂閱 / 付費牆' : '會員限定 / 付費牆'}
             </label>
+            {isPublication && draft.isPaid && (
+              <label>
+                付費牆段落
+                <Input
+                  type="number"
+                  min={1}
+                  value={draft.paywallAfterParagraph}
+                  onChange={(event) => updateDraft({ paywallAfterParagraph: Math.max(1, Number(event.target.value) || 1) })}
+                />
+              </label>
+            )}
           </div>
           <label className="editor-field">
             摘要
@@ -1626,6 +1735,19 @@ function AdminSettingsEditor({
                   訂閱制
                 </label>
               </div>
+              {isPublication && item.isPaid && (
+                <label>
+                  付費牆段落位置
+                  <Input
+                    name={`content-${item.id}-paywall`}
+                    type="number"
+                    min={1}
+                    value={paywallParagraph(item)}
+                    onChange={(event) => updateContent(item.id, { paywallAfterParagraph: Math.max(1, Number(event.target.value) || 1) })}
+                    autoComplete="off"
+                  />
+                </label>
+              )}
               <label>
                 標題
                 <Input name={`content-${item.id}-title`} value={item.title} onChange={(event) => updateContent(item.id, { title: event.target.value })} autoComplete="off" />

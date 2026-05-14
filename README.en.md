@@ -306,7 +306,7 @@ Conclusion: the MemberHub spec now covers the baseline features of Substack and 
 Current production-style examples:
 
 1. `skills-school`: an independent Skool/School-style website case with courses, community, check-ins, events, member directory, and community operations.
-2. `signal-brief`: an independent Substack-style publication case with public posts, paid posts, paywalls, subscriptions, newsletters, subscribers, referral gifts, payment state, and invoice state only.
+2. `signal-brief`: an independent Substack-style publication case. The homepage is a blog-style publication feed. Free posts open directly and include subscription prompts; paid posts stop at the creator-configured paywall paragraph until the reader subscribes. The case only includes public posts, paid posts, paywalls, subscriptions, newsletters, subscribers, referral gifts, payment state, and invoice state.
 
 ## Launch Checklist
 
@@ -317,7 +317,7 @@ Current production-style examples:
 - `ALLOWED_ORIGINS` is set to the production domain and no longer includes unnecessary test origins.
 - RLS policies are tested for content permissions, membership state, and admin roles.
 - Skool-style members can open courses, update progress, comment, and check in.
-- Substack-style readers can read public posts, see paid paywalls, subscribe, and receive newsletter issues without unrelated course, community, check-in, or event modules.
+- Substack-style readers land on a blog-style homepage, can read free posts directly, see paid posts stop at the configured paywall paragraph, subscribe, and receive newsletter issues without unrelated course, community, check-in, or event modules.
 - Admin can create content, plans, and newsletters; course/event settings appear only for Skool-style cases.
 - Portaly Vibe receives member sync, product state, and analytics events.
 - Payment status examples update membership plan status.

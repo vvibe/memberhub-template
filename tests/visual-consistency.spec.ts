@@ -131,9 +131,18 @@ test('Skills School and Signal Brief reference cases are both usable', async ({ 
   await expect(page.locator('.nav-list').getByRole('button', { name: '成員', exact: true })).toHaveCount(0)
 
   await openNav(page, '首頁')
-  await expect(page.getByRole('heading', { name: '一封信讀懂 AI 工具與內容產品的商業變化' })).toBeVisible()
-  await expect(page.locator('.plan-card .plan-name', { hasText: 'Newsletter' })).toBeVisible()
+  await expect(page.getByText('Signal Brief 公開部落格')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '公開文章：AI 工具從嘗鮮走向日常工作的三個訊號' }).first()).toBeVisible()
   await expect(page.getByText('課程與社群')).toHaveCount(0)
+
+  await page.getByRole('button', { name: /公開文章：AI 工具從嘗鮮走向日常工作的三個訊號/ }).first().click()
+  await expect(page.getByText('第三個訊號是責任分工開始改變')).toBeVisible()
+  await expect(page.getByText('喜歡這篇文章？')).toBeVisible()
+  await page.getByRole('button', { name: '回到文章列表' }).click()
+  await page.getByRole('button', { name: /付費文章：自動化內容工具的商業模式與留存風險/ }).click()
+  await expect(page.getByText('付費牆已啟用')).toBeVisible()
+  await expect(page.getByText('創作者設定在第 2 段後')).toBeVisible()
+  await expect(page.getByText('付費牆後的完整分析')).toHaveCount(0)
 
   await expectNoHorizontalOverflow(page)
   await expectMobileContentStartsInFirstViewport(page)
@@ -170,6 +179,7 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
   await expect(page.locator('.topbar h1')).toHaveText('Signal Brief 策略通訊')
   await expect(page.getByText('只保留出版與訂閱需要的營運模組')).toBeVisible()
   await expect(page.getByText('出版站可調整的內容')).toBeVisible()
+  await expect(page.getByText('付費牆段落位置').first()).toBeVisible()
   await expect(page.getByText('讀者與訂閱狀態')).toBeVisible()
   await expect(page.getByText('留言、讀者回覆與付款爭議')).toBeVisible()
   await expect(page.getByText('課程與進度')).toHaveCount(0)

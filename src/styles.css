@@ -797,6 +797,98 @@ button:active {
   margin-bottom: 14px;
 }
 
+.publication-home {
+  display: grid;
+  gap: 16px;
+}
+
+.article-card-button {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.article-card-button:hover {
+  background: var(--surface-hover);
+}
+
+.article-reader {
+  display: grid;
+  gap: 20px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.article-reader-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.article-header {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.article-header h3 {
+  margin: 0;
+  font-family: "Noto Serif TC", "Source Han Serif TC", serif;
+  font-size: var(--font-title);
+  line-height: 1.25;
+}
+
+.article-header p,
+.article-body p,
+.paywall-box p,
+.subscribe-callout p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.75;
+}
+
+.article-header small {
+  color: var(--text-muted);
+}
+
+.article-body {
+  display: grid;
+  gap: 16px;
+}
+
+.article-body p {
+  color: var(--text);
+  font-size: var(--font-md);
+}
+
+.paywall-box,
+.subscribe-callout {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface-soft);
+}
+
+.paywall-box {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.paywall-box svg {
+  color: var(--brand-accent);
+}
+
+.subscribe-callout {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
 .content-row,
 .thread-row,
 .lesson-row,
@@ -896,6 +988,19 @@ button:active {
 
 .lock-button {
   white-space: nowrap;
+}
+
+.lock-label {
+  min-height: var(--control-height);
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: var(--font-base);
+  font-weight: var(--weight-semibold);
 }
 
 .access-ok {
@@ -1544,6 +1649,13 @@ button:active {
   .search-result,
   .admin-content-item.horizontal {
     grid-template-columns: 1fr;
+  }
+
+  .article-reader-top,
+  .paywall-box,
+  .subscribe-callout {
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
   .editor-grid {
