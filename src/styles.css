@@ -1416,8 +1416,13 @@ button:active {
 }
 
 .signal-back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   justify-self: start;
-  padding-left: 0;
+  padding: 0 14px;
+  border-color: rgba(37, 40, 42, 0.12);
+  background: #ffffff;
 }
 
 .signal-article-header {
@@ -2409,6 +2414,18 @@ button:active {
   gap: 8px;
 }
 
+.settings-inline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.settings-helper {
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  line-height: 1.5;
+}
+
 .settings-card-head {
   display: flex;
   align-items: center;
@@ -2797,7 +2814,8 @@ button:active {
   }
 
   .settings-editor-grid,
-  .settings-repeat-grid {
+  .settings-repeat-grid,
+  .settings-inline-grid {
     grid-template-columns: 1fr;
   }
 

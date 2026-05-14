@@ -23,6 +23,7 @@ export type ContentItem = {
   body: string
   isPaid: boolean
   paywallAfterParagraph?: number
+  limitedFreeUntil?: string
   minutes: number
   source: string
 }

@@ -243,6 +243,39 @@ function paywallParagraph(item: ContentItem) {
   return Math.min(Math.max(1, item.paywallAfterParagraph ?? 1), paragraphCount)
 }
 
+function limitedFreeDate(item: ContentItem) {
+  if (!item.limitedFreeUntil) return null
+  const date = new Date(item.limitedFreeUntil)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function isLimitedFreeActive(item: ContentItem, now = new Date()) {
+  const date = limitedFreeDate(item)
+  return Boolean(item.isPaid && date && date.getTime() > now.getTime())
+}
+
+function requiresPaidAccess(item: ContentItem) {
+  return item.isPaid && !isLimitedFreeActive(item)
+}
+
+function isContentLocked(item: ContentItem, hasPaidAccess: boolean) {
+  return requiresPaidAccess(item) && !hasPaidAccess
+}
+
+function limitedFreeLabel(item: ContentItem) {
+  const date = limitedFreeDate(item)
+  if (!date) return ''
+  return `限時免費至 ${date.toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+}
+
+function datetimeLocalValue(value?: string) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const offset = date.getTimezoneOffset() * 60000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+}
+
 function sourceLabel(source: string) {
   const labels: Record<string, string> = {
     blog: '公開網站',
@@ -1102,11 +1135,11 @@ function SignalBriefStandalone({
                 {visibleContent.map((item) => (
                   <button key={item.id} type="button" className="signal-post-row" onClick={() => openPost(item.id)}>
                     <span>
-                      <small>{item.isPaid ? '付費文章' : item.category} · {item.minutes} 分鐘閱讀</small>
+                      <small>{isLimitedFreeActive(item) ? '限時免費公開' : item.isPaid ? '付費文章' : item.category} · {item.minutes} 分鐘閱讀</small>
                       <strong>{cleanPostTitle(item.title)}</strong>
                       <p>{item.excerpt}</p>
                     </span>
-                    {item.isPaid ? <Lock size={18} /> : <ChevronRight size={18} />}
+                    {requiresPaidAccess(item) ? <Lock size={18} /> : <ChevronRight size={18} />}
                   </button>
                 ))}
               </div>
@@ -1123,7 +1156,7 @@ function SignalBriefStandalone({
                   {paidPosts.slice(0, 3).map((item) => (
                     <button key={item.id} type="button" onClick={() => openPost(item.id)}>
                       <strong>{cleanPostTitle(item.title)}</strong>
-                      <small>付費牆在第 {paywallParagraph(item)} 段後</small>
+                      <small>{isLimitedFreeActive(item) ? limitedFreeLabel(item) : `付費牆在第 ${paywallParagraph(item)} 段後`}</small>
                     </button>
                   ))}
                 </div>
@@ -1248,17 +1281,20 @@ function SignalPostArticle({
 }) {
   const paragraphs = contentParagraphs(item)
   const gateAfter = paywallParagraph(item)
-  const locked = item.isPaid && !hasPaidAccess
+  const locked = isContentLocked(item, hasPaidAccess)
   const visibleParagraphs = locked ? paragraphs.slice(0, gateAfter) : paragraphs
 
   return (
     <article className="signal-article-page">
       <button type="button" className="signal-back-button" onClick={onBack}>回到文章列表</button>
       <header className="signal-article-header">
-        <span className="signal-kicker">{item.isPaid ? 'Paid essay' : item.category}</span>
+        <span className="signal-kicker">{isLimitedFreeActive(item) ? 'Limited free' : item.isPaid ? 'Paid essay' : item.category}</span>
         <h1>{cleanPostTitle(item.title)}</h1>
         <p>{item.excerpt}</p>
-        <small>{postMeta(item, preset)}{item.isPaid ? ` · 付費牆在第 ${gateAfter} 段後` : ''}</small>
+        <small>
+          {postMeta(item, preset)}
+          {isLimitedFreeActive(item) ? ` · ${limitedFreeLabel(item)}` : requiresPaidAccess(item) ? ` · 付費牆在第 ${gateAfter} 段後` : ''}
+        </small>
       </header>
       <div className="signal-article-body">
         {visibleParagraphs.map((paragraph, index) => (
@@ -1273,14 +1309,6 @@ function SignalPostArticle({
             <p>作者把這篇文章設定在第 {gateAfter} 段後進入付費牆。訂閱後可繼續閱讀完整分析與資料補充。</p>
           </div>
           <Button className="primary-button" onClick={onJoin}>訂閱後繼續閱讀</Button>
-        </div>
-      ) : !item.isPaid && !hasPaidAccess ? (
-        <div className="signal-reader-cta">
-          <div>
-            <strong>想讀完整付費分析？</strong>
-            <p>升級後可以閱讀會員專欄、資料補充與每週完整 Newsletter。</p>
-          </div>
-          <Button className="primary-button" onClick={onJoin}>查看訂閱方案</Button>
         </div>
       ) : null}
     </article>
@@ -1595,20 +1623,23 @@ function ArticleReader({
 }) {
   const paragraphs = contentParagraphs(item)
   const gateAfter = paywallParagraph(item)
-  const locked = item.isPaid && !hasPaidAccess
+  const locked = isContentLocked(item, hasPaidAccess)
   const visibleParagraphs = locked ? paragraphs.slice(0, gateAfter) : paragraphs
 
   return (
     <article className="section-block article-reader">
       <div className="article-reader-top">
         <Button variant="outline" className="ghost-button" onClick={onBack}>回到文章列表</Button>
-        <Badge variant="outline" className="pill">{item.isPaid ? '付費文章' : '免費文章'}</Badge>
+        <Badge variant="outline" className="pill">{isLimitedFreeActive(item) ? '限時免費' : item.isPaid ? '付費文章' : '免費文章'}</Badge>
       </div>
       <header className="article-header">
         <span className="eyebrow">{item.category}</span>
         <h3>{item.title}</h3>
         <p>{item.excerpt}</p>
-        <small>{preset.brand.creatorName} · {item.minutes} 分鐘閱讀 · {sourceLabel(item.source)}</small>
+        <small>
+          {preset.brand.creatorName} · {item.minutes} 分鐘閱讀 · {sourceLabel(item.source)}
+          {isLimitedFreeActive(item) ? ` · ${limitedFreeLabel(item)}` : ''}
+        </small>
       </header>
       <div className="article-body">
         {visibleParagraphs.map((paragraph, index) => (
@@ -1623,14 +1654,6 @@ function ArticleReader({
             <p>這篇文章由創作者設定在第 {gateAfter} 段後進入付費牆。訂閱後可以繼續閱讀完整內容、資料補充與每週 Newsletter。</p>
           </div>
           <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />訂閱後繼續閱讀</Button>
-        </div>
-      ) : !item.isPaid && !hasPaidAccess ? (
-        <div className="subscribe-callout">
-          <div>
-            <strong>喜歡這篇文章？</strong>
-            <p>訂閱後可以閱讀付費分析、資料補充與每週完整 Newsletter。</p>
-          </div>
-          <Button className="primary-button" onClick={onJoin}>查看訂閱方案</Button>
         </div>
       ) : null}
     </article>
@@ -2505,22 +2528,44 @@ function AdminSettingsEditor({
               <div className="settings-card-head">
                 <StatusPill tone={item.isPaid ? 'blue' : 'green'}>{item.isPaid ? '付費訂閱' : '公開'}</StatusPill>
                 <label className="editor-toggle compact-toggle">
-                  <input type="checkbox" checked={item.isPaid} onChange={(event) => updateContent(item.id, { isPaid: event.target.checked })} />
+                  <input
+                    type="checkbox"
+                    checked={item.isPaid}
+                    onChange={(event) => updateContent(item.id, {
+                      isPaid: event.target.checked,
+                      limitedFreeUntil: event.target.checked ? item.limitedFreeUntil : undefined,
+                    })}
+                  />
                   訂閱制
                 </label>
               </div>
               {isPublication && item.isPaid && (
-                <label>
-                  付費牆段落位置
-                  <Input
-                    name={`content-${item.id}-paywall`}
-                    type="number"
-                    min={1}
-                    value={paywallParagraph(item)}
-                    onChange={(event) => updateContent(item.id, { paywallAfterParagraph: Math.max(1, Number(event.target.value) || 1) })}
-                    autoComplete="off"
-                  />
-                </label>
+                <div className="settings-inline-grid">
+                  <label>
+                    付費牆段落位置
+                    <Input
+                      name={`content-${item.id}-paywall`}
+                      type="number"
+                      min={1}
+                      value={paywallParagraph(item)}
+                      onChange={(event) => updateContent(item.id, { paywallAfterParagraph: Math.max(1, Number(event.target.value) || 1) })}
+                      autoComplete="off"
+                    />
+                  </label>
+                  <label>
+                    限時免費公開到
+                    <Input
+                      name={`content-${item.id}-limited-free`}
+                      type="datetime-local"
+                      value={datetimeLocalValue(item.limitedFreeUntil)}
+                      onChange={(event) => updateContent(item.id, { limitedFreeUntil: event.target.value || undefined })}
+                      autoComplete="off"
+                    />
+                  </label>
+                  <small className="settings-helper span-2">
+                    設定後，這篇付費文章會在期限前開放閱讀；時間過後會自動回到付費牆。
+                  </small>
+                </div>
               )}
               <label>
                 標題

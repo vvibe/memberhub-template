@@ -139,16 +139,16 @@ test('visitor, member, and admin states show different screens in both reference
   await expect(page.locator('.nav-list').getByRole('button', { name: '我的訂閱', exact: true })).toHaveCount(0)
   await expect(page.locator('.nav-list').getByRole('button', { name: '電子報', exact: true })).toHaveCount(0)
   await openNav(page, '文章')
-  await page.getByRole('button', { name: /付費文章：自動化內容工具的商業模式與留存風險/ }).click()
+  await page.locator('.publication-post-card').filter({ hasText: 'AI 內容產品追蹤資料表的使用方法' }).click()
   await expect(page.getByText('付費牆已啟用')).toBeVisible()
-  await expect(page.getByText('付費牆後的完整分析')).toHaveCount(0)
+  await expect(page.getByText('使用這份表時，我建議先看')).toHaveCount(0)
 
   await setRole(page, '會員')
   await expect(page.getByText('付費讀者視角')).toBeVisible()
   await expect(page.locator('.nav-list').getByRole('button', { name: '我的訂閱', exact: true })).toBeVisible()
   await openNav(page, '文章')
-  await page.getByRole('button', { name: /付費文章：自動化內容工具的商業模式與留存風險/ }).click()
-  await expect(page.getByText('付費牆後的完整分析')).toBeVisible()
+  await page.locator('.publication-post-card').filter({ hasText: 'AI 內容產品追蹤資料表的使用方法' }).click()
+  await expect(page.getByText('使用這份表時，我建議先看')).toBeVisible()
   await expect(page.getByText('付費牆已啟用')).toHaveCount(0)
 
   await setRole(page, '管理員')
@@ -209,12 +209,13 @@ test('Skills School and Signal Brief reference cases are both usable', async ({ 
 
   await page.getByRole('button', { name: /公開文章：AI 工具從嘗鮮走向日常工作的三個訊號/ }).first().click()
   await expect(page.getByText('第三個訊號是責任分工開始改變')).toBeVisible()
-  await expect(page.getByText('喜歡這篇文章？')).toBeVisible()
+  await expect(page.getByText('喜歡這篇文章？')).toHaveCount(0)
+  await expect(page.getByText('訂閱後可以閱讀付費分析')).toHaveCount(0)
   await page.getByRole('button', { name: '回到文章列表' }).click()
-  await page.getByRole('button', { name: /付費文章：自動化內容工具的商業模式與留存風險/ }).click()
+  await page.locator('.publication-post-card').filter({ hasText: 'AI 內容產品追蹤資料表的使用方法' }).click()
   await expect(page.getByText('付費牆已啟用')).toBeVisible()
-  await expect(page.getByText('創作者設定在第 2 段後')).toBeVisible()
-  await expect(page.getByText('付費牆後的完整分析')).toHaveCount(0)
+  await expect(page.getByText('創作者設定在第 1 段後')).toBeVisible()
+  await expect(page.getByText('使用這份表時，我建議先看')).toHaveCount(0)
 
   await expectNoHorizontalOverflow(page)
   await expectMobileContentStartsInFirstViewport(page)
@@ -311,6 +312,43 @@ test('admin can edit fork-ready site settings and newsletter configuration', asy
   await expectDetailLayoutQuality(page)
   await attachViewportScreenshot(page, testInfo, 'admin-editing')
 
+  expect(consoleErrors.errors).toEqual([])
+})
+
+test('Signal Brief standalone article and limited-free rules work', async ({ page }, testInfo) => {
+  const consoleErrors = collectConsoleErrors(page)
+
+  await page.goto('http://signal-brief.localhost:5176/', { waitUntil: 'networkidle' })
+  await page.locator('.signal-feature-post').click()
+  await expect(page.getByRole('heading', { name: 'AI 工具從嘗鮮走向日常工作的三個訊號' })).toBeVisible()
+  await expect(page.getByText('想讀完整付費分析？')).toHaveCount(0)
+  await expect(page.getByText('升級後可以閱讀會員專欄')).toHaveCount(0)
+
+  const backButtonStyle = await page.getByRole('button', { name: '回到文章列表' }).evaluate((element) => {
+    const style = getComputedStyle(element)
+    return {
+      display: style.display,
+      alignItems: style.alignItems,
+      justifyContent: style.justifyContent,
+      borderRadius: style.borderRadius,
+    }
+  })
+  expect(backButtonStyle.display).toContain('flex')
+  expect(backButtonStyle).toMatchObject({ alignItems: 'center', justifyContent: 'center' })
+
+  await page.getByRole('button', { name: '回到文章列表' }).click()
+  await page.locator('.signal-post-row').filter({ hasText: '自動化內容工具的商業模式與留存風險' }).click()
+  await expect(page.getByText('限時免費至')).toBeVisible()
+  await expect(page.getByText('付費牆已啟用')).toHaveCount(0)
+  await expect(page.getByText('付費牆後的完整分析會拆解三種定價模型')).toBeVisible()
+
+  await page.goto('/?case=signal-brief&view=admin')
+  await setRole(page, '管理員')
+  await expect(page.getByText('限時免費公開到').first()).toBeVisible()
+  await expect(page.getByText('時間過後會自動回到付費牆').first()).toBeVisible()
+
+  await expectNoHorizontalOverflow(page)
+  await attachViewportScreenshot(page, testInfo, 'signal-brief-limited-free')
   expect(consoleErrors.errors).toEqual([])
 })
 
