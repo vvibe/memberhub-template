@@ -34,6 +34,8 @@ Full setup checklist: [`docs/fork-readiness.md`](./docs/fork-readiness.md)
 ## Live Preview
 
 - Production preview: https://memberhub-coral.vercel.app/
+- Skool-style case: https://memberhub-coral.vercel.app/?case=skills-school&view=join
+- Substack-style case: https://memberhub-coral.vercel.app/?case=superstake&view=blog
 - Vercel project: `memberhub`
 - Current examples: `Skills School 職能加速社群` and `SuperStake 策略通訊`.
 
@@ -98,7 +100,7 @@ Run the full Playwright QA suite:
 npm run test:qa
 ```
 
-`test:qa` builds the latest production bundle first, then runs Playwright against Vite preview. Completion requires a 100% pass rate: the suite currently covers 15 main views, desktop `1440x1000`, mobile `390x844`, console errors, horizontal overflow, shared UI tokens, typography weight/scale rules, viewport screenshots, production-style copy checks, and core interaction flows.
+`test:qa` builds the latest production bundle first, then runs Playwright against Vite preview. Completion requires a 100% pass rate: the suite currently covers 15 main views, direct URLs for both cases, desktop `1440x1000`, mobile `390x844`, console errors, horizontal overflow, shared UI tokens, typography weight/scale rules, viewport screenshots, production-style copy checks, and core interaction flows.
 
 The local experience runs without keys. Production requires InsForge setup and a Portaly Vibe MCP token.
 

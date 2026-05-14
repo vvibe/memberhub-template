@@ -133,6 +133,29 @@ test('Skills School and SuperStake reference cases are both usable', async ({ pa
   expect(consoleErrors.errors).toEqual([])
 })
 
+test('reference cases have direct online URLs', async ({ page }, testInfo) => {
+  const consoleErrors = collectConsoleErrors(page)
+
+  await page.goto('/?case=skills-school&view=join')
+  await expect(page.locator('.topbar h1')).toHaveText('Skills School 職能加速社群')
+  await expect(page.getByText('加入 Skills School，開始課程、社群與每週實作')).toBeVisible()
+
+  await page.goto('/?case=superstake&view=blog')
+  await expect(page.locator('.topbar h1')).toHaveText('SuperStake 策略通訊')
+  await expect(page.getByText('SuperStake 公開部落格')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '公開文章：AI 工具從嘗鮮走向日常工作的三個訊號' }).first()).toBeVisible()
+
+  await expectNoHorizontalOverflow(page)
+  await expectNoDemoCopy(page)
+  await expectSharedVisualTokens(page)
+  await expectReadableTypography(page)
+  await expectConsistentSpacingAndTextMetrics(page)
+  await expectNoLayoutCollisions(page)
+  await attachViewportScreenshot(page, testInfo, 'direct-case-urls')
+
+  expect(consoleErrors.errors).toEqual([])
+})
+
 function collectConsoleErrors(page: Page) {
   const errors: string[] = []
   page.on('console', (message) => {

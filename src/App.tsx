@@ -64,15 +64,59 @@ const navItems: Array<{ id: ViewId; label: string; icon: typeof LayoutDashboard 
   { id: 'setup', label: '設定', icon: Settings2 },
 ]
 
+const validPresetIds = new Set(presets.map((preset) => preset.id))
+const validViewIds = new Set(navItems.map((item) => item.id))
+
+function isPresetId(value: string): value is PresetId {
+  return validPresetIds.has(value as PresetId)
+}
+
+function isViewId(value: string): value is ViewId {
+  return validViewIds.has(value as ViewId)
+}
+
+function getInitialRoute() {
+  if (typeof window === 'undefined') return { presetId: undefined, view: undefined }
+  const params = new URLSearchParams(window.location.search)
+  const caseParam = params.get('case') ?? params.get('preset')
+  const viewParam = params.get('view')
+
+  return {
+    presetId: caseParam && isPresetId(caseParam) ? caseParam : undefined,
+    view: viewParam && isViewId(viewParam) ? viewParam : undefined,
+  }
+}
+
 function App() {
-  const [state, setState] = useState<AppState>(() => loadState())
-  const [view, setView] = useState<ViewId>('home')
+  const initialRoute = useMemo(() => getInitialRoute(), [])
+  const [state, setState] = useState<AppState>(() => {
+    const storedState = loadState()
+    if (!initialRoute.presetId) return storedState
+    return {
+      ...storedState,
+      presetId: initialRoute.presetId,
+      selectedPlanId: 'free',
+      localContentItems: [],
+      localNewsletterIssues: [],
+      localReferralCampaigns: [],
+      localMembers: [],
+      localModeration: [],
+    }
+  })
+  const [view, setView] = useState<ViewId>(initialRoute.view ?? 'home')
   const [query, setQuery] = useState('')
   const [globalQuery, setGlobalQuery] = useState('')
 
   useEffect(() => {
     saveState(state)
   }, [state])
+
+  useEffect(() => {
+    const params = new URLSearchParams()
+    params.set('case', state.presetId)
+    params.set('view', view)
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`)
+  }, [state.presetId, view])
 
   const preset = useMemo(() => getPreset(state.presetId), [state.presetId])
   const runtimePreset = useMemo(
