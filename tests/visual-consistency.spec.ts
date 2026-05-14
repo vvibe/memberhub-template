@@ -135,7 +135,7 @@ test('visitor, member, and admin states show different screens in both reference
   await page.locator('.preset-select-trigger').click()
   await page.getByRole('option', { name: 'Signal Brief' }).click()
   await setRole(page, '訪客')
-  await expect(page.getByText('先閱讀公開文章')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '先閱讀公開文章' })).toBeVisible()
   await expect(page.locator('.nav-list').getByRole('button', { name: '我的訂閱', exact: true })).toHaveCount(0)
   await expect(page.locator('.nav-list').getByRole('button', { name: '電子報', exact: true })).toHaveCount(0)
   await openNav(page, '文章')
@@ -188,9 +188,10 @@ test('Skills School and Signal Brief reference cases are both usable', async ({ 
   await expect(page.locator('.topbar h1')).toHaveText('Signal Brief 策略通訊')
 
   await openNav(page, '文章')
-  await expect(page.getByText('Signal Brief 公開部落格')).toBeVisible()
-  await expect(page.getByRole('heading', { name: '公開文章：AI 工具從嘗鮮走向日常工作的三個訊號' }).first()).toBeVisible()
-  await expect(page.getByRole('heading', { name: '付費文章：自動化內容工具的商業模式與留存風險' })).toBeVisible()
+  await expect(page.locator('.publication-masthead h2')).toHaveText('Signal Brief')
+  await expect(page.getByRole('heading', { name: '最新文章' })).toBeVisible()
+  await expect(page.getByText('AI 工具從嘗鮮走向日常工作的三個訊號')).toBeVisible()
+  await expect(page.getByText('自動化內容工具的商業模式與留存風險')).toBeVisible()
   await openNav(page, '訂閱')
   await expect(page.getByText('訂閱 Signal Brief，閱讀付費文章與每週電子報')).toBeVisible()
   await openNav(page, '文章庫')
@@ -202,8 +203,8 @@ test('Skills School and Signal Brief reference cases are both usable', async ({ 
   await expect(page.locator('.nav-list').getByRole('button', { name: '成員', exact: true })).toHaveCount(0)
 
   await openNav(page, '首頁')
-  await expect(page.getByText('Signal Brief 公開部落格')).toBeVisible()
-  await expect(page.getByRole('heading', { name: '公開文章：AI 工具從嘗鮮走向日常工作的三個訊號' }).first()).toBeVisible()
+  await expect(page.locator('.publication-masthead h2')).toHaveText('Signal Brief')
+  await expect(page.getByText('AI 工具從嘗鮮走向日常工作的三個訊號')).toBeVisible()
   await expect(page.getByText('課程與社群')).toHaveCount(0)
 
   await page.getByRole('button', { name: /公開文章：AI 工具從嘗鮮走向日常工作的三個訊號/ }).first().click()
@@ -238,17 +239,17 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
 
   await page.goto('/?case=signal-brief&view=blog')
   await expect(page.locator('.topbar h1')).toHaveText('Signal Brief 策略通訊')
-  await expect(page.getByText('Signal Brief 公開部落格')).toBeVisible()
-  await expect(page.getByRole('heading', { name: '公開文章：AI 工具從嘗鮮走向日常工作的三個訊號' }).first()).toBeVisible()
+  await expect(page.locator('.publication-masthead h2')).toHaveText('Signal Brief')
+  await expect(page.getByRole('heading', { name: '最新文章' })).toBeVisible()
 
   await page.goto('/?case=signal-brief&view=courses')
-  await expect(page.getByText('Signal Brief 公開部落格')).toBeVisible()
+  await expect(page.locator('.publication-masthead h2')).toHaveText('Signal Brief')
   await expect(page.locator('.nav-list').getByRole('button', { name: '課程', exact: true })).toHaveCount(0)
   await expect(page.locator('.nav-list').getByRole('button', { name: '成員', exact: true })).toHaveCount(0)
 
   await page.goto('/?case=signal-brief&view=admin')
   await expect(page.locator('.topbar h1')).toHaveText('Signal Brief 策略通訊')
-  await expect(page.getByText('先閱讀公開文章')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '先閱讀公開文章' })).toBeVisible()
   await expect(page.getByText('出版站可調整的內容')).toHaveCount(0)
   await setRole(page, '管理員')
   await expect(page.getByText('只保留出版與訂閱需要的營運模組')).toBeVisible()
@@ -262,7 +263,7 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
 
   await page.goto('/?case=superstake&view=blog')
   await expect(page.locator('.topbar h1')).toHaveText('Signal Brief 策略通訊')
-  await expect(page.getByText('Signal Brief 公開部落格')).toBeVisible()
+  await expect(page.locator('.publication-masthead h2')).toHaveText('Signal Brief')
 
   await expectNoHorizontalOverflow(page)
   await expectMobileContentStartsInFirstViewport(page)

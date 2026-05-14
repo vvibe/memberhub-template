@@ -947,6 +947,105 @@ function BlogView({
     )
   }
 
+  if (isPublicationPreset(preset)) {
+    const feedPosts = preset.content.filter((item) => item.id !== featurePost?.id)
+    return (
+      <section className="publication-page">
+        <header className="publication-masthead">
+          <div className="publication-logo-mark">SB</div>
+          <h2>Signal Brief</h2>
+          <p>{preset.copy.heroBody}</p>
+          <small>By {preset.brand.creatorName}</small>
+          <div className="publication-subscribe-inline">
+            <Input aria-label="訂閱 Email" type="email" placeholder="輸入你的 Email" />
+            <Button className="primary-button" onClick={onJoin}>訂閱</Button>
+          </div>
+        </header>
+
+        <nav className="publication-tabs" aria-label="Signal Brief sections">
+          <button className="active" type="button">首頁</button>
+          <button type="button">公開文章</button>
+          <button type="button">付費文章</button>
+          <button type="button">Archive</button>
+          <button type="button">About</button>
+        </nav>
+
+        {featurePost && (
+          <button className="publication-feature-card article-card-button" type="button" aria-label={featurePost.title} onClick={() => setSelectedPostId(featurePost.id)}>
+            <span className="publication-cover publication-cover-large">
+              <span>AI WORK SIGNALS</span>
+            </span>
+            <span className="publication-feature-copy">
+              <Badge variant="outline" className="pill">{featurePost.category}</Badge>
+              <strong>{cleanPostTitle(featurePost.title)}</strong>
+              <span>{featurePost.excerpt}</span>
+              <small>{postMeta(featurePost, preset)}</small>
+            </span>
+          </button>
+        )}
+
+        <div className="publication-body-grid">
+          <div className="publication-feed">
+            <div className="publication-feed-head">
+              <h3>最新文章</h3>
+              <button type="button">View all</button>
+            </div>
+            <div className="publication-card-grid">
+              {feedPosts.slice(0, 3).map((item, index) => (
+                <button key={item.id} type="button" className="publication-post-card article-card-button" aria-label={item.title} onClick={() => setSelectedPostId(item.id)}>
+                  <span className={`publication-cover publication-cover-${index + 1}`}>
+                    <span>{item.isPaid ? 'PAID BRIEF' : 'OPEN NOTE'}</span>
+                  </span>
+                  <Badge variant="outline" className="pill">{item.isPaid ? '付費文章' : item.category}</Badge>
+                  <strong>{cleanPostTitle(item.title)}</strong>
+                  <span>{item.excerpt}</span>
+                  <small>{postMeta(item, preset)}{item.isPaid ? ` · 付費牆在第 ${paywallParagraph(item)} 段後` : ''}</small>
+                </button>
+              ))}
+            </div>
+
+            <div className="publication-feed-head compact">
+              <h3>付費讀者專欄</h3>
+              <button type="button" onClick={onJoin}>訂閱完整研究</button>
+            </div>
+            <div className="publication-paid-list">
+              {memberPosts.slice(1).map((item) => (
+                <button key={item.id} type="button" className="publication-paid-row article-card-button" aria-label={item.title} onClick={() => setSelectedPostId(item.id)}>
+                  <span>
+                    <Badge variant="outline" className="pill">付費文章</Badge>
+                    <strong>{cleanPostTitle(item.title)}</strong>
+                    <small>{item.minutes} 分鐘閱讀 · 付費牆在第 {paywallParagraph(item)} 段後</small>
+                  </span>
+                  {hasPaidAccess ? <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span> : <span className="lock-button lock-label"><Lock data-icon="inline-start" />訂閱後閱讀</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <aside className="publication-sidebar">
+            <article className="publication-sidebar-card">
+              <div className="publication-logo-mark small">SB</div>
+              <h3>Signal Brief</h3>
+              <p>每週整理 AI 工具、內容產品與創作者商業模式的可追蹤變化。</p>
+              <div className="publication-subscribe-inline stacked">
+                <Input aria-label="側欄訂閱 Email" type="email" placeholder="輸入你的 Email" />
+                <Button className="primary-button" onClick={onJoin}>訂閱</Button>
+              </div>
+            </article>
+            <article className="publication-sidebar-card">
+              <h3>訂閱後可以閱讀</h3>
+              <ul className="check-list">
+                <li><CheckCircle2 size={16} />付費牆後的完整分析</li>
+                <li><CheckCircle2 size={16} />每週研究信與資料補充</li>
+                <li><CheckCircle2 size={16} />文章留言與讀者問答</li>
+              </ul>
+            </article>
+          </aside>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className={publicationHome ? 'section-block publication-home' : 'section-block'}>
       <div className="section-heading horizontal">
@@ -991,6 +1090,14 @@ function BlogView({
       </div>
     </section>
   )
+}
+
+function cleanPostTitle(title: string) {
+  return title.replace(/^(公開文章|付費文章)：/, '')
+}
+
+function postMeta(item: ContentItem, preset: ReturnType<typeof getPreset>) {
+  return `${preset.brand.creatorName} · ${item.minutes} 分鐘閱讀 · ${sourceLabel(item.source)}`
 }
 
 function ArticleReader({
