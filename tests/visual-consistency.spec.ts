@@ -335,6 +335,16 @@ test('Signal Brief standalone article and limited-free rules work', async ({ pag
   })
   expect(authorProfileLayout.avatarWidth).toBeGreaterThanOrEqual(94)
   expect(authorProfileLayout.avatarCenterOffset).toBeLessThanOrEqual(1)
+  await page.getByRole('navigation', { name: 'Signal Brief navigation' }).getByRole('button', { name: '訂閱', exact: true }).click()
+  const planGridLayout = await page.locator('.signal-plan-grid').evaluate((grid) => {
+    const rect = grid.getBoundingClientRect()
+    return {
+      centerOffset: Math.round(Math.abs((rect.left + rect.width / 2) - window.innerWidth / 2)),
+      width: Math.round(rect.width),
+    }
+  })
+  expect(planGridLayout.centerOffset).toBeLessThanOrEqual(1)
+  await page.getByRole('navigation', { name: 'Signal Brief navigation' }).getByRole('button', { name: '文章', exact: true }).click()
   await page.locator('.signal-feature-post').click()
   await expect(page.getByRole('heading', { name: 'AI 工具從嘗鮮走向日常工作的三個訊號' })).toBeVisible()
   await expect(page.getByText('想讀完整付費分析？')).toHaveCount(0)
