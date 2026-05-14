@@ -275,15 +275,6 @@ export const presets: VerticalPreset[] = [
         features: ['付費文章', '完整 Newsletter', '資料補充', '文章留言權限'],
         highlighted: true,
       },
-      {
-        id: 'lifetime',
-        name: '年度訂閱',
-        price: 'NT$4,200',
-        cadence: '每年',
-        description: '適合固定追蹤市場變化、想保留完整文章與年度整理的讀者。',
-        features: ['全年付費文章', '年度整理', '資料附錄', '優先回覆讀者問題'],
-        unlockLevel: 3,
-      },
     ],
     content: [
       {
@@ -383,7 +374,7 @@ export const presets: VerticalPreset[] = [
     events: [],
     members: [
       { id: 'signal-brief-m1', name: 'Kai', email: 'kai.tsai@signalbrief.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 1, points: 0, source: 'blog', bio: '固定閱讀會員專欄，關注 AI 工具與內容產品。', joinedAt: '2026-02-18', contributions: { posts: 6, comments: 29, likesReceived: 0 }, risk: 'low' },
-      { id: 'signal-brief-m2', name: 'Lena', email: 'lena.chou@signalbrief.tw', role: 'member', groupRole: 'member', planId: 'lifetime', status: 'active', level: 1, points: 0, source: 'newsletter', bio: '年度訂閱讀者，常回覆每週研究信並提供資料表回饋。', joinedAt: '2025-11-28', contributions: { posts: 15, comments: 63, likesReceived: 0 }, risk: 'low' },
+      { id: 'signal-brief-m2', name: 'Lena', email: 'lena.chou@signalbrief.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 1, points: 0, source: 'newsletter', bio: '月付訂閱讀者，常回覆每週研究信並提供資料表回饋。', joinedAt: '2025-11-28', contributions: { posts: 15, comments: 63, likesReceived: 0 }, risk: 'low' },
       { id: 'signal-brief-m3', name: 'Mika', email: 'mika.wang@signalbrief.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 1, points: 0, source: 'referral', bio: '透過讀者推薦訂閱，主要追蹤付費文章與每週摘要。', joinedAt: '2026-01-17', contributions: { posts: 10, comments: 38, likesReceived: 0 }, risk: 'medium' },
       { id: 'signal-brief-m4', name: 'Owen', email: 'owen.liu@signalbrief.tw', role: 'member', groupRole: 'member', planId: 'free', status: 'free', level: 1, points: 0, source: 'organic', bio: '免費讀者，主要閱讀公開文章與每週摘要。', joinedAt: '2026-04-22', contributions: { posts: 1, comments: 3, likesReceived: 0 }, risk: 'low' },
     ],
@@ -393,10 +384,10 @@ export const presets: VerticalPreset[] = [
       { id: 'signal-brief-ref3', code: 'RESEARCH-LIVE', label: '直播報名來源', source: 'live campaign', reward: '活動後升級信', freeTrials: 84, paidConversions: 22, revenueLabel: 'NT$9,240' },
     ],
     moderation: [
-      { id: 'signal-brief-mod1', kind: 'membership-question', title: '新訂閱讀者問題待回覆', subject: 'Owen 想確認年度訂閱是否包含資料附錄', status: 'open', priority: 'medium', action: '回覆訂閱權益、發送文章索引與資料附錄說明' },
+      { id: 'signal-brief-mod1', kind: 'membership-question', title: '新訂閱讀者問題待回覆', subject: 'Owen 想確認月付訂閱是否包含資料附錄', status: 'open', priority: 'medium', action: '回覆訂閱權益、發送文章索引與資料附錄說明' },
       { id: 'signal-brief-mod2', kind: 'reported-post', title: '文章留言被檢舉', subject: '五月 AI 內容產品追蹤表留言區', status: 'reviewing', priority: 'high', action: '確認留言是否包含未授權資料或不當轉載' },
       { id: 'signal-brief-mod3', kind: 'automod-risk', title: '資料存取異常', subject: '新帳號大量複製付費資料附錄', status: 'open', priority: 'high', action: '暫停下載權限並確認使用條款' },
-      { id: 'signal-brief-mod4', kind: 'billing-dispute', title: '退款資料準備', subject: '讀者要求取消年度訂閱', status: 'resolved', priority: 'low', action: '匯出閱讀紀錄、付款紀錄與資料庫存取紀錄' },
+      { id: 'signal-brief-mod4', kind: 'billing-dispute', title: '退款資料準備', subject: '讀者要求取消月付訂閱', status: 'resolved', priority: 'low', action: '匯出閱讀紀錄、付款紀錄與資料庫存取紀錄' },
     ],
     notifications: [
       { id: 'signal-brief-notify1', channel: 'email', trigger: 'new-post', audience: 'all', status: 'scheduled' },

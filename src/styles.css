@@ -1070,8 +1070,13 @@ button:active {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   width: min(560px, 100%);
-  gap: 8px;
+  gap: 6px;
   align-items: center;
+  padding: 5px;
+  border: 1px solid rgba(37, 40, 42, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
 }
 
 .signal-subscribe-form [data-slot="input"],
@@ -1081,6 +1086,21 @@ button:active {
   border-color: rgba(37, 40, 42, 0.16);
   background: #ffffff;
   font-size: 14px;
+}
+
+.signal-subscribe-form [data-slot="input"] {
+  min-height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0 14px;
+}
+
+.signal-subscribe-form .primary-button {
+  min-height: 38px;
+  border-radius: 999px;
+  padding-inline: 16px;
+  white-space: nowrap;
 }
 
 .signal-form-note,
@@ -1304,8 +1324,9 @@ button:active {
 
 .signal-plan-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 360px));
   gap: 16px;
+  max-width: 760px;
 }
 
 .signal-plan-card {
@@ -2587,6 +2608,16 @@ button:active {
   .signal-search {
     grid-template-columns: 1fr;
     width: 100%;
+  }
+
+  .signal-subscribe-form {
+    border-radius: 14px;
+    padding: 6px;
+  }
+
+  .signal-subscribe-form [data-slot="input"] {
+    border-radius: 10px;
+    padding: 0 10px;
   }
 
   .signal-section-head {
