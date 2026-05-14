@@ -823,6 +823,7 @@ async function expectPublicationAdminTabs(page: Page) {
     await expect(tabs.getByRole('button', { name: new RegExp(label) })).toBeVisible()
   }
   await expect(tabs.getByRole('button')).toHaveCount(tabLabels.length)
+  await expect(page.locator('.publication-admin-tab-head .publication-admin-tabs')).toBeVisible()
 }
 
 async function expectPublicationAdminVisualConsistency(page: Page) {
@@ -843,9 +844,19 @@ async function expectPublicationAdminVisualConsistency(page: Page) {
           height: Math.round(rect.height),
           radius: style.borderRadius,
           fontSize: style.fontSize,
+          display: style.display,
+          justifyContent: style.justifyContent,
           textAlign: style.textAlign,
+          top: Math.round(rect.top),
         }
       })
+
+    const tabContainer = document.querySelector('.publication-admin-tabs')
+    const tabContainerStyle = tabContainer ? window.getComputedStyle(tabContainer) : null
+    const tabHead = document.querySelector('.publication-admin-tab-head')
+    const content = document.querySelector('.publication-admin-content')
+    const tabHeadRect = tabHead?.getBoundingClientRect()
+    const contentRect = content?.getBoundingClientRect()
 
     const panels = Array.from(document.querySelectorAll('.publication-admin-content .admin-panel, .publication-admin-tab-head'))
       .filter(isVisible)
@@ -860,10 +871,17 @@ async function expectPublicationAdminVisualConsistency(page: Page) {
       })
 
     return {
+      tabContainer: {
+        display: tabContainerStyle?.display ?? '',
+        inHeader: Boolean(tabContainer?.closest('.publication-admin-tab-head')),
+        headWidth: tabHeadRect ? Math.round(tabHeadRect.width) : 0,
+        contentWidth: contentRect ? Math.round(contentRect.width) : 0,
+      },
       tabIssues: tabButtons.filter((button) => (
-        button.height < 48 ||
+        button.height < 34 ||
         button.radius !== '8px' ||
-        button.textAlign !== 'left'
+        button.display !== 'flex' ||
+        button.justifyContent !== 'center'
       )),
       panelIssues: panels.filter((panel) => (
         panel.radius !== '8px' ||
@@ -873,7 +891,12 @@ async function expectPublicationAdminVisualConsistency(page: Page) {
     }
   })
 
-  expect(report.tabIssues, 'publication admin tabs should use stable left-aligned navigation rows').toEqual([])
+  expect(report.tabContainer, 'publication admin tabs should live in the top tab header and span the content width').toMatchObject({
+    display: 'flex',
+    inHeader: true,
+  })
+  expect(report.tabContainer.headWidth).toBeGreaterThanOrEqual(report.tabContainer.contentWidth - 2)
+  expect(report.tabIssues, 'publication admin tabs should use stable centered top-tab controls').toEqual([])
   expect(report.panelIssues, 'publication admin panels should match the shared panel visual system').toEqual([])
 }
 

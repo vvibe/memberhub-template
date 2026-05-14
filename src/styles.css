@@ -2340,62 +2340,50 @@ button:active {
 
 .publication-admin-shell {
   display: grid;
-  grid-template-columns: minmax(210px, 0.32fr) minmax(0, 1fr);
-  gap: 14px;
+  gap: 12px;
   align-items: start;
 }
 
 .publication-admin-tabs {
-  position: sticky;
-  top: 18px;
-  display: grid;
-  gap: 7px;
-  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  background: #ffffff;
+  background: var(--surface-soft);
 }
 
 .publication-admin-tabs button {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: 10px;
+  display: inline-flex;
   align-items: center;
-  min-height: 50px;
-  padding: 9px 10px;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 11px;
   border: 1px solid transparent;
   border-radius: var(--radius-control);
   background: transparent;
   color: var(--text);
-  text-align: left;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
 }
 
 .publication-admin-tabs button:hover,
 .publication-admin-tabs button.active {
   border-color: rgba(46, 110, 86, 0.2);
-  background: var(--soft-green);
+  background: #ffffff;
+  color: var(--brand-accent);
 }
 
 .publication-admin-tabs svg {
   color: var(--brand-accent);
+  flex: 0 0 auto;
 }
 
-.publication-admin-tabs strong,
-.publication-admin-tabs small {
-  display: block;
+.publication-admin-tabs span {
   min-width: 0;
-}
-
-.publication-admin-tabs strong {
-  font-size: var(--font-sm);
-  font-weight: var(--weight-semibold);
-}
-
-.publication-admin-tabs small {
-  margin-top: 2px;
-  color: var(--text-muted);
-  font-size: var(--font-xs);
-  line-height: 1.35;
 }
 
 .publication-admin-content {
@@ -2405,6 +2393,8 @@ button:active {
 }
 
 .publication-admin-tab-head {
+  display: grid;
+  gap: 14px;
   padding: 18px 20px;
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
@@ -2794,10 +2784,6 @@ button:active {
   .publication-feature-card,
   .publication-body-grid {
     grid-template-columns: 1fr;
-  }
-
-  .publication-admin-tabs {
-    position: static;
   }
 
   .publication-sidebar,

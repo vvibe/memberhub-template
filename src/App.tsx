@@ -2704,26 +2704,24 @@ function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: Verti
       </section>
 
       <section className="publication-admin-shell">
-        <aside className="publication-admin-tabs" aria-label="Signal Brief 後台分頁">
-          {publicationAdminTabs.map((tab) => {
-            const Icon = tab.icon
-            return (
-              <button key={tab.id} type="button" className={activeTab === tab.id ? 'active' : ''} onClick={() => setActiveTab(tab.id)}>
-                <Icon size={17} />
-                <span>
-                  <strong>{tab.label}</strong>
-                  <small>{tab.description}</small>
-                </span>
-              </button>
-            )
-          })}
-        </aside>
-
         <div className="publication-admin-content">
           <div className="publication-admin-tab-head">
-            <span className="eyebrow">目前分頁</span>
-            <h4>{activeTabMeta.label}</h4>
-            <p>{activeTabMeta.description}</p>
+            <div>
+              <span className="eyebrow">目前分頁</span>
+              <h4>{activeTabMeta.label}</h4>
+              <p>{activeTabMeta.description}</p>
+            </div>
+            <nav className="publication-admin-tabs" aria-label="Signal Brief 後台分頁">
+              {publicationAdminTabs.map((tab) => {
+                const Icon = tab.icon
+                return (
+                  <button key={tab.id} type="button" className={activeTab === tab.id ? 'active' : ''} onClick={() => setActiveTab(tab.id)}>
+                    <Icon size={16} />
+                    <span>{tab.label}</span>
+                  </button>
+                )
+              })}
+            </nav>
           </div>
 
           {activeTab === 'overview' && (
