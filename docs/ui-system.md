@@ -28,6 +28,11 @@ Required Playwright checks:
 - Text uses approved font sizes, line heights, letter spacing, and weights.
 - Buttons, pills, and select triggers do not clip text.
 - Visible panels, rows, controls, and cards do not overlap.
+- Detail rows use stable left/right columns: primary content on the left, metadata/type/status on the right.
+- Course lesson rows use explicit icon/title/time grid columns, never `space-between` that visually centers the lesson title.
+- Leaderboards align rank, name, and score in grid columns; the name must sit near the rank, not float in the center of a full-width row.
+- Search inputs use short direct placeholder copy. Do not put examples inside the placeholder.
+- Featured content needs a measurable gap before the next repeated list item.
 
 ## Typography
 
@@ -47,7 +52,17 @@ Required Playwright checks:
 - Control radius: 8px.
 - Button text weight: semibold, never extra bold.
 - Icons inside buttons: 16px, 2px stroke.
+- Decorative icons should be marked `aria-hidden="true"` or be part of a labeled button.
 - Select, input, and button surfaces should share the same border, radius, height, and text scale.
+- All interactive controls need visible `:focus-visible` or `:focus-within` states.
+
+## Lists And Rows
+
+- Use CSS Grid for rows that have predictable slots such as icon/title/meta, rank/name/score, or title/type.
+- Avoid full-width `justify-content: space-between` when the middle text is the primary information; it often makes names and titles appear centered by accident.
+- Primary row text should align left and come first in DOM order. Secondary labels, badges, status, or metadata can align right on desktop and stack on mobile.
+- Keep repeated rows at a minimum 10px gap, and add a separate 12px+ gap between a featured item and the list that follows.
+- Long titles and metadata must use `min-width: 0` plus wrapping or truncation so they never force horizontal overflow.
 
 ## Cards And Panels
 

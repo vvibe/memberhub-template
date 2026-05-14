@@ -5,7 +5,7 @@ export const presets: VerticalPreset[] = [
     id: 'skills-school',
     name: 'Skills School',
     tagline: '課程、社群、挑戰與實作陪跑',
-    audience: '適合線上課程、職能社群、教練陪跑與學員制會員服務',
+    audience: '適合想用固定節奏完成作品、得到回饋並累積可展示成果的學員。',
     brand: {
       productName: 'Skills School 職能加速社群',
       creatorName: 'Skills School',
@@ -13,7 +13,7 @@ export const presets: VerticalPreset[] = [
       accent: '#2f6b4f',
     },
     copy: {
-      heroTitle: '把學員從免費預覽帶進課程、社群與每週實作',
+      heroTitle: '用每週實作，完成能被看見的職能作品',
       heroBody:
         'Skills School 是給想持續進步的工作者的會員社群。加入後可以看完整課程、參與每週任務、在討論區提問，並透過打卡與作品回饋累積自己的進度。',
       ctaPrimary: '加入會員',
@@ -209,10 +209,10 @@ export const presets: VerticalPreset[] = [
       { id: 'skills-school-e3', title: 'Office hour：會員問答', kind: 'office-hour', date: '2026-05-18 21:00', status: 'upcoming', description: '小班問答，適合需要回饋的會員。', audience: 'paid', replayAccess: 'paid' },
     ],
     members: [
-      { id: 'skills-school-m1', name: 'Yuna', email: 'yuna@example.com', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 2, points: 540, source: 'newsletter', bio: '正在完成第一份職能作品頁，固定參與每週回饋。', joinedAt: '2026-02-12', contributions: { posts: 8, comments: 34, likesReceived: 540 }, risk: 'low' },
-      { id: 'skills-school-m2', name: 'Rae', email: 'rae@example.com', role: 'member', groupRole: 'moderator', planId: 'lifetime', status: 'active', level: 4, points: 1320, source: 'referral', bio: '協助新會員熟悉課程節奏與社群規則。', joinedAt: '2025-12-08', contributions: { posts: 18, comments: 77, likesReceived: 1320 }, risk: 'low' },
-      { id: 'skills-school-m3', name: 'Mika', email: 'mika@example.com', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 3, points: 880, source: 'line', bio: '每週提交作品版本並參與打卡挑戰。', joinedAt: '2026-01-20', contributions: { posts: 11, comments: 45, likesReceived: 880 }, risk: 'medium' },
-      { id: 'skills-school-m4', name: 'Nori', email: 'nori@example.com', role: 'member', groupRole: 'member', planId: 'free', status: 'free', level: 1, points: 120, source: 'organic', bio: '已加入公開會員，正在評估實作會員方案。', joinedAt: '2026-04-26', contributions: { posts: 1, comments: 5, likesReceived: 120 }, risk: 'low' },
+      { id: 'skills-school-m1', name: 'Yuna', email: 'yuna.chen@skillsschool.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 2, points: 540, source: 'newsletter', bio: '正在完成第一份職能作品頁，固定參與每週回饋。', joinedAt: '2026-02-12', contributions: { posts: 8, comments: 34, likesReceived: 540 }, risk: 'low' },
+      { id: 'skills-school-m2', name: 'Rae', email: 'rae.lin@skillsschool.tw', role: 'member', groupRole: 'moderator', planId: 'lifetime', status: 'active', level: 4, points: 1320, source: 'referral', bio: '協助新會員熟悉課程節奏與社群規則。', joinedAt: '2025-12-08', contributions: { posts: 18, comments: 77, likesReceived: 1320 }, risk: 'low' },
+      { id: 'skills-school-m3', name: 'Mika', email: 'mika.wu@skillsschool.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 3, points: 880, source: 'line', bio: '每週提交作品版本並參與打卡挑戰。', joinedAt: '2026-01-20', contributions: { posts: 11, comments: 45, likesReceived: 880 }, risk: 'medium' },
+      { id: 'skills-school-m4', name: 'Nori', email: 'nori.hsu@skillsschool.tw', role: 'member', groupRole: 'member', planId: 'free', status: 'free', level: 1, points: 120, source: 'organic', bio: '已加入公開會員，正在評估實作會員方案。', joinedAt: '2026-04-26', contributions: { posts: 1, comments: 5, likesReceived: 120 }, risk: 'low' },
     ],
     referrals: [
       { id: 'skills-school-ref1', code: 'SKILL7', label: '會員贈閱 7 天', source: 'subscriber gift', reward: '新朋友可體驗一週完整課程', freeTrials: 42, paidConversions: 14, revenueLabel: 'NT$9,660' },
@@ -243,7 +243,7 @@ export const presets: VerticalPreset[] = [
     id: 'superstake',
     name: 'SuperStake',
     tagline: '公開部落格、付費專欄與會員研究室',
-    audience: '適合付費 Newsletter、研究型媒體、專欄作者與獨立分析師',
+    audience: '適合想長期追蹤 AI 工具、內容產品與創作者商業模式的讀者。',
     brand: {
       productName: 'SuperStake 策略通訊',
       creatorName: 'SuperStake Editorial',
@@ -251,7 +251,7 @@ export const presets: VerticalPreset[] = [
       accent: '#1f6c9f',
     },
     copy: {
-      heroTitle: '把公開文章、深度專欄與會員社群放在自己的網站',
+      heroTitle: '每週讀懂 AI 工具、內容產品與創作者商業模式',
       heroBody:
         'SuperStake 以公開部落格建立信任，再用付費專欄、會員問答與研究資料庫服務核心讀者。讀者可以先閱讀免費文章，再決定是否加入會員。',
       ctaPrimary: '訂閱完整研究',
@@ -314,7 +314,7 @@ export const presets: VerticalPreset[] = [
         type: 'article',
         category: '會員研究',
         excerpt: '完整拆解訂閱型內容工具如何定價、如何降低流失，以及哪些功能真正影響付費轉換。',
-        body: '付費轉換不只取決於功能，而取決於使用者是否把工具放進固定工作流程。',
+        body: '付費轉換不只取決於功能，而取決於讀者或團隊是否把工具放進固定工作流程。',
         isPaid: true,
         minutes: 18,
         source: 'member research',
@@ -434,10 +434,10 @@ export const presets: VerticalPreset[] = [
       { id: 'superstake-e3', title: 'Office hour：讀者研究問答', kind: 'office-hour', date: '2026-05-19 21:00', status: 'upcoming', description: '會員可以提交研究題目與資料判讀問題。', audience: 'paid', replayAccess: 'paid' },
     ],
     members: [
-      { id: 'superstake-m1', name: 'Kai', email: 'kai@example.com', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 2, points: 460, source: 'blog', bio: '固定閱讀會員專欄，關注 AI 工具與內容產品。', joinedAt: '2026-02-18', contributions: { posts: 6, comments: 29, likesReceived: 460 }, risk: 'low' },
-      { id: 'superstake-m2', name: 'Lena', email: 'lena@example.com', role: 'member', groupRole: 'moderator', planId: 'lifetime', status: 'active', level: 4, points: 1180, source: 'newsletter', bio: '協助整理讀者提問與會員資料庫回饋。', joinedAt: '2025-11-28', contributions: { posts: 15, comments: 63, likesReceived: 1180 }, risk: 'low' },
-      { id: 'superstake-m3', name: 'Mika', email: 'mika@example.com', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 3, points: 790, source: 'referral', bio: '每週參與研究筆記挑戰與公開討論。', joinedAt: '2026-01-17', contributions: { posts: 10, comments: 38, likesReceived: 790 }, risk: 'medium' },
-      { id: 'superstake-m4', name: 'Owen', email: 'owen@example.com', role: 'member', groupRole: 'member', planId: 'free', status: 'free', level: 1, points: 95, source: 'organic', bio: '免費讀者，主要閱讀公開文章與每週摘要。', joinedAt: '2026-04-22', contributions: { posts: 1, comments: 3, likesReceived: 95 }, risk: 'low' },
+      { id: 'superstake-m1', name: 'Kai', email: 'kai.tsai@superstake.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 2, points: 460, source: 'blog', bio: '固定閱讀會員專欄，關注 AI 工具與內容產品。', joinedAt: '2026-02-18', contributions: { posts: 6, comments: 29, likesReceived: 460 }, risk: 'low' },
+      { id: 'superstake-m2', name: 'Lena', email: 'lena.chou@superstake.tw', role: 'member', groupRole: 'moderator', planId: 'lifetime', status: 'active', level: 4, points: 1180, source: 'newsletter', bio: '協助整理讀者提問與會員資料庫回饋。', joinedAt: '2025-11-28', contributions: { posts: 15, comments: 63, likesReceived: 1180 }, risk: 'low' },
+      { id: 'superstake-m3', name: 'Mika', email: 'mika.wang@superstake.tw', role: 'member', groupRole: 'member', planId: 'monthly', status: 'active', level: 3, points: 790, source: 'referral', bio: '每週參與研究筆記挑戰與公開討論。', joinedAt: '2026-01-17', contributions: { posts: 10, comments: 38, likesReceived: 790 }, risk: 'medium' },
+      { id: 'superstake-m4', name: 'Owen', email: 'owen.liu@superstake.tw', role: 'member', groupRole: 'member', planId: 'free', status: 'free', level: 1, points: 95, source: 'organic', bio: '免費讀者，主要閱讀公開文章與每週摘要。', joinedAt: '2026-04-22', contributions: { posts: 1, comments: 3, likesReceived: 95 }, risk: 'low' },
     ],
     referrals: [
       { id: 'superstake-ref1', code: 'STAKE7', label: '會員贈閱 7 天', source: 'subscriber gift', reward: '新讀者可體驗一週完整研究', freeTrials: 61, paidConversions: 19, revenueLabel: 'NT$7,980' },

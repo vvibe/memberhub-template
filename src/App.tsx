@@ -30,7 +30,7 @@ import {
   UsersRound,
 } from 'lucide-react'
 import { getPreset, presets } from './data/presets'
-import { createCheckoutSessionPreview, paymentEventToCallbackPayload, portalyIntegrationNotes } from './lib/portaly'
+import { createCheckoutSessionPreview, portalyIntegrationNotes } from './lib/portaly'
 import { createPaymentEvent, loadState, presetLabel, resetState, roleLabel, saveState } from './lib/store'
 import type { AppState, ContentItem, Member, ModerationItem, NewsletterIssue, Plan, PresetId, ReferralCampaign, Role, ViewId } from './types'
 import { Badge } from '@/components/ui/badge'
@@ -85,6 +85,213 @@ function getInitialRoute() {
     presetId: caseParam && isPresetId(caseParam) ? caseParam : undefined,
     view: viewParam && isViewId(viewParam) ? viewParam : undefined,
   }
+}
+
+function siteEyebrow(preset: ReturnType<typeof getPreset>) {
+  return preset.id === 'superstake' ? '獨立策略通訊' : '職能學習社群'
+}
+
+function brandMark(preset: ReturnType<typeof getPreset>) {
+  return preset.id === 'superstake' ? 'S' : 'S'
+}
+
+function homeMetrics(preset: ReturnType<typeof getPreset>, selectedPlan: Plan) {
+  if (preset.id === 'superstake') {
+    return [
+      { label: '本月研究', value: '8 篇', icon: BarChart3 },
+      { label: '讀者', value: String(preset.metrics.activeMembers), icon: UsersRound },
+      { label: '資料庫更新', value: '每週', icon: ChevronRight },
+      { label: '目前方案', value: selectedPlan.name, icon: ShieldCheck },
+    ]
+  }
+
+  return [
+    { label: '本月回饋', value: '36 份', icon: BarChart3 },
+    { label: '學員', value: String(preset.metrics.activeMembers), icon: UsersRound },
+    { label: '課程進度', value: `${preset.courses[0]?.progress ?? 0}%`, icon: ChevronRight },
+    { label: '目前方案', value: selectedPlan.name, icon: ShieldCheck },
+  ]
+}
+
+function beforeJoinEyebrow(preset: ReturnType<typeof getPreset>) {
+  return preset.id === 'superstake' ? '訂閱前先閱讀' : '加入前先看看'
+}
+
+function beforeJoinHeading(preset: ReturnType<typeof getPreset>) {
+  return preset.id === 'superstake' ? '訂閱前可以先閱讀的公開文章與研究節奏' : '加入前可以先看見的內容與社群節奏'
+}
+
+function contentTypeLabel(type: ContentItem['type'] | string) {
+  const labels: Record<string, string> = {
+    article: '文章',
+    video: '影片',
+    podcast: '音訊',
+    resource: '資源',
+    newsletter: '通訊',
+    course: '課程',
+    lesson: '單元',
+    thread: '討論',
+    member: '成員',
+    event: '活動',
+  }
+  return labels[type] ?? type
+}
+
+function sourceLabel(source: string) {
+  const labels: Record<string, string> = {
+    blog: '公開網站',
+    course: '課程教室',
+    classroom: '課程教室',
+    resource: '資源庫',
+    email: '電子報',
+    'member research': '會員研究',
+    database: '資料庫',
+    podcast: '音訊',
+    newsletter: '電子報',
+    referral: '會員推薦',
+    line: 'LINE',
+    organic: '自然搜尋',
+    'community preview': '社群預覽頁',
+    'public blog': '公開部落格',
+    'subscriber gift': '會員贈閱',
+    'referral link': '推薦連結',
+    'live campaign': '直播活動',
+  }
+  return labels[source] ?? source
+}
+
+function channelLabel(channel: string) {
+  const labels: Record<string, string> = {
+    email: 'Email',
+    line: 'LINE',
+    'in-app': '站內通知',
+  }
+  return labels[channel] ?? channel
+}
+
+function segmentLabel(segment: string) {
+  const labels: Record<string, string> = {
+    all: '全部訂閱者',
+    paid: '付費會員',
+    free: '免費讀者',
+  }
+  return labels[segment] ?? segment
+}
+
+function statusLabel(status: string) {
+  const labels: Record<string, string> = {
+    scheduled: '已排程',
+    draft: '草稿',
+    sent: '已發送',
+    ready: '已準備',
+    active: '有效',
+    free: '免費',
+    reviewing: '審核中',
+    open: '待處理',
+    resolved: '已完成',
+    upcoming: '即將開始',
+    replay: '可回看',
+  }
+  return labels[status] ?? status
+}
+
+function notificationTriggerLabel(trigger: string) {
+  const labels: Record<string, string> = {
+    'new-post': '新內容發布',
+    'live-start': '直播開始提醒',
+    'course-reminder': '課程進度提醒',
+    'payment-failed': '付款未完成提醒',
+  }
+  return labels[trigger] ?? trigger
+}
+
+function notificationAudienceLabel(audience: string) {
+  const labels: Record<string, string> = {
+    all: '全部會員',
+    paid: '付費會員',
+    'at-risk': '需關懷會員',
+    subscribers: '訂閱讀者',
+  }
+  return labels[audience] ?? audience
+}
+
+function moderationKindLabel(kind: string) {
+  const labels: Record<string, string> = {
+    'membership-question': '入會問題',
+    'reported-post': '檢舉內容',
+    'automod-risk': '風險行為',
+    'billing-dispute': '付款爭議',
+  }
+  return labels[kind] ?? kind
+}
+
+function priorityLabel(priority: string) {
+  const labels: Record<string, string> = {
+    low: '低',
+    medium: '中',
+    high: '高',
+  }
+  return labels[priority] ?? priority
+}
+
+function resourceKindLabel(kind: string) {
+  const labels: Record<string, string> = {
+    template: '模板',
+    link: '連結',
+    file: '檔案',
+    transcript: '逐字稿',
+  }
+  return labels[kind] ?? kind
+}
+
+function accessLabel(access: string) {
+  const labels: Record<string, string> = {
+    free: '公開',
+    member: '會員',
+    'level-gated': '進階會員',
+    paid: '付費會員',
+    subscribers: '訂閱者',
+    all: '全部會員',
+  }
+  return labels[access] ?? access
+}
+
+function roleDisplayLabel(role: string) {
+  const labels: Record<string, string> = {
+    member: '會員',
+    moderator: '版主',
+    admin: '管理員',
+  }
+  return labels[role] ?? role
+}
+
+function riskLabel(risk: string) {
+  const labels: Record<string, string> = {
+    low: '穩定',
+    medium: '需關注',
+    high: '高風險',
+  }
+  return labels[risk] ?? risk
+}
+
+function eventKindLabel(kind: string) {
+  const labels: Record<string, string> = {
+    live: '直播',
+    webinar: 'Webinar',
+    'office-hour': '問答時段',
+  }
+  return labels[kind] ?? kind
+}
+
+function paymentValueLabel(value?: string) {
+  const labels: Record<string, string> = {
+    not_required: '尚未產生',
+    pending: '待處理',
+    issued: '已開立',
+    active: '有效',
+    ready: '可使用',
+  }
+  return value ? labels[value] ?? value : '尚未產生'
 }
 
 function App() {
@@ -229,7 +436,7 @@ function App() {
     const member: Member = {
       id: `local_member_${Date.now()}`,
       name: `新會員 ${serial}`,
-      email: `member${serial}@example.com`,
+      email: `new.member${serial}@${runtimePreset.id === 'superstake' ? 'superstake.tw' : 'skillsschool.tw'}`,
       role: 'member',
       groupRole: 'member',
       planId: 'free',
@@ -267,10 +474,10 @@ function App() {
     <main className="app-shell" style={{ ['--brand-primary' as string]: runtimePreset.brand.primary, ['--brand-accent' as string]: runtimePreset.brand.accent }}>
       <aside className="sidebar">
         <button className="brand-button" onClick={() => setView('home')} aria-label="Open home">
-          <span className="brand-mark">M</span>
+          <span className="brand-mark">{brandMark(runtimePreset)}</span>
           <span>
-            <strong>MemberHub</strong>
-            <small>{runtimePreset.name}</small>
+            <strong>{runtimePreset.brand.creatorName}</strong>
+            <small>{siteEyebrow(runtimePreset)}</small>
           </span>
         </button>
 
@@ -301,7 +508,7 @@ function App() {
       <section className="workspace">
         <header className="topbar">
           <div>
-            <p className="eyebrow">私有化會員平台</p>
+            <p className="eyebrow">{siteEyebrow(runtimePreset)}</p>
             <h1>{runtimePreset.brand.productName}</h1>
           </div>
           <div className="topbar-actions">
@@ -446,18 +653,17 @@ function HomeView({
             <strong>{roleLabel(role)}</strong>
           </div>
           <div className="mock-grid">
-            <MetricTile label="MRR" value={preset.metrics.mrr} icon={BarChart3} />
-            <MetricTile label="會員" value={String(preset.metrics.activeMembers)} icon={UsersRound} />
-            <MetricTile label="轉換率" value={preset.metrics.conversion} icon={ChevronRight} />
-            <MetricTile label="目前方案" value={selectedPlan.name} icon={ShieldCheck} />
+            {homeMetrics(preset, selectedPlan).map((metric) => (
+              <MetricTile key={metric.label} label={metric.label} value={metric.value} icon={metric.icon} />
+            ))}
           </div>
         </div>
       </section>
 
       <section className="section-block">
         <div className="section-heading">
-          <span className="eyebrow">Before joining</span>
-          <h3>加入前可以先看見的內容與社群節奏</h3>
+          <span className="eyebrow">{beforeJoinEyebrow(preset)}</span>
+          <h3>{beforeJoinHeading(preset)}</h3>
         </div>
         <div className="plan-grid">
           <article className="plan-card">
@@ -504,27 +710,27 @@ function BlogView({
     <section className="section-block">
       <div className="section-heading horizontal">
         <div>
-          <span className="eyebrow">{preset.id === 'superstake' ? 'Publication' : 'Public community page'}</span>
+          <span className="eyebrow">{preset.id === 'superstake' ? '公開閱讀' : '社群預覽'}</span>
           <h3>{preset.id === 'superstake' ? 'SuperStake 公開部落格' : 'Skills School 社群預覽頁'}</h3>
         </div>
-        <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />加入會員</Button>
+        <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />{preset.id === 'superstake' ? '訂閱完整研究' : '加入會員'}</Button>
       </div>
 
       <article className="hero-product blog-feature">
         <Badge variant="outline" className="pill">{featurePost.category}</Badge>
         <h4>{featurePost.title}</h4>
         <p>{featurePost.excerpt}</p>
-        <small>{featurePost.minutes} min read · {preset.brand.creatorName}</small>
+        <small>{featurePost.minutes} 分鐘閱讀 · {preset.brand.creatorName}</small>
       </article>
 
       <div className="content-list blog-list">
         {publicPosts.map((item) => (
           <article key={item.id} className="content-row">
             <div>
-              <Badge variant="outline" className="pill">{item.type}</Badge>
+              <Badge variant="outline" className="pill">{contentTypeLabel(item.type)}</Badge>
               <h4>{item.title}</h4>
               <p>{item.excerpt}</p>
-              <small>{item.category} · {item.minutes} min · {item.source}</small>
+              <small>{item.category} · {item.minutes} 分鐘 · {sourceLabel(item.source)}</small>
             </div>
             <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span>
           </article>
@@ -535,9 +741,9 @@ function BlogView({
               <Badge variant="outline" className="pill">會員限定</Badge>
               <h4>{item.title}</h4>
               <p>{item.excerpt}</p>
-              <small>{item.category} · {item.minutes} min</small>
+              <small>{item.category} · {item.minutes} 分鐘</small>
             </div>
-            {hasPaidAccess ? <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span> : <Button className="lock-button" onClick={onJoin}><Lock data-icon="inline-start" />加入後閱讀</Button>}
+            {hasPaidAccess ? <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span> : <Button className="lock-button" onClick={onJoin}><Lock data-icon="inline-start" />{preset.id === 'superstake' ? '訂閱後閱讀' : '加入後閱讀'}</Button>}
           </article>
         ))}
       </div>
@@ -558,7 +764,7 @@ function JoinView({
     <section className="section-block join-section">
       <div className="section-heading horizontal">
         <div>
-          <span className="eyebrow">{preset.id === 'skills-school' ? 'Join the community' : 'Subscribe'}</span>
+          <span className="eyebrow">{preset.id === 'skills-school' ? '加入社群' : '訂閱研究'}</span>
           <h3>{preset.id === 'skills-school' ? '加入 Skills School，開始課程、社群與每週實作' : '訂閱 SuperStake，閱讀完整研究與會員專欄'}</h3>
         </div>
         <Button className="primary-button" onClick={() => onCheckout(memberPlan)}><CircleDollarSign data-icon="inline-start" />選擇 {memberPlan.name}</Button>
@@ -576,7 +782,7 @@ function JoinView({
               ))}
             </ul>
             <Button variant={plan.highlighted ? 'default' : 'outline'} onClick={() => onCheckout(plan)}>
-              {plan.price === 'NT$0' ? '加入免費方案' : '選擇此方案'}
+              {plan.price === 'NT$0' ? (preset.id === 'superstake' ? '加入免費讀者' : '加入免費方案') : '選擇此方案'}
             </Button>
           </article>
         ))}
@@ -585,13 +791,23 @@ function JoinView({
         <article>
           <h4>{preset.id === 'skills-school' ? '加入後會看到什麼' : '訂閱後會收到什麼'}</h4>
           <ul className="check-list">
-            <li><CheckCircle2 size={16} />完整內容庫與會員限定文章</li>
-            <li><CheckCircle2 size={16} />課程、資源、直播或問答回放</li>
-            <li><CheckCircle2 size={16} />會員社群、討論與活動通知</li>
+            {preset.id === 'skills-school' ? (
+              <>
+                <li><CheckCircle2 size={16} />完整課程與會員限定文章</li>
+                <li><CheckCircle2 size={16} />每週任務、資源下載與直播回放</li>
+                <li><CheckCircle2 size={16} />會員討論區、作品回饋與活動通知</li>
+              </>
+            ) : (
+              <>
+                <li><CheckCircle2 size={16} />完整研究專欄與會員資料庫</li>
+                <li><CheckCircle2 size={16} />每週摘要、資料表更新與問答回放</li>
+                <li><CheckCircle2 size={16} />讀者討論、專題直播與活動通知</li>
+              </>
+            )}
           </ul>
         </article>
         <article>
-          <h4>適合的人</h4>
+          <h4>{preset.id === 'superstake' ? '適合這樣的讀者' : '適合這樣的學員'}</h4>
           <p>{preset.audience}</p>
         </article>
       </div>
@@ -653,11 +869,11 @@ function ContentView({
     <section className="section-block">
       <div className="section-heading horizontal">
         <div>
-          <span className="eyebrow">Public blog + member library</span>
+          <span className="eyebrow">內容庫</span>
           <h3>公開文章、會員內容與付費牆</h3>
         </div>
         <label className="search-box">
-          <Search size={18} />
+          <Search size={18} aria-hidden="true" />
           <Input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="搜尋內容、分類、類型" />
         </label>
       </div>
@@ -666,10 +882,10 @@ function ContentView({
         <article className="editor-panel" aria-label="Content editor">
           <div className="editor-head">
             <div>
-              <span className="eyebrow">Post editor</span>
+              <span className="eyebrow">發文管理</span>
               <h4>發文編輯器</h4>
             </div>
-            <StatusPill tone={draft.isPaid ? 'blue' : 'green'}>{draft.isPaid ? 'paid' : 'free'}</StatusPill>
+            <StatusPill tone={draft.isPaid ? 'blue' : 'green'}>{draft.isPaid ? '會員限定' : '公開'}</StatusPill>
           </div>
           <div className="editor-grid">
             <label>
@@ -683,11 +899,11 @@ function ContentView({
             <label>
               類型
               <select className="editor-select" value={draft.type} onChange={(event) => updateDraft({ type: event.target.value as ContentItem['type'] })}>
-                <option value="article">article</option>
-                <option value="video">video</option>
-                <option value="podcast">podcast</option>
-                <option value="resource">resource</option>
-                <option value="newsletter">newsletter</option>
+                <option value="article">文章</option>
+                <option value="video">影片</option>
+                <option value="podcast">音訊</option>
+                <option value="resource">資源</option>
+                <option value="newsletter">通訊</option>
               </select>
             </label>
             <label className="editor-toggle">
@@ -701,10 +917,10 @@ function ContentView({
           </label>
           <label className="editor-field">
             內文
-            <Textarea value={draft.body} onChange={(event) => updateDraft({ body: event.target.value })} placeholder="撰寫文章、課程公告或 newsletter 內容..." />
+            <Textarea value={draft.body} onChange={(event) => updateDraft({ body: event.target.value })} placeholder="撰寫文章、課程公告或通訊內容…" />
           </label>
           <div className="editor-actions">
-            <small>{draft.body.length} chars · 預估 {Math.max(3, Math.ceil(draft.body.length / 220))} min</small>
+            <small>{draft.body.length} 字 · 預估 {Math.max(3, Math.ceil(draft.body.length / 220))} 分鐘閱讀</small>
             <Button className="primary-button" type="button" disabled={!canPublish} onClick={handlePublish}><FileText data-icon="inline-start" />發布到內容庫</Button>
           </div>
         </article>
@@ -716,10 +932,10 @@ function ContentView({
           return (
             <article key={item.id} className="content-row">
               <div>
-              <Badge variant="outline" className="pill">{item.type}</Badge>
+              <Badge variant="outline" className="pill">{contentTypeLabel(item.type)}</Badge>
                 <h4>{item.title}</h4>
                 <p>{item.excerpt}</p>
-                <small>{item.category} · {item.minutes} min · {item.source}</small>
+                <small>{item.category} · {item.minutes} 分鐘 · {sourceLabel(item.source)}</small>
               </div>
               {locked ? (
                 <Button className="lock-button" onClick={onCheckout}><Lock data-icon="inline-start" />升級解鎖</Button>
@@ -747,11 +963,11 @@ function NewsletterView({
     <section className="section-block">
       <div className="section-heading horizontal">
         <div>
-          <span className="eyebrow">Newsletter + growth</span>
+          <span className="eyebrow">通訊與成長</span>
           <h3>Email/LINE 通訊、付費轉換與推薦贈閱</h3>
         </div>
         <div className="button-row compact">
-          <Button variant="outline" className="secondary-button" onClick={onAddIssue}><Mail data-icon="inline-start" />新增 issue</Button>
+          <Button variant="outline" className="secondary-button" onClick={onAddIssue}><Mail data-icon="inline-start" />新增通訊</Button>
           <Button className="primary-button" onClick={onCreateReferral}><Gift data-icon="inline-start" />建立贈閱碼</Button>
         </div>
       </div>
@@ -760,7 +976,7 @@ function NewsletterView({
         <article className="newsletter-panel span-2">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Broadcasts</span>
+              <span className="eyebrow">發送排程</span>
               <h4>發送排程與內容存檔</h4>
             </div>
             <Megaphone size={18} />
@@ -769,11 +985,11 @@ function NewsletterView({
             {preset.newsletter.map((issue) => (
               <div key={issue.id} className="newsletter-row">
                 <span>
-                  <Badge variant="outline" className="pill">{issue.segment} · {issue.status}</Badge>
+                  <Badge variant="outline" className="pill">{segmentLabel(issue.segment)} · {statusLabel(issue.status)}</Badge>
                   <strong>{issue.subject}</strong>
-                  <small>{issue.sendAt} · open {issue.openRate} · click {issue.clickRate}</small>
+                  <small>{issue.sendAt === 'on signup' ? '註冊後自動寄送' : issue.sendAt} · 開信 {issue.openRate} · 點擊 {issue.clickRate}</small>
                 </span>
-                <StatusPill tone={issue.paidConversions > 0 ? 'green' : 'yellow'}>{`${issue.paidConversions} paid`}</StatusPill>
+                <StatusPill tone={issue.paidConversions > 0 ? 'green' : 'yellow'}>{`${issue.paidConversions} 人升級`}</StatusPill>
               </div>
             ))}
           </div>
@@ -782,7 +998,7 @@ function NewsletterView({
         <article className="newsletter-panel">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Notification adapter</span>
+              <span className="eyebrow">通知設定</span>
               <h4>Email / LINE / 站內通知</h4>
             </div>
             <Bell size={18} />
@@ -790,9 +1006,9 @@ function NewsletterView({
           <div className="admin-content-stack">
             {preset.notifications.map((notification) => (
               <div key={notification.id} className="admin-content-item">
-                <Badge variant="outline" className="pill">{notification.channel}</Badge>
-                <strong>{notification.trigger}</strong>
-                <small>{notification.audience} · {notification.status}</small>
+                <Badge variant="outline" className="pill">{channelLabel(notification.channel)}</Badge>
+                <strong>{notificationTriggerLabel(notification.trigger)}</strong>
+                <small>{notificationAudienceLabel(notification.audience)} · {statusLabel(notification.status)}</small>
               </div>
             ))}
           </div>
@@ -801,7 +1017,7 @@ function NewsletterView({
         <article className="newsletter-panel span-2">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Referral engine</span>
+              <span className="eyebrow">推薦成長</span>
               <h4>推薦碼、贈閱與來源歸因</h4>
             </div>
             <Hash size={18} />
@@ -811,10 +1027,10 @@ function NewsletterView({
               <div key={campaign.id} className="referral-card">
                 <Badge variant="outline" className="pill">{campaign.code}</Badge>
                 <strong>{campaign.label}</strong>
-                <small>{campaign.source} · {campaign.reward}</small>
+                <small>{sourceLabel(campaign.source)} · {campaign.reward}</small>
                 <div className="referral-metrics">
-                  <span>{campaign.freeTrials} trials</span>
-                  <span>{campaign.paidConversions} paid</span>
+                  <span>{campaign.freeTrials} 人體驗</span>
+                  <span>{campaign.paidConversions} 人升級</span>
                   <span>{campaign.revenueLabel}</span>
                 </div>
               </div>
@@ -827,14 +1043,14 @@ function NewsletterView({
 }
 
 function LoginView({ preset, onLogin }: { preset: ReturnType<typeof getPreset>; onLogin: (role?: Role) => void }) {
-  const [email, setEmail] = useState('member@example.com')
+  const [email, setEmail] = useState('')
 
   return (
     <section className="auth-layout">
       <article className="auth-card">
-        <span className="eyebrow">Sign in</span>
+        <span className="eyebrow">會員登入</span>
         <h3>登入 {preset.brand.productName}</h3>
-        <p>使用會員身份進入內容區，或用管理員身份查看營運後台。正式部署時可接 InsForge Google OAuth、Magic Link 或 email/password。</p>
+        <p>{preset.id === 'superstake' ? '登入後可以閱讀會員研究、下載資料表、參與讀者問答，並管理自己的訂閱狀態。' : '登入後可以繼續課程進度、參與討論區、完成每週打卡，並查看自己的會員方案。'}</p>
         <form
           className="auth-form"
           onSubmit={(event) => {
@@ -846,7 +1062,7 @@ function LoginView({ preset, onLogin }: { preset: ReturnType<typeof getPreset>; 
             Email
             <span className="auth-input">
               <Mail size={18} />
-              <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required />
+              <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="輸入你的 Email" required />
             </span>
           </label>
           <Button className="primary-button" type="submit"><LogIn data-icon="inline-start" />以會員身份登入</Button>
@@ -857,12 +1073,21 @@ function LoginView({ preset, onLogin }: { preset: ReturnType<typeof getPreset>; 
         </div>
       </article>
       <article className="auth-notes">
-        <h4>正式登入設定</h4>
+        <h4>{preset.id === 'superstake' ? '登入後可以使用' : '登入後可以開始'}</h4>
         <ul className="check-list">
-          <li><CheckCircle2 size={16} />InsForge Auth：Google OAuth 或 email magic link</li>
-          <li><CheckCircle2 size={16} />登入後建立 `profiles` 與 `memberships`</li>
-          <li><CheckCircle2 size={16} />RLS 依會員方案保護內容、課程與社群</li>
-          <li><CheckCircle2 size={16} />透過 Portaly Vibe MCP 檢查會員設定與產品狀態</li>
+          {preset.id === 'superstake' ? (
+            <>
+              <li><CheckCircle2 size={16} />閱讀完整會員專欄與資料庫更新</li>
+              <li><CheckCircle2 size={16} />查看每週摘要、問答回放與專題直播</li>
+              <li><CheckCircle2 size={16} />管理訂閱方案、收據與贈閱碼</li>
+            </>
+          ) : (
+            <>
+              <li><CheckCircle2 size={16} />接續課程進度與下載學習資源</li>
+              <li><CheckCircle2 size={16} />進入會員討論區並提交作品回饋</li>
+              <li><CheckCircle2 size={16} />查看打卡、等級、活動與回放</li>
+            </>
+          )}
         </ul>
       </article>
     </section>
@@ -883,7 +1108,7 @@ function CoursesView({
   return (
     <section className="section-block">
       <div className="section-heading">
-        <span className="eyebrow">Classroom</span>
+        <span className="eyebrow">{preset.id === 'superstake' ? '研究室課程' : '課程教室'}</span>
         <h3>課程、進度與等級解鎖</h3>
       </div>
       <div className="course-grid">
@@ -904,18 +1129,18 @@ function CoursesView({
                 return (
                   <div key={lesson.id} className={complete ? 'lesson-card complete' : 'lesson-card'}>
                     <button className="lesson-row" disabled={locked} onClick={() => onToggleLesson(lesson.id)}>
-                      {locked ? <Lock size={16} /> : <CheckCircle2 size={16} />}
+                      {locked ? <Lock size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
                       <span>{lesson.title}</span>
-                      <small>{locked ? `Level ${lesson.lockedLevel}` : `${lesson.minutes} min`}</small>
+                      <small>{locked ? `Level ${lesson.lockedLevel}` : `${lesson.minutes} 分鐘`}</small>
                     </button>
                     <div className="lesson-meta">
-                      {lesson.transcript && <span><FileText size={14} />逐字稿可搜尋</span>}
-                      {lesson.pinnedThreadId && <span><MessageSquareText size={14} />已連到課程討論</span>}
+                      {lesson.transcript && <span><FileText size={14} aria-hidden="true" />逐字稿可搜尋</span>}
+                      {lesson.pinnedThreadId && <span><MessageSquareText size={14} aria-hidden="true" />已連到課程討論</span>}
                     </div>
                     {lesson.resources && lesson.resources.length > 0 && (
                       <div className="resource-list">
                         {lesson.resources.map((resource) => (
-                          <Badge key={resource.id} variant="outline" className="pill">{resource.kind} · {resource.access}</Badge>
+                          <Badge key={resource.id} variant="outline" className="pill">{resourceKindLabel(resource.kind)} · {accessLabel(resource.access)}</Badge>
                         ))}
                       </div>
                     )}
@@ -934,7 +1159,7 @@ function CommunityView({ preset, role }: { preset: ReturnType<typeof getPreset>;
   return (
     <section className="section-block">
       <div className="section-heading">
-        <span className="eyebrow">Community</span>
+        <span className="eyebrow">{preset.id === 'superstake' ? '讀者討論' : '社群討論'}</span>
         <h3>分類、權限、公告、留言與反應</h3>
       </div>
       <div className="thread-list">
@@ -945,7 +1170,7 @@ function CommunityView({ preset, role }: { preset: ReturnType<typeof getPreset>;
               <div>
                 <Badge variant="outline" className="pill">{thread.category}{thread.pinned ? ' · 置頂' : ''}</Badge>
                 <h4>{hidden ? '會員限定討論串' : thread.title}</h4>
-                <small>by {thread.author} · {thread.replies} replies · {thread.reactions} reactions · start: {thread.canStart ?? 'all'}{thread.reportCount ? ` · ${thread.reportCount} report` : ''}</small>
+                <small>{thread.author} · {thread.replies} 則回覆 · {thread.reactions} 個反應 · 發文權限：{accessLabel(thread.canStart ?? 'all')}{thread.reportCount ? ` · ${thread.reportCount} 則檢舉` : ''}</small>
               </div>
               {hidden ? <Lock size={18} /> : <MessageSquareText size={18} />}
             </article>
@@ -971,13 +1196,15 @@ function MembersView({
     <section className="section-block">
       <div className="section-heading horizontal">
         <div>
-          <span className="eyebrow">Member directory</span>
+          <span className="eyebrow">{preset.id === 'superstake' ? '讀者社群' : '學員社群'}</span>
           <h3>會員目錄、角色、個人頁與活躍度</h3>
         </div>
-        <div className="button-row compact">
-          <Button variant="outline" className="secondary-button" onClick={onInviteMember}><UserRound data-icon="inline-start" />邀請會員</Button>
-          <Button variant="outline" className="ghost-button" onClick={onOpenMembershipQuestions}><ClipboardCheck data-icon="inline-start" />入會問題</Button>
-        </div>
+        {role === 'admin' && (
+          <div className="button-row compact">
+            <Button variant="outline" className="secondary-button" onClick={onInviteMember}><UserRound data-icon="inline-start" />邀請會員</Button>
+            <Button variant="outline" className="ghost-button" onClick={onOpenMembershipQuestions}><ClipboardCheck data-icon="inline-start" />入會問題</Button>
+          </div>
+        )}
       </div>
       <div className="member-directory">
         {preset.members.map((member) => {
@@ -989,15 +1216,15 @@ function MembersView({
               <div>
                 <div className="member-card-head">
                   <strong>{member.name}</strong>
-                  <StatusPill tone={member.risk === 'high' ? 'red' : member.risk === 'medium' ? 'yellow' : 'green'}>{member.risk}</StatusPill>
+                  <StatusPill tone={member.risk === 'high' ? 'red' : member.risk === 'medium' ? 'yellow' : 'green'}>{riskLabel(member.risk)}</StatusPill>
                 </div>
                 <p>{member.bio}</p>
-                <small>{canSeeEmail ? `${member.email} · ` : ''}{member.groupRole} · {plan?.name ?? member.planId} · joined {member.joinedAt}</small>
+                <small>{canSeeEmail ? `${member.email} · ` : ''}{roleDisplayLabel(member.groupRole)} · {plan?.name ?? member.planId} · 加入日期 {member.joinedAt}</small>
                 <div className="member-stats">
                   <span>Level {member.level}</span>
-                  <span>{member.points} pts</span>
-                  <span>{member.contributions.posts} posts</span>
-                  <span>{member.contributions.comments} comments</span>
+                  <span>{member.points} 分</span>
+                  <span>{member.contributions.posts} 篇發文</span>
+                  <span>{member.contributions.comments} 則留言</span>
                 </div>
               </div>
             </article>
@@ -1020,15 +1247,15 @@ function SearchView({
   const searchTerm = query.trim().toLowerCase()
   const results = useMemo(() => {
     const rows: Array<{ id: string; type: string; title: string; meta: string; text: string }> = []
-    preset.content.forEach((item) => rows.push({ id: item.id, type: item.type, title: item.title, meta: `${item.category} · ${item.source}`, text: `${item.title} ${item.category} ${item.excerpt} ${item.body}` }))
-    preset.newsletter.forEach((issue) => rows.push({ id: issue.id, type: 'newsletter', title: issue.subject, meta: `${issue.segment} · ${issue.status}`, text: `${issue.subject} ${issue.segment} ${issue.status}` }))
+    preset.content.forEach((item) => rows.push({ id: item.id, type: contentTypeLabel(item.type), title: item.title, meta: `${item.category} · ${sourceLabel(item.source)}`, text: `${item.title} ${item.category} ${item.excerpt} ${item.body}` }))
+    preset.newsletter.forEach((issue) => rows.push({ id: issue.id, type: '通訊', title: issue.subject, meta: `${segmentLabel(issue.segment)} · ${statusLabel(issue.status)}`, text: `${issue.subject} ${issue.segment} ${issue.status}` }))
     preset.courses.forEach((course) => {
-      rows.push({ id: course.id, type: 'course', title: course.title, meta: `${course.progress}% complete`, text: `${course.title} ${course.description}` })
-      course.lessons.forEach((lesson) => rows.push({ id: lesson.id, type: 'lesson', title: lesson.title, meta: `${course.title} · ${lesson.minutes} min`, text: `${lesson.title} ${lesson.transcript ?? ''} ${(lesson.resources ?? []).map((resource) => resource.title).join(' ')}` }))
+      rows.push({ id: course.id, type: '課程', title: course.title, meta: `完成度 ${course.progress}%`, text: `${course.title} ${course.description}` })
+      course.lessons.forEach((lesson) => rows.push({ id: lesson.id, type: '單元', title: lesson.title, meta: `${course.title} · ${lesson.minutes} 分鐘`, text: `${lesson.title} ${lesson.transcript ?? ''} ${(lesson.resources ?? []).map((resource) => resource.title).join(' ')}` }))
     })
-    preset.threads.forEach((thread) => rows.push({ id: thread.id, type: 'thread', title: thread.title, meta: `${thread.category} · ${thread.replies} replies`, text: `${thread.title} ${thread.category} ${thread.author}` }))
-    preset.members.forEach((member) => rows.push({ id: member.id, type: 'member', title: member.name, meta: `${member.groupRole} · level ${member.level}`, text: `${member.name} ${member.bio} ${member.source} ${member.groupRole}` }))
-    preset.events.forEach((event) => rows.push({ id: event.id, type: 'event', title: event.title, meta: `${event.kind} · ${event.date}`, text: `${event.title} ${event.description} ${event.audience}` }))
+    preset.threads.forEach((thread) => rows.push({ id: thread.id, type: '討論', title: thread.title, meta: `${thread.category} · ${thread.replies} 則回覆`, text: `${thread.title} ${thread.category} ${thread.author}` }))
+    preset.members.forEach((member) => rows.push({ id: member.id, type: '成員', title: member.name, meta: `${roleDisplayLabel(member.groupRole)} · Level ${member.level}`, text: `${member.name} ${member.bio} ${member.source} ${member.groupRole}` }))
+    preset.events.forEach((event) => rows.push({ id: event.id, type: '活動', title: event.title, meta: `${eventKindLabel(event.kind)} · ${event.date}`, text: `${event.title} ${event.description} ${event.audience}` }))
 
     if (!searchTerm) return rows
     return rows.filter((row) => row.text.toLowerCase().includes(searchTerm))
@@ -1038,22 +1265,22 @@ function SearchView({
     <section className="section-block">
       <div className="section-heading horizontal">
         <div>
-          <span className="eyebrow">Global search</span>
+          <span className="eyebrow">站內搜尋</span>
           <h3>搜尋文章、課程、逐字稿、討論、活動與會員</h3>
         </div>
         <label className="search-box">
-          <Search size={18} />
-          <Input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="輸入關鍵字，例如 逐字稿、直播、Yuna" />
+          <Search size={18} aria-hidden="true" />
+          <Input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="輸入想搜尋的東西" />
         </label>
       </div>
       <div className="search-results">
         {results.map((result) => (
           <article key={`${result.type}-${result.id}`} className="search-result">
-            <Badge variant="outline" className="pill">{result.type}</Badge>
-            <span>
+            <div className="search-result-main">
               <strong>{result.title}</strong>
               <small>{result.meta}</small>
-            </span>
+            </div>
+            <Badge variant="outline" className="pill search-result-type">{result.type}</Badge>
           </article>
         ))}
       </div>
@@ -1073,7 +1300,7 @@ function ChallengesView({
   return (
     <section className="section-block">
       <div className="section-heading">
-        <span className="eyebrow">Gamification</span>
+        <span className="eyebrow">打卡挑戰</span>
         <h3>打卡挑戰、積分、等級與排行榜</h3>
       </div>
       <div className="challenge-grid">
@@ -1081,10 +1308,10 @@ function ChallengesView({
           const done = checkedInChallenges.includes(challenge.id)
           return (
             <article key={challenge.id} className="challenge-card">
-              <Flame size={22} />
+              <Flame size={22} aria-hidden="true" />
               <h4>{challenge.title}</h4>
-              <p>{challenge.cadence} · {challenge.participants} participants</p>
-              <strong>{challenge.streak} streak · +{challenge.points} pts</strong>
+              <p>{challenge.cadence} · {challenge.participants} 位參與</p>
+              <strong>連續 {challenge.streak} 次 · +{challenge.points} 分</strong>
               <button disabled={done} onClick={() => onCheckIn(challenge.id)}>{done ? '今日已打卡' : '完成打卡'}</button>
             </article>
           )
@@ -1098,7 +1325,7 @@ function ChallengesView({
             <div key={member.id}>
               <span>#{index + 1}</span>
               <strong>{member.name}</strong>
-              <small>Level {member.level} · {member.points} pts</small>
+              <small>Level {member.level} · {member.points} 分</small>
             </div>
           ))}
       </div>
@@ -1110,16 +1337,16 @@ function EventsView({ preset }: { preset: ReturnType<typeof getPreset> }) {
   return (
     <section className="section-block">
       <div className="section-heading">
-        <span className="eyebrow">Calendar</span>
+        <span className="eyebrow">活動日曆</span>
         <h3>Webinar、Live、Office hour 與回放</h3>
       </div>
       <div className="event-grid">
         {preset.events.map((event) => (
           <article key={event.id} className="event-card">
-            <Badge variant="outline" className="pill">{event.kind} · {event.status}</Badge>
+            <Badge variant="outline" className="pill">{eventKindLabel(event.kind)} · {statusLabel(event.status)}</Badge>
             <h4>{event.title}</h4>
             <p>{event.description}</p>
-            <small>{event.date} · audience: {event.audience} · replay: {event.replayAccess}</small>
+            <small>{event.date} · 對象：{accessLabel(event.audience)} · 回放：{accessLabel(event.replayAccess)}</small>
           </article>
         ))}
       </div>
@@ -1132,21 +1359,21 @@ function MemberView({ preset, state, selectedPlan }: { preset: ReturnType<typeof
   return (
     <section className="section-block">
       <div className="section-heading">
-        <span className="eyebrow">Member self-service</span>
+        <span className="eyebrow">我的會員中心</span>
         <h3>會員方案、收據/發票狀態與付款自助</h3>
       </div>
       <div className="member-grid">
         <MetricTile label="目前方案" value={selectedPlan.name} icon={ShieldCheck} />
-        <MetricTile label="會員狀態" value={state.role === 'visitor' ? '訪客' : 'active'} icon={UserRound} />
-        <MetricTile label="收據/發票" value={lastEvent?.invoiceStatus ?? 'not_required'} icon={CircleDollarSign} />
-        <MetricTile label="Portaly Portal" value="ready" icon={ChevronRight} />
+        <MetricTile label="會員狀態" value={state.role === 'visitor' ? '訪客' : '有效'} icon={UserRound} />
+        <MetricTile label="收據/發票" value={paymentValueLabel(lastEvent?.invoiceStatus)} icon={CircleDollarSign} />
+        <MetricTile label="付款自助" value="可使用" icon={ChevronRight} />
       </div>
       <div className="self-service-grid">
         <article>
           <h4>付款與訂閱自助</h4>
           <ul className="check-list">
-            <li><CircleDollarSign size={16} />更新付款方式、取消訂閱、恢復訂閱由 Portaly Portal 處理</li>
-            <li><FileText size={16} />收據 / 發票狀態同步到 `payment_events.invoice_status`</li>
+            <li><CircleDollarSign size={16} />更新付款方式、取消訂閱或恢復訂閱</li>
+            <li><FileText size={16} />查看收據、發票與付款紀錄</li>
             <li><Bell size={16} />付款失敗時可發 Email、LINE、站內通知</li>
           </ul>
         </article>
@@ -1163,7 +1390,10 @@ function MemberView({ preset, state, selectedPlan }: { preset: ReturnType<typeof
           </div>
         </article>
       </div>
-      <pre className="code-block">{JSON.stringify(lastEvent ? paymentEventToCallbackPayload(lastEvent) : { status: 'no_payment_yet' }, null, 2)}</pre>
+      <div className="empty-state">
+        <strong>{lastEvent ? '最近一次付款紀錄' : '目前沒有付款紀錄'}</strong>
+        <small>{lastEvent ? `${lastEvent.planId} · ${lastEvent.amountLabel} · ${paymentValueLabel(lastEvent.invoiceStatus)}` : '加入付費方案後，這裡會顯示付款、收據與發票狀態。'}</small>
+      </div>
     </section>
   )
 }
@@ -1176,22 +1406,22 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
     { label: '內容草稿待審', value: `${paidContent + 2}`, tone: 'yellow' },
     { label: '社群檢舉待處理', value: `${preset.moderation.filter((item) => item.status !== 'resolved').length}`, tone: 'red' },
     { label: '付款狀態待確認', value: `${state.paymentEvents.length}`, tone: 'blue' },
-    { label: 'Newsletter 排程', value: `${preset.newsletter.filter((issue) => issue.status === 'scheduled').length}`, tone: 'green' },
+    { label: '通訊排程', value: `${preset.newsletter.filter((issue) => issue.status === 'scheduled').length}`, tone: 'green' },
   ]
 
   return (
     <div className="admin-workspace">
       <section className="section-block admin-hero">
         <div className="section-heading">
-          <span className="eyebrow">Admin workspace</span>
+          <span className="eyebrow">營運後台</span>
           <h3>{preset.brand.productName} 營運後台</h3>
           <p>這裡集中管理會員、內容、課程、社群、活動、金流、發票與產品設定狀態，適合每天檢查營運進度。</p>
         </div>
         <div className="admin-grid">
-          <MetricTile label="MRR" value={preset.metrics.mrr} icon={BarChart3} />
-          <MetricTile label="Active members" value={String(preset.metrics.activeMembers)} icon={UsersRound} />
-          <MetricTile label="Paid members" value={String(paidMembers)} icon={ShieldCheck} />
-          <MetricTile label="Top source" value={preset.metrics.topSource} icon={Globe2} />
+          <MetricTile label="月經常收入" value={preset.metrics.mrr} icon={BarChart3} />
+          <MetricTile label="活躍會員" value={String(preset.metrics.activeMembers)} icon={UsersRound} />
+          <MetricTile label="付費會員" value={String(paidMembers)} icon={ShieldCheck} />
+          <MetricTile label="主要來源" value={sourceLabel(preset.metrics.topSource)} icon={Globe2} />
         </div>
       </section>
 
@@ -1221,9 +1451,9 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
                     <small>{member.email}</small>
                   </span>
                   <span>{plan?.name ?? member.planId}</span>
-                  <span><StatusPill tone={member.status === 'active' ? 'green' : 'yellow'}>{member.status}</StatusPill></span>
-                  <span>{member.source}</span>
-                  <span>Level {member.level} · {member.groupRole} · {member.points} pts</span>
+                  <span><StatusPill tone={member.status === 'active' ? 'green' : 'yellow'}>{statusLabel(member.status)}</StatusPill></span>
+                  <span>{sourceLabel(member.source)}</span>
+                  <span>Level {member.level} · {roleDisplayLabel(member.groupRole)} · {member.points} 分</span>
                 </div>
               )
             })}
@@ -1233,7 +1463,7 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
         <article className="admin-panel span-2">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Newsletter ops</span>
+              <span className="eyebrow">通訊營運</span>
               <h4>發信、分眾與付費轉換</h4>
             </div>
             <Megaphone size={18} />
@@ -1242,11 +1472,11 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
             {preset.newsletter.map((issue) => (
               <div key={issue.id} className="admin-content-item horizontal">
                 <span>
-                  <Badge variant="outline" className="pill">{issue.segment} · {issue.status}</Badge>
+                  <Badge variant="outline" className="pill">{segmentLabel(issue.segment)} · {statusLabel(issue.status)}</Badge>
                   <strong>{issue.subject}</strong>
-                  <small>{issue.sendAt} · open {issue.openRate} · click {issue.clickRate}</small>
+                  <small>{issue.sendAt === 'on signup' ? '註冊後自動寄送' : issue.sendAt} · 開信 {issue.openRate} · 點擊 {issue.clickRate}</small>
                 </span>
-                <StatusPill tone={issue.paidConversions > 0 ? 'green' : 'yellow'}>{`${issue.paidConversions} paid`}</StatusPill>
+                <StatusPill tone={issue.paidConversions > 0 ? 'green' : 'yellow'}>{`${issue.paidConversions} 人升級`}</StatusPill>
               </div>
             ))}
           </div>
@@ -1255,7 +1485,7 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
         <article className="admin-panel">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Queue</span>
+              <span className="eyebrow">待辦</span>
               <h4>今日待辦</h4>
             </div>
             <AlertCircle size={18} />
@@ -1273,17 +1503,17 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
         <article className="admin-panel">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Moderation</span>
-              <h4>入會審核、檢舉與 AutoMod</h4>
+              <span className="eyebrow">審核</span>
+              <h4>入會審核、檢舉與風險處理</h4>
             </div>
             <ShieldCheck size={18} />
           </div>
           <div className="admin-content-stack">
             {preset.moderation.map((item) => (
               <div key={item.id} className="admin-content-item">
-                <Badge variant="outline" className="pill">{item.kind} · {item.status}</Badge>
+                <Badge variant="outline" className="pill">{moderationKindLabel(item.kind)} · {statusLabel(item.status)}</Badge>
                 <strong>{item.title}</strong>
-                <small>{item.subject} · priority {item.priority}</small>
+                <small>{item.subject} · 優先度 {priorityLabel(item.priority)}</small>
                 <small>{item.action}</small>
               </div>
             ))}
@@ -1293,7 +1523,7 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
         <article className="admin-panel">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Growth</span>
+              <span className="eyebrow">成長</span>
               <h4>推薦、贈閱與來源成長</h4>
             </div>
             <Gift size={18} />
@@ -1303,7 +1533,7 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
               <div key={campaign.id} className="admin-content-item">
                 <Badge variant="outline" className="pill">{campaign.code}</Badge>
                 <strong>{campaign.label}</strong>
-                <small>{campaign.freeTrials} trials · {campaign.paidConversions} paid · {campaign.revenueLabel}</small>
+                <small>{campaign.freeTrials} 人體驗 · {campaign.paidConversions} 人升級 · {campaign.revenueLabel}</small>
               </div>
             ))}
           </div>
@@ -1312,7 +1542,7 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
         <article className="admin-panel">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Content ops</span>
+              <span className="eyebrow">內容營運</span>
               <h4>內容與付費牆</h4>
             </div>
             <BookOpen size={18} />
@@ -1320,9 +1550,9 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
           <div className="admin-content-stack">
             {preset.content.map((item) => (
               <div key={item.id} className="admin-content-item">
-                <Badge variant="outline" className="pill">{item.type}</Badge>
+                <Badge variant="outline" className="pill">{contentTypeLabel(item.type)}</Badge>
                 <strong>{item.title}</strong>
-                <small>{item.category} · {item.isPaid ? 'paid' : 'free'} · {item.minutes} min</small>
+                <small>{item.category} · {item.isPaid ? '會員限定' : '公開'} · {item.minutes} 分鐘</small>
               </div>
             ))}
           </div>
@@ -1331,7 +1561,7 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
         <article className="admin-panel">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Classroom</span>
+              <span className="eyebrow">課程</span>
               <h4>課程與進度</h4>
             </div>
             <PlayCircle size={18} />
@@ -1340,7 +1570,7 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
             <div key={course.id} className="admin-course-summary">
               <div>
                 <strong>{course.title}</strong>
-                <small>{course.lessons.length} lessons · {totalLessons} total lesson records</small>
+                <small>{course.lessons.length} 個單元 · 共 {totalLessons} 筆課程紀錄</small>
               </div>
               <div className="progress-track"><span style={{ width: `${course.progress}%` }} /></div>
             </div>
@@ -1350,7 +1580,7 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
         <article className="admin-panel">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Community</span>
+              <span className="eyebrow">社群</span>
               <h4>社群審核與互動</h4>
             </div>
             <MessageSquareText size={18} />
@@ -1360,7 +1590,7 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
               <div key={thread.id} className="admin-content-item">
                 <Badge variant="outline" className="pill">{thread.category}</Badge>
                 <strong>{thread.title}</strong>
-                <small>{thread.replies} replies · {thread.reactions} reactions{thread.adminOnly ? ' · members only' : ''}</small>
+                <small>{thread.replies} 則回覆 · {thread.reactions} 個反應{thread.adminOnly ? ' · 會員限定' : ''}</small>
               </div>
             ))}
           </div>
@@ -1369,7 +1599,7 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
         <article className="admin-panel">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Calendar</span>
+              <span className="eyebrow">活動</span>
               <h4>活動、直播與回放</h4>
             </div>
             <CalendarDays size={18} />
@@ -1377,9 +1607,9 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
           <div className="admin-content-stack">
             {preset.events.map((event) => (
               <div key={event.id} className="admin-content-item">
-                <Badge variant="outline" className="pill">{event.kind}</Badge>
+                <Badge variant="outline" className="pill">{eventKindLabel(event.kind)}</Badge>
                 <strong>{event.title}</strong>
-                <small>{event.date} · {event.status}</small>
+                <small>{event.date} · {statusLabel(event.status)}</small>
               </div>
             ))}
           </div>
@@ -1388,7 +1618,7 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
         <article className="admin-panel">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Payment</span>
+              <span className="eyebrow">付款</span>
               <h4>金流、訂閱與發票</h4>
             </div>
             <CircleDollarSign size={18} />
@@ -1411,18 +1641,18 @@ function AdminView({ preset, state }: { preset: ReturnType<typeof getPreset>; st
         <article className="admin-panel span-2">
           <div className="admin-panel-head">
             <div>
-              <span className="eyebrow">Integrations</span>
+              <span className="eyebrow">系統狀態</span>
               <h4>InsForge / Portaly Vibe 設定狀態</h4>
             </div>
             <ShieldCheck size={18} />
           </div>
           <div className="integration-grid">
-            <IntegrationItem label="InsForge Auth" value="Google OAuth ready" />
-            <IntegrationItem label="Database + RLS" value="Migration included" />
-            <IntegrationItem label="Storage" value="Course resources / replay files" />
-            <IntegrationItem label="Portaly Vibe MCP" value="Project-scoped MCP config included" />
-            <IntegrationItem label="Payments" value="Optional after core setup" />
-            <IntegrationItem label="Invoice task" value="payment_events.invoice_status" />
+            <IntegrationItem label="登入" value="Google 登入可啟用" />
+            <IntegrationItem label="資料庫權限" value="資料表與權限規則已準備" />
+            <IntegrationItem label="檔案儲存" value="課程資源與回放檔案" />
+            <IntegrationItem label="Portaly Vibe MCP" value="專案層級設定已加入" />
+            <IntegrationItem label="金流" value="核心流程完成後再啟用" />
+            <IntegrationItem label="發票狀態" value="可同步到付款紀錄" />
           </div>
         </article>
       </section>
@@ -1450,8 +1680,8 @@ function SetupView({ presetId }: { presetId: PresetId }) {
   return (
     <section className="section-block">
       <div className="section-heading">
-        <span className="eyebrow">Setup guide</span>
-        <h3>把這個服務改成你的品牌</h3>
+        <span className="eyebrow">設定指南</span>
+        <h3>調整品牌、內容與會員設定</h3>
       </div>
       <div className="setup-grid">
         <article>
@@ -1465,7 +1695,7 @@ function SetupView({ presetId }: { presetId: PresetId }) {
         </article>
         <article>
           <h4>目前版本</h4>
-          <pre className="code-block">{JSON.stringify({ presetId, nextStep: 'adjust brand, plans, content, courses, and community settings' }, null, 2)}</pre>
+          <pre className="code-block">{JSON.stringify({ 目前案例: presetId, 下一步: '調整品牌、方案、內容、課程與社群設定' }, null, 2)}</pre>
         </article>
         <article>
           <h4>Portaly Vibe MCP</h4>

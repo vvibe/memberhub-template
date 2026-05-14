@@ -63,8 +63,9 @@ Use this order:
 2. Check desktop density at `1440x1000` and wide desktop at `2048x1152`; content must stay centered and must not stretch endlessly on wide screens.
 3. Check mobile at `390x844`; the main content must enter the first viewport and navigation must not push the page below the fold.
 4. Verify CSS layout guardrails: `max-width`, `min-width: 0`, `minmax(0, 1fr)`, `overflow-wrap`, consistent grid gaps, and no horizontal overflow.
-5. Run geometry-based Playwright assertions for spacing, text scale, control clipping, and layout collisions.
-6. Use screenshots as evidence for key surfaces, but prefer measured assertions for spacing regressions because screenshots alone can miss the reason a layout feels crowded.
+5. Check detail-row composition: search results, lesson rows, leaderboards, content cards, and admin rows should use explicit grid slots so primary text stays left and metadata/status/type stays right.
+6. Run geometry-based Playwright assertions for spacing, text scale, control clipping, layout collisions, row alignment, and featured/list gaps.
+7. Use screenshots as evidence for key surfaces, but prefer measured assertions for spacing regressions because screenshots alone can miss the reason a layout feels crowded.
 
 Required command before calling UI work complete:
 
