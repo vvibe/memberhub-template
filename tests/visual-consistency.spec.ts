@@ -40,6 +40,7 @@ for (const viewCase of viewCases) {
     await expectNoDemoCopy(page)
     await expectLayoutRhythmMatchesHome(page, homeRhythm)
     await expectSharedVisualTokens(page)
+    await expectFormControlConsistency(page)
     await expectReadableTypography(page)
     await expectConsistentSpacingAndTextMetrics(page)
     await expectNoLayoutCollisions(page)
@@ -90,6 +91,7 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   await expectDesktopSpacingBreathes(page)
   await expectNoDemoCopy(page)
   await expectSharedVisualTokens(page)
+  await expectFormControlConsistency(page)
   await expectReadableTypography(page)
   await expectConsistentSpacingAndTextMetrics(page)
   await expectNoLayoutCollisions(page)
@@ -161,6 +163,7 @@ test('visitor, member, and admin states show different screens in both reference
   await expectDesktopSpacingBreathes(page)
   await expectNoDemoCopy(page)
   await expectSharedVisualTokens(page)
+  await expectFormControlConsistency(page)
   await expectReadableTypography(page)
   await expectConsistentSpacingAndTextMetrics(page)
   await expectNoLayoutCollisions(page)
@@ -222,6 +225,7 @@ test('Skills School and Signal Brief reference cases are both usable', async ({ 
   await expectDesktopSpacingBreathes(page)
   await expectNoDemoCopy(page)
   await expectSharedVisualTokens(page)
+  await expectFormControlConsistency(page)
   await expectReadableTypography(page)
   await expectConsistentSpacingAndTextMetrics(page)
   await expectNoLayoutCollisions(page)
@@ -271,6 +275,7 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
   await expectDesktopSpacingBreathes(page)
   await expectNoDemoCopy(page)
   await expectSharedVisualTokens(page)
+  await expectFormControlConsistency(page)
   await expectReadableTypography(page)
   await expectConsistentSpacingAndTextMetrics(page)
   await expectNoLayoutCollisions(page)
@@ -304,6 +309,7 @@ test('setup page lets fork users choose the product mode', async ({ page }, test
   await expectDesktopSpacingBreathes(page)
   await expectNoDemoCopy(page)
   await expectSharedVisualTokens(page)
+  await expectFormControlConsistency(page)
   await expectReadableTypography(page)
   await expectConsistentSpacingAndTextMetrics(page)
   await expectNoLayoutCollisions(page)
@@ -339,6 +345,7 @@ test('admin can edit fork-ready site settings and newsletter configuration', asy
   await expectDesktopSpacingBreathes(page)
   await expectNoDemoCopy(page)
   await expectSharedVisualTokens(page)
+  await expectFormControlConsistency(page)
   await expectReadableTypography(page)
   await expectConsistentSpacingAndTextMetrics(page)
   await expectNoLayoutCollisions(page)
@@ -407,6 +414,7 @@ test('Signal Brief standalone article and limited-free rules work', async ({ pag
   await expect(page.getByText('時間過後會自動回到付費牆').first()).toBeVisible()
 
   await expectNoHorizontalOverflow(page)
+  await expectFormControlConsistency(page)
   await attachViewportScreenshot(page, testInfo, 'signal-brief-limited-free')
   expect(consoleErrors.errors).toEqual([])
 })
@@ -682,6 +690,51 @@ async function expectSharedVisualTokens(page: Page) {
   })
   expect(visual.buttonIssues).toEqual([])
   expect(visual.cardIssues).toEqual([])
+}
+
+async function expectFormControlConsistency(page: Page) {
+  const report = await page.evaluate(() => {
+    const isVisible = (element: Element) => {
+      const rect = element.getBoundingClientRect()
+      const style = window.getComputedStyle(element)
+      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none'
+    }
+
+    const controls = Array.from(document.querySelectorAll('[data-slot="input"], [data-slot="textarea"]'))
+      .filter(isVisible)
+      .map((element) => {
+        const style = window.getComputedStyle(element)
+        const rect = element.getBoundingClientRect()
+        const isTextarea = element.getAttribute('data-slot') === 'textarea'
+        const isEmbedded = Boolean(element.closest('.search-box, .auth-input, .signal-subscribe-form, .publication-subscribe-inline'))
+        const borderWidth = Number.parseFloat(style.borderTopWidth)
+        const borderRadius = Number.parseFloat(style.borderRadius)
+        const fontSize = Number.parseFloat(style.fontSize)
+        const paddingLeft = Number.parseFloat(style.paddingLeft)
+        const backgroundIsTransparent = style.backgroundColor === 'rgba(0, 0, 0, 0)'
+
+        return {
+          tag: element.tagName.toLowerCase(),
+          name: (element as HTMLInputElement).name || (element as HTMLInputElement).placeholder || element.getAttribute('type') || '',
+          height: Math.round(rect.height),
+          borderRadius: style.borderRadius,
+          borderWidth: style.borderTopWidth,
+          backgroundColor: style.backgroundColor,
+          fontSize: style.fontSize,
+          issue:
+            fontSize !== 14 ||
+            paddingLeft < 10 ||
+            (isTextarea ? rect.height < 90 : rect.height < 38) ||
+            (!isEmbedded && (borderWidth < 1 || borderRadius !== 8 || backgroundIsTransparent)) ||
+            (isEmbedded && borderRadius > 8 && !element.closest('.signal-subscribe-form, .publication-subscribe-inline')),
+        }
+      })
+      .filter((control) => control.issue)
+
+    return { controls }
+  })
+
+  expect(report.controls, 'form controls should use the shared input/textarea styling instead of browser defaults').toEqual([])
 }
 
 async function expectReadableTypography(page: Page) {

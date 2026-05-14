@@ -56,8 +56,44 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
+}
+
+[data-slot="input"],
+[data-slot="textarea"] {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  outline: 2px solid transparent;
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--font-base);
+  line-height: 1.45;
+  appearance: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+[data-slot="textarea"] {
+  min-height: 92px;
+  padding: 10px 11px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+[data-slot="input"]::placeholder,
+[data-slot="textarea"]::placeholder {
+  color: #8d918c;
+  font-weight: var(--weight-regular);
+}
+
+[data-slot="input"]:focus-visible,
+[data-slot="textarea"]:focus-visible {
+  border-color: rgba(46, 110, 86, 0.48);
+  box-shadow: 0 0 0 3px rgba(46, 110, 86, 0.12);
 }
 
 button {
@@ -615,8 +651,8 @@ button:active {
 .editor-panel [data-slot="textarea"]:focus-visible,
 .editor-select:focus-visible,
 .editor-toggle:focus-within {
-  border-color: rgba(31, 108, 159, 0.56);
-  box-shadow: 0 0 0 3px rgba(31, 108, 159, 0.12);
+  border-color: rgba(46, 110, 86, 0.48);
+  box-shadow: 0 0 0 3px rgba(46, 110, 86, 0.12);
 }
 
 .search-box input,
@@ -2430,8 +2466,8 @@ button:active {
 
 .settings-editor [data-slot="input"]:focus-visible,
 .settings-editor [data-slot="textarea"]:focus-visible {
-  border-color: rgba(31, 108, 159, 0.56);
-  box-shadow: 0 0 0 3px rgba(31, 108, 159, 0.12);
+  border-color: rgba(46, 110, 86, 0.48);
+  box-shadow: 0 0 0 3px rgba(46, 110, 86, 0.12);
 }
 
 .settings-editor-section {
