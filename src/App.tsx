@@ -159,6 +159,11 @@ function defaultViewForRole(role: Role): ViewId {
   return 'home'
 }
 
+type AuthResult = {
+  ok: boolean
+  error?: string
+}
+
 function roleProfile(preset: ReturnType<typeof getPreset>, role: Role) {
   const publication = isPublicationPreset(preset)
   if (publication) {
@@ -434,8 +439,21 @@ function updateById<T extends { id: string }>(items: T[], id: string, patch: Par
 
 function App() {
   const initialRoute = useMemo(() => getInitialRoute(), [])
+  const standalonePresetId = useMemo(() => {
+    if (typeof window === 'undefined') return undefined
+    return presetIdFromHost(window.location.hostname)
+  }, [])
+  const formalSkillsAuth = standalonePresetId === 'skills-school'
   const [state, setState] = useState<AppState>(() => {
     const storedState = loadState()
+    if (formalSkillsAuth) {
+      return {
+        ...storedState,
+        presetId: 'skills-school',
+        role: 'visitor',
+        selectedPlanId: 'free',
+      }
+    }
     if (!initialRoute.presetId) return storedState
     return {
       ...storedState,
@@ -451,10 +469,51 @@ function App() {
   const [view, setView] = useState<ViewId>(initialRoute.view ?? 'home')
   const [query, setQuery] = useState('')
   const [globalQuery, setGlobalQuery] = useState('')
+  const [authEmail, setAuthEmail] = useState<string | null>(null)
+  const [authChecking, setAuthChecking] = useState(formalSkillsAuth)
 
   useEffect(() => {
     saveState(state)
   }, [state])
+
+  useEffect(() => {
+    if (!formalSkillsAuth) return
+    let active = true
+
+    fetch('/api/auth/me')
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!active) return
+        if (payload?.authenticated && payload?.user?.email) {
+          const role: Role = payload.user.role === 'member' ? 'member' : 'admin'
+          const skillsPreset = getPreset('skills-school')
+          const memberPlan = skillsPreset.plans.find((plan) => plan.highlighted) ?? skillsPreset.plans[1] ?? skillsPreset.plans[0]
+          setState((prev) => ({
+            ...prev,
+            presetId: 'skills-school',
+            role,
+            selectedPlanId: memberPlan.id,
+          }))
+          setAuthEmail(payload.user.email)
+          setView(role === 'admin' ? 'admin' : 'member')
+          return
+        }
+        setAuthEmail(null)
+        setState((prev) => ({ ...prev, presetId: 'skills-school', role: 'visitor', selectedPlanId: 'free' }))
+      })
+      .catch(() => {
+        if (!active) return
+        setAuthEmail(null)
+        setState((prev) => ({ ...prev, presetId: 'skills-school', role: 'visitor', selectedPlanId: 'free' }))
+      })
+      .finally(() => {
+        if (active) setAuthChecking(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [formalSkillsAuth])
 
   useEffect(() => {
     const params = new URLSearchParams()
@@ -572,7 +631,39 @@ function App() {
     setView(role === 'admin' ? 'admin' : 'member')
   }
 
-  const handleLogout = () => {
+  const handleCredentialsLogin = async (email: string, password: string): Promise<AuthResult> => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const payload = await response.json().catch(() => null)
+
+      if (!response.ok || !payload?.ok) {
+        if (payload?.error === 'auth_not_configured') return { ok: false, error: '登入服務尚未完成環境變數設定。' }
+        return { ok: false, error: '帳號或密碼不正確。' }
+      }
+
+      const role: Role = payload.user?.role === 'member' ? 'member' : 'admin'
+      const memberPlan = runtimePreset.plans.find((plan) => plan.highlighted) ?? runtimePreset.plans[1] ?? runtimePreset.plans[0]
+      setAuthEmail(payload.user.email)
+      updateState({
+        role,
+        selectedPlanId: memberPlan.id,
+      })
+      setView(role === 'admin' ? 'admin' : 'member')
+      return { ok: true }
+    } catch {
+      return { ok: false, error: '暫時無法連線到登入服務，請稍後再試。' }
+    }
+  }
+
+  const handleLogout = async () => {
+    if (formalSkillsAuth) {
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined)
+      setAuthEmail(null)
+    }
     updateState({ role: 'visitor', selectedPlanId: 'free' })
     setView('home')
   }
@@ -680,16 +771,24 @@ function App() {
           })}
         </nav>
 
-        <div className="sidebar-panel">
-          <span className="eyebrow">目前身份</span>
-          <div className="segmented">
-            {(['visitor', 'member', 'admin'] as Role[]).map((role) => (
-              <button key={role} className={state.role === role ? 'selected' : ''} onClick={() => handleRoleChange(role)}>
-                {roleLabel(role)}
-              </button>
-            ))}
+        {formalSkillsAuth ? (
+          <div className="sidebar-panel account-panel">
+            <span className="eyebrow">測試帳號</span>
+            <strong>{authEmail ?? '尚未登入'}</strong>
+            <small>{authChecking ? '正在確認登入狀態' : `${roleLabel(state.role)}視角`}</small>
           </div>
-        </div>
+        ) : (
+          <div className="sidebar-panel">
+            <span className="eyebrow">目前身份</span>
+            <div className="segmented">
+              {(['visitor', 'member', 'admin'] as Role[]).map((role) => (
+                <button key={role} className={state.role === role ? 'selected' : ''} onClick={() => handleRoleChange(role)}>
+                  {roleLabel(role)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </aside>
 
       <section className="workspace">
@@ -699,24 +798,28 @@ function App() {
             <h1>{runtimePreset.brand.productName}</h1>
           </div>
           <div className="topbar-actions">
-            <label className="select-label">
-              類型
-              <Select value={state.presetId} onValueChange={(value) => handlePresetChange(value as PresetId)}>
-                <SelectTrigger className="preset-select-trigger">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {presets.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {presetLabel(item.id)}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </label>
-            <Button variant="outline" className="ghost-button" onClick={() => updateState(resetState())}>重置狀態</Button>
+            {!standalonePresetId && (
+              <>
+                <label className="select-label">
+                  類型
+                  <Select value={state.presetId} onValueChange={(value) => handlePresetChange(value as PresetId)}>
+                    <SelectTrigger className="preset-select-trigger">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {presets.map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {presetLabel(item.id)}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </label>
+                <Button variant="outline" className="ghost-button" onClick={() => updateState(resetState())}>重置狀態</Button>
+              </>
+            )}
             {state.role === 'visitor' ? (
               <Button className="primary-button" onClick={() => setView('login')}><LogIn data-icon="inline-start" />登入</Button>
             ) : (
@@ -806,7 +909,14 @@ function App() {
           />
         )}
         {view === 'events' && <EventsView preset={runtimePreset} />}
-        {view === 'login' && <LoginView preset={runtimePreset} onLogin={handleLogin} />}
+        {view === 'login' && (
+          <LoginView
+            preset={runtimePreset}
+            onLogin={handleLogin}
+            formalAuth={formalSkillsAuth}
+            onCredentialsLogin={handleCredentialsLogin}
+          />
+        )}
         {view === 'member' && <MemberView preset={runtimePreset} state={state} selectedPlan={selectedPlan} />}
         {view === 'admin' && <AdminView preset={runtimePreset} state={state} onUpdatePreset={handleUpdatePreset} />}
         {view === 'setup' && <SetupView presetId={state.presetId} />}
@@ -1517,20 +1627,48 @@ function NewsletterView({
   )
 }
 
-function LoginView({ preset, onLogin }: { preset: ReturnType<typeof getPreset>; onLogin: (role?: Role) => void }) {
+function LoginView({
+  preset,
+  onLogin,
+  formalAuth = false,
+  onCredentialsLogin,
+}: {
+  preset: ReturnType<typeof getPreset>
+  onLogin: (role?: Role) => void
+  formalAuth?: boolean
+  onCredentialsLogin?: (email: string, password: string) => Promise<AuthResult>
+}) {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   return (
     <section className="auth-layout">
       <article className="auth-card">
         <span className="eyebrow">會員登入</span>
         <h3>登入 {preset.brand.productName}</h3>
-        <p>{preset.id === 'signal-brief' ? '登入後可以閱讀會員研究、下載資料表、參與讀者問答，並管理自己的訂閱狀態。' : '登入後可以繼續課程進度、參與討論區、完成每週打卡，並查看自己的會員方案。'}</p>
+        <p>
+          {formalAuth
+            ? '這是正式測試入口。登入後可以進入會員區與管理後台，實際測試課程、社群、打卡與內容管理流程。'
+            : preset.id === 'signal-brief'
+              ? '登入後可以閱讀會員研究、下載資料表、參與讀者問答，並管理自己的訂閱狀態。'
+              : '登入後可以繼續課程進度、參與討論區、完成每週打卡，並查看自己的會員方案。'}
+        </p>
         <form
           className="auth-form"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault()
-            onLogin('member')
+            setError('')
+            if (!formalAuth) {
+              onLogin('member')
+              return
+            }
+            if (!onCredentialsLogin) return
+            setIsSubmitting(true)
+            const result = await onCredentialsLogin(email, password)
+            setIsSubmitting(false)
+            if (!result.ok) setError(result.error ?? '登入失敗，請稍後再試。')
           }}
         >
           <label>
@@ -1540,12 +1678,27 @@ function LoginView({ preset, onLogin }: { preset: ReturnType<typeof getPreset>; 
               <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="輸入你的 Email" required />
             </span>
           </label>
-          <Button className="primary-button" type="submit"><LogIn data-icon="inline-start" />以會員身份登入</Button>
+          {formalAuth && (
+            <label>
+              密碼
+              <span className="auth-input">
+                <Lock size={18} />
+                <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="輸入測試密碼" required />
+              </span>
+            </label>
+          )}
+          {error && <p className="auth-error" role="alert">{error}</p>}
+          {formalAuth && <small className="auth-helper">帳密由伺服器驗證，測試密碼不會寫在前端或 GitHub。</small>}
+          <Button className="primary-button" type="submit" disabled={isSubmitting}>
+            <LogIn data-icon="inline-start" />{formalAuth ? (isSubmitting ? '登入中' : '登入正式測試站') : '以會員身份登入'}
+          </Button>
         </form>
-        <div className="button-row">
-          <Button variant="outline" className="secondary-button" onClick={() => onLogin('member')}>以 Google 帳號登入</Button>
-          <Button variant="outline" className="ghost-button" onClick={() => onLogin('admin')}>管理員登入</Button>
-        </div>
+        {!formalAuth && (
+          <div className="button-row">
+            <Button variant="outline" className="secondary-button" onClick={() => onLogin('member')}>以 Google 帳號登入</Button>
+            <Button variant="outline" className="ghost-button" onClick={() => onLogin('admin')}>管理員登入</Button>
+          </div>
+        )}
       </article>
       <article className="auth-notes">
         <h4>{preset.id === 'signal-brief' ? '登入後可以使用' : '登入後可以開始'}</h4>

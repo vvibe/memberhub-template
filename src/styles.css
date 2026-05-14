@@ -179,6 +179,25 @@ li {
   gap: 10px;
 }
 
+.account-panel {
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-control);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.account-panel strong {
+  overflow-wrap: anywhere;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.account-panel small {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: var(--font-xs);
+}
+
 .segmented {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -743,6 +762,22 @@ button:active {
   margin: 0;
   color: var(--text-muted);
   line-height: 1.7;
+}
+
+.auth-error {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(150, 36, 36, 0.18);
+  border-radius: var(--radius-control);
+  background: #fff6f6;
+  color: #9a2b2b;
+  font-size: var(--font-sm);
+  line-height: 1.45;
+}
+
+.auth-helper {
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .auth-form {
