@@ -2251,10 +2251,11 @@ function CoursesView({
               {course.lessons.map((lesson) => {
                 const locked = lesson.lockedLevel != null && level < lesson.lockedLevel
                 const complete = lesson.complete || completedLessons.includes(lesson.id)
+                const unavailable = locked || !canUseLessons
                 return (
-                  <div key={lesson.id} className={complete ? 'lesson-card complete' : 'lesson-card'}>
-                    <button className="lesson-row" disabled={locked || !canUseLessons} onClick={() => onToggleLesson(lesson.id)}>
-                      {locked || !canUseLessons ? <Lock size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
+                  <div key={lesson.id} className={`lesson-card${complete ? ' complete' : ''}${unavailable ? ' locked' : ''}`}>
+                    <button className="lesson-row" disabled={unavailable} onClick={() => onToggleLesson(lesson.id)}>
+                      {unavailable ? <Lock size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
                       <span>{lesson.title}</span>
                       <small>{!canUseLessons ? '會員限定' : locked ? `Level ${lesson.lockedLevel}` : `${lesson.minutes} 分鐘`}</small>
                     </button>

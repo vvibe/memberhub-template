@@ -1212,6 +1212,29 @@ async function expectDetailLayoutQuality(page: Page) {
       })
       .filter((item) => item.issue)
 
+    const parseRgb = (value: string) => {
+      const match = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+      if (!match) return null
+      return [Number(match[1]), Number(match[2]), Number(match[3])]
+    }
+
+    const disabledLessonContrastIssues = Array.from(document.querySelectorAll('.lesson-row:disabled'))
+      .filter(isVisible)
+      .map((element) => {
+        const style = window.getComputedStyle(element)
+        const title = element.querySelector('span')
+        const titleStyle = title ? window.getComputedStyle(title) : null
+        const titleRgb = titleStyle ? parseRgb(titleStyle.color) : null
+        const isWashedOut = titleRgb ? titleRgb.every((channel) => channel > 150) : true
+        return {
+          text: (element.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 80),
+          opacity: style.opacity,
+          titleColor: titleStyle?.color ?? '',
+          issue: Number(style.opacity) < 0.95 || isWashedOut,
+        }
+      })
+      .filter((item) => item.issue)
+
     const leaderboardIssues = Array.from(document.querySelectorAll('.leaderboard > div'))
       .filter(isVisible)
       .map((element) => {
@@ -1240,6 +1263,7 @@ async function expectDetailLayoutQuality(page: Page) {
       searchPlaceholderIssue,
       searchResultIssues,
       lessonRowIssues,
+      disabledLessonContrastIssues,
       leaderboardIssues,
       blogGapIssue: blogGap !== null && blogGap < 12 ? { gap: blogGap } : null,
     }
@@ -1249,6 +1273,7 @@ async function expectDetailLayoutQuality(page: Page) {
   expect(report.searchPlaceholderIssue, 'global search placeholder should be short and direct').toBeNull()
   expect(report.searchResultIssues, 'search results should show title/meta on the left and type on the right').toEqual([])
   expect(report.lessonRowIssues, 'lesson rows should use stable icon/title/time columns instead of centered titles').toEqual([])
+  expect(report.disabledLessonContrastIssues, 'locked lesson labels should remain readable and must not rely on low opacity').toEqual([])
   expect(report.leaderboardIssues, 'leaderboard names should align near the rank instead of floating in the center').toEqual([])
   expect(report.blogGapIssue, 'featured blog article needs enough breathing room before the list').toBeNull()
 }

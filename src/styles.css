@@ -2568,13 +2568,40 @@ button:active {
 
 .lesson-row:disabled {
   cursor: not-allowed;
-  opacity: 0.56;
+  opacity: 1;
+  color: var(--text);
 }
 
 .lesson-card .lesson-row {
   padding: 0;
   border: 0;
   background: transparent;
+}
+
+.lesson-card.locked {
+  background: color-mix(in srgb, var(--canvas) 86%, white);
+}
+
+.lesson-card.complete.locked {
+  border-color: #cfe1cc;
+  background: color-mix(in srgb, var(--soft-green) 70%, white);
+}
+
+.lesson-card.locked .lesson-row svg {
+  color: #6d746f;
+}
+
+.lesson-card.locked .lesson-row span {
+  color: #5f6661;
+}
+
+.lesson-card.locked .lesson-row small {
+  color: #4f5752;
+  font-weight: var(--weight-medium);
+}
+
+.lesson-card.locked .lesson-meta {
+  color: #68706a;
 }
 
 .lesson-meta,
