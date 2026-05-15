@@ -31,6 +31,7 @@ You can run the local experience without connecting any external service. When y
 
 Full setup checklist: [`docs/fork-readiness.md`](./docs/fork-readiness.md)
 Security checklist and launch risks: [`docs/security-review.md`](./docs/security-review.md)
+RLS policy starter: [`docs/rls-policies.md`](./docs/rls-policies.md)
 
 ## Live Preview
 

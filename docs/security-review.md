@@ -11,6 +11,7 @@
 - Production 不要長期使用內建測試登入；請改接 InsForge Auth，建議 Google OAuth 或 magic link。
 - localStorage 只適合本機預覽，不適合保存正式會員、付款、發票或個資資料。
 - InsForge migration 只建立資料表與開啟 RLS；正式 CRUD 前必須補齊並測試 RLS policies。
+- 可先參考 [`docs/rls-policies.md`](./rls-policies.md) 的 guest、free member、paid member、admin 權限範本。
 - 金流預設應使用 test key。只有在使用者明確同意後，才切換 live mode、建立正式方案、收款、取消訂閱或補單。
 
 ### 已內建的安全保護
@@ -57,6 +58,7 @@ This repo is safe to run locally first, but it is not a zero-config production p
 - Do not keep the built-in test login as the long-term production auth system. Use InsForge Auth, preferably Google OAuth or magic link.
 - localStorage is only for preview data, not production members, payments, invoices, or personal data.
 - The InsForge migration creates tables and enables RLS, but production CRUD requires complete RLS policies.
+- Use [`docs/rls-policies.md`](./rls-policies.md) as a starting point for guest, free member, paid member, and admin access.
 - Start payments with test keys. Use live mode only after explicit user confirmation.
 
 ### Built-in protections

@@ -14,6 +14,7 @@ const requiredFiles = [
   'docs/launch-checklist.md',
   'docs/mcp-setup.md',
   'docs/security-review.md',
+  'docs/rls-policies.md',
   'AGENTS.md',
 ]
 
@@ -64,6 +65,7 @@ const readme = readFileSync('README.md', 'utf8')
 const agents = readFileSync('AGENTS.md', 'utf8')
 const forkReadiness = readFileSync('docs/fork-readiness.md', 'utf8')
 const securityReview = readFileSync('docs/security-review.md', 'utf8')
+const rlsPolicies = readFileSync('docs/rls-policies.md', 'utf8')
 const checkoutFunction = readFileSync('insforge/functions/portaly-checkout/index.ts', 'utf8')
 const webhookFunction = readFileSync('insforge/functions/portaly-webhook/index.ts', 'utf8')
 
@@ -104,6 +106,9 @@ assert(forkReadiness.includes('安全注意'), 'fork readiness documents securit
 assert(securityReview.includes('不要把真實 API key'), 'security review warns about real secrets')
 assert(securityReview.includes('localStorage 只適合本機預覽'), 'security review warns localStorage is preview-only')
 assert(securityReview.includes('RLS policies'), 'security review documents RLS policy requirement')
+assert(rlsPolicies.includes('memberhub_has_paid_membership'), 'RLS policy template covers paid member access')
+assert(rlsPolicies.includes('memberhub_is_admin'), 'RLS policy template covers admin access')
+assert(rlsPolicies.includes('Guest 可以讀公開文章'), 'RLS policy template includes role-based test checklist')
 
 if (process.exitCode) {
   console.error('\nIntegration check failed.')
