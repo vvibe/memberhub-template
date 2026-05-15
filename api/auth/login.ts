@@ -15,6 +15,8 @@ type VercelResponse = {
 }
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Cache-Control', 'no-store')
+
   if (req.method !== 'POST') {
     res.status(405).json({ ok: false, error: 'method_not_allowed' })
     return
@@ -26,9 +28,21 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+  let body: unknown
+  try {
+    body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+  } catch {
+    res.status(400).json({ ok: false, error: 'invalid_json' })
+    return
+  }
+
   const email = typeof body === 'object' && body && 'email' in body ? String(body.email) : ''
   const password = typeof body === 'object' && body && 'password' in body ? String(body.password) : ''
+
+  if (email.length > 320 || password.length > 256) {
+    res.status(400).json({ ok: false, error: 'invalid_credentials' })
+    return
+  }
 
   if (!validateCredentials(site, email, password)) {
     res.status(401).json({ ok: false, error: 'invalid_credentials' })

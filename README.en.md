@@ -26,10 +26,11 @@ You can run the local experience without connecting any external service. When y
 - The local experience does not require API keys. Production requires InsForge setup and a Portaly Vibe MCP token.
 - Payments, subscription plans, and invoice flow are optional and should be enabled only when you are ready.
 - Possible costs include hosting, domain, InsForge, Portaly Vibe, payment processing, Email/LINE messaging, and invoice/e-invoice providers.
-- Never commit real API keys, MCP tokens, or callback secrets to GitHub.
+- Never commit real API keys, MCP tokens, callback secrets, or test login passwords to GitHub.
 - Before launch, run `npm run check:integrations`, `npm run build`, and `npm run test:qa`; Playwright should pass at 100%.
 
 Full setup checklist: [`docs/fork-readiness.md`](./docs/fork-readiness.md)
+Security checklist and launch risks: [`docs/security-review.md`](./docs/security-review.md)
 
 ## Live Preview
 
@@ -263,6 +264,7 @@ cp .env.example .env.local
 | `PORTALY_API_KEY` | Portaly Vibe server-side API calls | No |
 | `PORTALY_CALLBACK_SECRET` | Verify Portaly payment callbacks | No |
 | `PORTALY_API_HOST` | Portaly API host, default `https://portaly.cc` | No |
+| `PORTALY_CALLBACK_URL` | Public HTTPS callback URL for Portaly webhook | No |
 | `PORTALY_MCP_TOKEN` | Portaly Vibe MCP token for local Coding Agent setup | No |
 | `APP_BASE_URL` | Local or production app URL | No |
 | `ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call checkout function | No |

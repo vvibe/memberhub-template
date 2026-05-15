@@ -14,6 +14,8 @@ type VercelResponse = {
 }
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Cache-Control', 'no-store')
+
   if (req.method !== 'POST') {
     res.status(405).json({ ok: false, error: 'method_not_allowed' })
     return

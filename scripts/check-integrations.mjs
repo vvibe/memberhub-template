@@ -13,6 +13,7 @@ const requiredFiles = [
   'docs/fork-readiness.md',
   'docs/launch-checklist.md',
   'docs/mcp-setup.md',
+  'docs/security-review.md',
   'AGENTS.md',
 ]
 
@@ -22,6 +23,7 @@ const requiredEnv = [
   'INSFORGE_API_KEY',
   'PORTALY_API_KEY',
   'PORTALY_CALLBACK_SECRET',
+  'PORTALY_CALLBACK_URL',
   'PORTALY_MCP_TOKEN',
   'APP_BASE_URL',
   'ALLOWED_ORIGINS',
@@ -61,6 +63,7 @@ const migration = readFileSync('migrations/20260511210000_memberhub.sql', 'utf8'
 const readme = readFileSync('README.md', 'utf8')
 const agents = readFileSync('AGENTS.md', 'utf8')
 const forkReadiness = readFileSync('docs/fork-readiness.md', 'utf8')
+const securityReview = readFileSync('docs/security-review.md', 'utf8')
 const checkoutFunction = readFileSync('insforge/functions/portaly-checkout/index.ts', 'utf8')
 const webhookFunction = readFileSync('insforge/functions/portaly-webhook/index.ts', 'utf8')
 
@@ -88,12 +91,19 @@ assert(checkoutFunction.includes('/api/creator-subscription/checkout-sessions'),
 assert(checkoutFunction.includes('PORTALY_API_KEY'), 'Portaly checkout function reads server-side API key')
 assert(checkoutFunction.includes('ALLOWED_ORIGINS'), 'Portaly checkout function restricts allowed origins')
 assert(checkoutFunction.includes('origin_not_allowed'), 'Portaly checkout function rejects untrusted browser origins')
+assert(checkoutFunction.includes('trustedRedirectUrl'), 'Portaly checkout function restricts success/cancel redirects')
+assert(!checkoutFunction.includes('amount: body.amount'), 'Portaly checkout function does not trust browser-provided amount')
+assert(!checkoutFunction.includes('callbackUrl: body.callbackUrl'), 'Portaly checkout function does not trust browser-provided callback URL')
 assert(webhookFunction.includes('PORTALY_CALLBACK_SECRET'), 'optional payment callback verifies callback secret')
 assert(webhookFunction.includes('x-portaly-signature'), 'optional payment callback reads signature header')
+assert(webhookFunction.includes('request.text()'), 'optional payment callback verifies signature against raw body')
 assert(webhookFunction.includes('timingSafeEqual'), 'optional payment callback uses timing-safe signature comparison')
 assert(agents.includes('Only after the above is complete, ask whether the user wants to enable payments'), 'AGENTS keeps payment opt-in guard')
 assert(forkReadiness.includes('可能產生成本'), 'fork readiness documents possible costs')
 assert(forkReadiness.includes('安全注意'), 'fork readiness documents security notes')
+assert(securityReview.includes('不要把真實 API key'), 'security review warns about real secrets')
+assert(securityReview.includes('localStorage 只適合本機預覽'), 'security review warns localStorage is preview-only')
+assert(securityReview.includes('RLS policies'), 'security review documents RLS policy requirement')
 
 if (process.exitCode) {
   console.error('\nIntegration check failed.')

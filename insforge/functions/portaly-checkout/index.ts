@@ -8,7 +8,6 @@ type CheckoutRequest = {
   callbackUrl?: string
   merchantOrderNumber?: string
   discountCode?: string
-  amount?: number
   metadata?: Record<string, string>
 }
 
@@ -27,6 +26,48 @@ function getAllowedOrigins() {
 
   if (configured?.length) return configured
   return [getAppBaseUrl(), 'http://localhost:5176', 'http://127.0.0.1:5176']
+}
+
+function getCallbackUrl(appBaseUrl: string) {
+  return process.env.PORTALY_CALLBACK_URL || `${appBaseUrl}/functions/portaly-webhook`
+}
+
+function isValidPlanId(planId: string) {
+  return /^[a-zA-Z0-9._:-]{1,80}$/.test(planId)
+}
+
+function trustedRedirectUrl(value: unknown, fallback: string) {
+  if (typeof value !== 'string' || !value.trim()) return fallback
+
+  try {
+    const url = new URL(value)
+    if (!['http:', 'https:'].includes(url.protocol)) return fallback
+    if (!getAllowedOrigins().includes(url.origin)) return fallback
+    return url.toString()
+  } catch {
+    return fallback
+  }
+}
+
+function safeMerchantOrderNumber(value: unknown) {
+  if (typeof value !== 'string') return undefined
+  return /^[a-zA-Z0-9._:-]{1,120}$/.test(value) ? value : undefined
+}
+
+function safeDiscountCode(value: unknown) {
+  if (typeof value !== 'string') return undefined
+  return /^[a-zA-Z0-9._:-]{1,80}$/.test(value) ? value : undefined
+}
+
+function safeMetadata(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key, metadataValue]) => /^[a-zA-Z0-9._:-]{1,60}$/.test(key) && typeof metadataValue === 'string')
+      .slice(0, 20)
+      .map(([key, metadataValue]) => [key, String(metadataValue).slice(0, 500)]),
+  )
 }
 
 function getCorsHeaders(request: Request) {
@@ -65,21 +106,22 @@ export default async function handler(request: Request): Promise<Response> {
   const apiKey = process.env.PORTALY_API_KEY
   if (!apiKey) return json({ error: 'missing_portaly_api_key' }, 500, corsHeaders)
 
-  const body = (await request.json()) as Partial<CheckoutRequest>
+  const body = (await request.json().catch(() => null)) as Partial<CheckoutRequest> | null
+  if (!body || typeof body !== 'object') return json({ error: 'invalid_json' }, 400, corsHeaders)
   if (!body.planId) return json({ error: 'missing_plan_id' }, 400, corsHeaders)
+  if (!isValidPlanId(body.planId)) return json({ error: 'invalid_plan_id' }, 400, corsHeaders)
 
   const appBaseUrl = getAppBaseUrl()
   const checkoutRequest: CheckoutRequest = {
     planId: body.planId,
-    successRedirectUrl: body.successRedirectUrl ?? `${appBaseUrl}/?checkout=success`,
-    cancelRedirectUrl: body.cancelRedirectUrl ?? `${appBaseUrl}/?checkout=cancelled`,
-    callbackUrl: body.callbackUrl ?? `${appBaseUrl}/functions/portaly-webhook`,
-    merchantOrderNumber: body.merchantOrderNumber,
-    discountCode: body.discountCode,
-    amount: body.amount,
+    successRedirectUrl: trustedRedirectUrl(body.successRedirectUrl, `${appBaseUrl}/?checkout=success`),
+    cancelRedirectUrl: trustedRedirectUrl(body.cancelRedirectUrl, `${appBaseUrl}/?checkout=cancelled`),
+    callbackUrl: getCallbackUrl(appBaseUrl),
+    merchantOrderNumber: safeMerchantOrderNumber(body.merchantOrderNumber),
+    discountCode: safeDiscountCode(body.discountCode),
     metadata: {
       app: 'memberhub',
-      ...(body.metadata ?? {}),
+      ...safeMetadata(body.metadata),
     },
   }
 
@@ -94,7 +136,7 @@ export default async function handler(request: Request): Promise<Response> {
 
   const payload = await response.json().catch(() => null)
   if (!response.ok) {
-    return json({ error: 'portaly_checkout_failed', status: response.status, payload }, response.status, corsHeaders)
+    return json({ error: 'portaly_checkout_failed', status: response.status }, response.status, corsHeaders)
   }
 
   return json(payload, 200, corsHeaders)
