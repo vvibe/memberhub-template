@@ -58,7 +58,11 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   await openNav(page, '內容庫')
   await page.getByPlaceholder('輸入文章標題').fill('QA 測試文章')
   await page.getByPlaceholder('列表與分享時顯示的短摘要').fill('這是 Playwright QA 產生的測試摘要。')
-  await page.getByPlaceholder('撰寫文章、課程公告或通訊內容…').fill('這篇內容用來確認發文、搜尋與後台列表仍能正常運作。')
+  const contentEditor = page.getByLabel('文章內文')
+  await contentEditor.fill('這篇內容用來確認發文、搜尋與後台列表仍能正常運作。')
+  await contentEditor.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
+  await page.locator('.editor-panel').getByRole('button', { name: '粗體' }).click()
+  await expect(page.locator('.editor-panel .rich-text-editable strong')).toContainText('這篇內容用來確認發文')
   await page.getByRole('button', { name: /發布到內容庫/ }).click()
   await expect(page.getByRole('heading', { name: 'QA 測試文章' })).toBeVisible()
 
@@ -340,6 +344,13 @@ test('Signal Brief admin separates functions into consistent tabs', async ({ pag
   await expect(page.getByText('Signal Brief 策略通訊 出版後台')).toBeVisible()
   await expectPublicationAdminTabs(page)
 
+  await page.locator('.publication-admin-tabs').getByRole('button', { name: /文章與付費牆/ }).click()
+  const signalEditor = page.locator('.publication-admin-content .rich-text-editor').first()
+  await expect(signalEditor.getByRole('button', { name: '粗體' })).toBeVisible()
+  await expect(signalEditor.getByRole('button', { name: '項目清單' })).toBeVisible()
+  await signalEditor.locator('[contenteditable="true"]').fill('Signal Brief 後台富文字內容')
+  await expect(signalEditor.locator('[contenteditable="true"]')).toContainText('Signal Brief 後台富文字內容')
+
   for (const item of tabChecks) {
     await page.locator('.publication-admin-tabs').getByRole('button', { name: item.button }).click()
     await expect(page.getByText(item.expected).first()).toBeVisible()
@@ -396,6 +407,12 @@ test('admin can edit fork-ready site settings and newsletter configuration', asy
 
   await setRole(page, '管理員')
   await openNav(page, '後台')
+  await expect(page.locator('.skills-admin-tabs').getByRole('button', { name: /文章/ })).toBeVisible()
+  const skillsAdminEditor = page.locator('.skills-admin-workspace .rich-text-editor').first()
+  await expect(skillsAdminEditor.getByRole('button', { name: '粗體' })).toBeVisible()
+  await expect(skillsAdminEditor.getByRole('button', { name: '項目清單' })).toBeVisible()
+  await skillsAdminEditor.locator('[contenteditable="true"]').fill('Skills School 後台富文字內容')
+  await expect(skillsAdminEditor.locator('[contenteditable="true"]')).toContainText('Skills School 後台富文字內容')
   await page.locator('.skills-admin-tabs').getByRole('button', { name: /設定/ }).click()
   await expect(page.getByText('網站、品牌與會員方案')).toBeVisible()
 

@@ -119,7 +119,7 @@ This repo is not a static showcase. Without any backend keys, the localStorage s
 
 - Sign in/out as member or admin
 - Switch vertical presets
-- Use the post editor to create a post with title, excerpt, category, content type, body, and paywall state
+- Use the Tiptap free open-source rich-text editor to create a post with title, excerpt, category, formatted body, content type, and paywall state
 - New posts immediately appear in the content library, global search, and admin content operations
 - Select a paid plan and unlock paywalled content
 - Search the content library and global index
@@ -221,7 +221,7 @@ If you only want to try the local experience, you can skip this section. For pro
 - Portaly Vibe MCP token, created in Portaly Admin and stored as `PORTALY_API_TOKEN` with a format similar to `mcp_ptly_xxxxxxxx`
 - Allowed origins, such as the production domain and local development URLs
 
-`npm ci` installs `@insforge/sdk`, `@insforge/cli`, and Playwright QA tooling. The repo includes the InsForge migration, browser SDK client, Portaly Vibe MCP config, AI install intake, and launch checklist.
+`npm ci` installs `@insforge/sdk`, `@insforge/cli`, the Tiptap free open-source rich-text editor, DOMPurify content sanitization, and Playwright QA tooling. The repo includes the InsForge migration, browser SDK client, Portaly Vibe MCP config, AI install intake, and launch checklist.
 
 Payments, subscription plans, and invoices are optional. If you enable them, use the production Portaly merchant setup and a server-side checkout key, and confirm again before creating official plans or collecting payments.
 

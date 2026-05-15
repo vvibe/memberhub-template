@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   AlertCircle,
   BarChart3,
@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { getPreset, presets } from './data/presets'
 import { createCheckoutSessionPreview, portalyIntegrationNotes } from './lib/portaly'
+import { richTextBlocks, richTextPlainText } from './lib/rich-text'
 import { createPaymentEvent, loadState, presetLabel, resetState, roleLabel, saveState } from './lib/store'
 import type { AppState, ContentItem, Course, Member, ModerationItem, NewsletterIssue, Plan, PresetId, ReferralCampaign, Role, VerticalPreset, ViewId } from './types'
 import { Badge } from '@/components/ui/badge'
@@ -45,6 +46,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+
+const RichTextEditor = lazy(() => import('@/components/RichTextEditor').then((module) => ({ default: module.RichTextEditor })))
+
+type DeferredRichTextEditorProps = {
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  ariaLabel: string
+  compact?: boolean
+}
+
+function DeferredRichTextEditor(props: DeferredRichTextEditorProps) {
+  return (
+    <Suspense fallback={<div className="rich-text-editor rich-text-loading">正在載入編輯器…</div>}>
+      <RichTextEditor {...props} />
+    </Suspense>
+  )
+}
 
 const navItems: Array<{ id: ViewId; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'home', label: '預覽', icon: Globe2 },
@@ -248,10 +267,11 @@ function contentTypeLabel(type: ContentItem['type'] | string) {
 }
 
 function contentParagraphs(item: Pick<ContentItem, 'body'>) {
-  return item.body
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
+  return richTextBlocks(item.body)
+}
+
+function RichTextBlock({ html, id }: { html: string; id: string }) {
+  return <div className="rich-text-output-block" dangerouslySetInnerHTML={{ __html: html }} data-block-id={id} />
 }
 
 function paywallParagraph(item: ContentItem) {
@@ -738,7 +758,7 @@ function App() {
       ...item,
       id: `local_content_${Date.now()}`,
       source: 'editor',
-      minutes: Math.max(3, Math.ceil(item.body.length / 220)),
+      minutes: Math.max(3, Math.ceil(richTextPlainText(item.body).length / 220)),
     }
     updateState({ localContentItems: [nextItem, ...state.localContentItems] })
     setQuery('')
@@ -1334,8 +1354,8 @@ function SignalPostArticle({
         </small>
       </header>
       <div className="signal-article-body">
-        {visibleParagraphs.map((paragraph, index) => (
-          <p key={`${item.id}-signal-paragraph-${index}`}>{paragraph}</p>
+        {visibleParagraphs.map((block, index) => (
+          <RichTextBlock key={`${item.id}-signal-paragraph-${index}`} id={`${item.id}-signal-paragraph-${index}`} html={block} />
         ))}
       </div>
       {locked ? (
@@ -1740,8 +1760,8 @@ function ArticleReader({
         </small>
       </header>
       <div className="article-body">
-        {visibleParagraphs.map((paragraph, index) => (
-          <p key={`${item.id}-paragraph-${index}`}>{paragraph}</p>
+        {visibleParagraphs.map((block, index) => (
+          <RichTextBlock key={`${item.id}-paragraph-${index}`} id={`${item.id}-paragraph-${index}`} html={block} />
         ))}
       </div>
       {!locked && !item.isPaid ? (
@@ -1873,7 +1893,8 @@ function ContentView({
     paywallAfterParagraph: 1,
   })
 
-  const canPublish = draft.title.trim() && draft.excerpt.trim() && draft.body.trim()
+  const draftBodyText = richTextPlainText(draft.body)
+  const canPublish = draft.title.trim() && draft.excerpt.trim() && draftBodyText.trim()
 
   const updateDraft = (patch: Partial<typeof draft>) => setDraft((prev) => ({ ...prev, ...patch }))
 
@@ -1962,10 +1983,15 @@ function ContentView({
           </label>
           <label className="editor-field">
             內文
-            <Textarea value={draft.body} onChange={(event) => updateDraft({ body: event.target.value })} placeholder={isPublication ? '撰寫文章或電子報內容…' : '撰寫文章、課程公告或通訊內容…'} />
+            <DeferredRichTextEditor
+              value={draft.body}
+              onChange={(body) => updateDraft({ body })}
+              ariaLabel="文章內文"
+              placeholder={isPublication ? '撰寫文章或電子報內容…' : '撰寫文章、課程公告或通訊內容…'}
+            />
           </label>
           <div className="editor-actions">
-            <small>{draft.body.length} 字 · 預估 {Math.max(3, Math.ceil(draft.body.length / 220))} 分鐘閱讀</small>
+            <small>{draftBodyText.length} 字 · 預估 {Math.max(3, Math.ceil(draftBodyText.length / 220))} 分鐘閱讀</small>
             <Button className="primary-button" type="button" disabled={!canPublish} onClick={handlePublish}><FileText data-icon="inline-start" />{isPublication ? '發布文章' : '發布到內容庫'}</Button>
           </div>
         </article>
@@ -2728,6 +2754,16 @@ function AdminSettingsEditor({
                 <label>
                   摘要
                   <Textarea name={`content-${item.id}-excerpt`} value={item.excerpt} onChange={(event) => updateContent(item.id, { excerpt: event.target.value })} autoComplete="off" />
+                </label>
+                <label>
+                  內文
+                  <DeferredRichTextEditor
+                    value={item.body}
+                    onChange={(body) => updateContent(item.id, { body })}
+                    ariaLabel={`${item.title} 內文`}
+                    placeholder={isPublication ? '撰寫公開或付費文章內容' : '撰寫文章、課程公告或會員內容'}
+                    compact
+                  />
                 </label>
               </div>
             ))}
