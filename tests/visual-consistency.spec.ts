@@ -2,20 +2,20 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test'
 
 const viewCases = [
   { id: 'home', label: '預覽', expectedText: '加入前可以先看見的內容與社群節奏' },
-  { id: 'blog', label: '部落格', expectedText: 'Skills School 社群預覽頁' },
-  { id: 'join', label: '加入會員', expectedText: '加入 Skills School，開始課程、社群與每週實作' },
+  { id: 'blog', label: '部落格', expectedText: 'Skills School AI Skill 公開內容' },
+  { id: 'join', label: '加入會員', expectedText: '加入 Skills School，開始 AI Skill 課程、社群與每週實作' },
   { id: 'content', label: '內容庫', expectedText: '公開文章、會員內容與付費牆' },
   { id: 'newsletter', label: '通訊', expectedText: 'Email/LINE 通訊、付費轉換與推薦贈閱' },
-  { id: 'courses', label: '課程', expectedText: '課程、進度與等級解鎖' },
+  { id: 'courses', label: '課程', expectedText: 'AI Skill 課程、進度與等級解鎖' },
   { id: 'community', label: '社群', expectedText: '分類、權限、公告、留言與反應' },
   { id: 'members', label: '成員', expectedText: '會員目錄、角色、個人頁與活躍度' },
   { id: 'search', label: '搜尋', expectedText: '搜尋文章、課程、逐字稿、討論、活動與會員' },
   { id: 'challenges', label: '打卡', expectedText: '打卡挑戰、積分、等級與排行榜' },
   { id: 'events', label: '活動', expectedText: 'Webinar、Live、Office hour 與回放' },
-  { id: 'login', label: '登入', expectedText: '登入 Skills School 職能加速社群' },
+  { id: 'login', label: '登入', expectedText: '登入 Skills School AI Skill 實作社群' },
   { id: 'member', label: '會員', expectedText: '會員方案、收據/發票狀態與付款自助' },
-  { id: 'admin', label: '後台', expectedText: 'Skills School 職能加速社群 營運後台' },
-  { id: 'setup', label: '設定', expectedText: '調整品牌、內容與會員設定' },
+  { id: 'admin', label: '後台', expectedText: 'Skills School AI Skill 實作社群 營運後台' },
+  { id: 'setup', label: '設定', expectedText: '調整 AI Skill 品牌、內容與會員設定' },
 ] as const
 
 test.beforeEach(async ({ page }) => {
@@ -31,7 +31,7 @@ for (const viewCase of viewCases) {
 
     await openView(page, viewCase)
     await expect(page.locator('.workspace')).toBeVisible()
-    await expect(page.locator('.topbar h1')).toHaveText('Skills School 職能加速社群')
+    await expect(page.locator('.topbar h1')).toHaveText('Skills School AI Skill 實作社群')
     await expect(page.getByText(viewCase.expectedText, { exact: true })).toBeVisible()
 
     await expectNoHorizontalOverflow(page)
@@ -76,11 +76,11 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   await page.getByRole('button', { name: /邀請會員/ }).click()
   await expect(page.getByText(/新會員/).first()).toBeVisible()
   await page.getByRole('button', { name: /入會問題/ }).click()
-  await expect(page.getByText('Skills School 職能加速社群 營運後台', { exact: true })).toBeVisible()
+  await expect(page.getByText('Skills School AI Skill 實作社群 營運後台', { exact: true })).toBeVisible()
 
   await openNav(page, '課程')
-  await page.getByRole('button', { name: /完成第一版作品頁/ }).first().click()
-  await expect(page.locator('.lesson-card.complete').filter({ hasText: '完成第一版作品頁' })).toBeVisible()
+  await page.getByRole('button', { name: /完成第一版 Skill SOP/ }).first().click()
+  await expect(page.locator('.lesson-card.complete').filter({ hasText: '完成第一版 Skill SOP' })).toBeVisible()
 
   await openNav(page, '打卡')
   await page.getByRole('button', { name: '檢查打卡' }).first().click()
@@ -122,7 +122,7 @@ test('visitor, member, and admin states show different screens in both reference
   await expect(page.locator('.nav-list').getByRole('button', { name: '會員', exact: true })).toBeVisible()
   await expect(page.locator('.nav-list').getByRole('button', { name: '後台', exact: true })).toHaveCount(0)
   await openNav(page, '課程')
-  await expect(page.getByRole('button', { name: /完成第一版作品頁/ }).first()).not.toBeDisabled()
+  await expect(page.getByRole('button', { name: /完成第一版 Skill SOP/ }).first()).not.toBeDisabled()
   await openNav(page, '打卡')
   await page.getByRole('button', { name: '完成打卡' }).first().click()
   await expect(page.getByRole('button', { name: '今日已打卡' }).first()).toBeVisible()
@@ -132,7 +132,7 @@ test('visitor, member, and admin states show different screens in both reference
   await expect(page.getByText('社群營運後台開啟')).toBeVisible()
   await expect(page.locator('.nav-list').getByRole('button', { name: '後台', exact: true })).toBeVisible()
   await expect(page.locator('.nav-list').getByRole('button', { name: '設定', exact: true })).toBeVisible()
-  await expect(page.getByText('Skills School 職能加速社群 營運後台')).toBeVisible()
+  await expect(page.getByText('Skills School AI Skill 實作社群 營運後台')).toBeVisible()
 
   await page.locator('.preset-select-trigger').click()
   await page.getByRole('option', { name: 'Signal Brief' }).click()
@@ -176,17 +176,49 @@ test('visitor, member, and admin states show different screens in both reference
   expect(consoleErrors.errors).toEqual([])
 })
 
+test('Skills School formal site removes role switching and uses real AI Skill content', async ({ page }, testInfo) => {
+  const consoleErrors = collectConsoleErrors(page)
+
+  await page.goto('/?case=skills-school&formal=skills-school')
+  await expect(page.locator('.topbar h1')).toHaveText('Skills School AI Skill 實作社群')
+  await expect(page.locator('.segmented')).toHaveCount(0)
+  await expect(page.getByText('訪客視角')).toHaveCount(0)
+  await expect(page.getByText('管理員視角')).toHaveCount(0)
+  await expect(page.getByText('用每週實作，完成能被看見的職能作品')).toHaveCount(0)
+  await expect(page.getByText('把 AI Skill 變成每天用得到的工作流程')).toBeVisible()
+  await openNav(page, '部落格')
+  await expect(
+    page.getByRole('button', { name: /公開文章：AI Skill 是什麼，為什麼它比單次提示詞更重要/ }).first(),
+  ).toBeVisible()
+  await expect(page.locator('.nav-list').getByRole('button', { name: '後台', exact: true })).toHaveCount(0)
+  await expect(page.locator('.nav-list').getByRole('button', { name: '登入', exact: true })).toBeVisible()
+
+  await openNav(page, '登入')
+  await expect(page.getByRole('heading', { name: '登入 Skills School AI Skill 實作社群' })).toBeVisible()
+  await expect(page.getByPlaceholder('輸入密碼')).toBeVisible()
+  await expect(page.getByText('輸入測試密碼')).toHaveCount(0)
+  await expect(page.locator('form').getByRole('button', { name: '登入', exact: true })).toBeVisible()
+
+  await expectNoHorizontalOverflow(page)
+  await expectNoDemoCopy(page)
+  await expectSharedVisualTokens(page)
+  await expectFormControlConsistency(page)
+  await attachViewportScreenshot(page, testInfo, 'skills-school-formal')
+
+  expect(consoleErrors.errors).toEqual([])
+})
+
 test('Skills School and Signal Brief reference cases are both usable', async ({ page }, testInfo) => {
   const consoleErrors = collectConsoleErrors(page)
 
-  await expect(page.locator('.topbar h1')).toHaveText('Skills School 職能加速社群')
+  await expect(page.locator('.topbar h1')).toHaveText('Skills School AI Skill 實作社群')
   await openNav(page, '部落格')
-  await expect(page.getByText('Skills School 社群預覽頁')).toBeVisible()
-  await expect(page.getByText('課程預覽：第一週如何完成一份可被回饋的作品')).toBeVisible()
+  await expect(page.getByText('Skills School AI Skill 公開內容')).toBeVisible()
+  await expect(page.getByText('課程預覽：第一週建立你的第一個 AI Skill')).toBeVisible()
   await openNav(page, '加入會員')
-  await expect(page.getByText('加入 Skills School，開始課程、社群與每週實作')).toBeVisible()
+  await expect(page.getByText('加入 Skills School，開始 AI Skill 課程、社群與每週實作')).toBeVisible()
   await openNav(page, '內容庫')
-  await expect(page.getByText('公開文章：如何安排 30 天職能升級計畫')).toBeVisible()
+  await expect(page.getByText('公開文章：AI Skill 是什麼，為什麼它比單次提示詞更重要')).toBeVisible()
   await expect(page.locator('.editor-panel')).toHaveCount(0)
 
   await page.locator('.preset-select-trigger').click()
@@ -242,8 +274,8 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
   const consoleErrors = collectConsoleErrors(page)
 
   await page.goto('/?case=skills-school&view=join')
-  await expect(page.locator('.topbar h1')).toHaveText('Skills School 職能加速社群')
-  await expect(page.getByText('加入 Skills School，開始課程、社群與每週實作')).toBeVisible()
+  await expect(page.locator('.topbar h1')).toHaveText('Skills School AI Skill 實作社群')
+  await expect(page.getByText('加入 Skills School，開始 AI Skill 課程、社群與每週實作')).toBeVisible()
 
   await page.goto('/?case=signal-brief&view=blog')
   await expect(page.locator('.topbar h1')).toHaveText('Signal Brief 策略通訊')
@@ -341,8 +373,8 @@ test('setup page lets fork users choose the product mode', async ({ page }, test
   await expect(page.locator('.nav-list').getByRole('button', { name: '課程', exact: true })).toHaveCount(0)
 
   await page.locator('.setup-choice-card').filter({ hasText: '全功能會員社群' }).getByRole('button').click()
-  await expect(page.locator('.topbar h1')).toHaveText('Skills School 職能加速社群')
-  await expect(page.getByText('調整品牌、內容與會員設定')).toBeVisible()
+  await expect(page.locator('.topbar h1')).toHaveText('Skills School AI Skill 實作社群')
+  await expect(page.getByText('調整 AI Skill 品牌、內容與會員設定')).toBeVisible()
   await expect(page.locator('.nav-list').getByRole('button', { name: '課程', exact: true })).toBeVisible()
 
   await expectNoHorizontalOverflow(page)
@@ -376,9 +408,9 @@ test('admin can edit fork-ready site settings and newsletter configuration', asy
   await expect(page.getByRole('button', { name: '開始訂閱' }).first()).toBeVisible()
 
   await openNav(page, '後台')
-  await page.locator('input[name="newsletter-skills-school-n1-subject"]').fill('本週作品回饋與直播提醒')
+  await page.locator('input[name="newsletter-skills-school-n1-subject"]').fill('本週 AI Skill 回饋與直播提醒')
   await openNav(page, '通訊')
-  await expect(page.getByText('本週作品回饋與直播提醒')).toBeVisible()
+  await expect(page.getByText('本週 AI Skill 回饋與直播提醒')).toBeVisible()
   await expect(page.getByText('把文章、課程或活動寄給會員')).toBeVisible()
 
   await expectNoHorizontalOverflow(page)

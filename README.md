@@ -39,7 +39,7 @@ RLS 權限範本：[`docs/rls-policies.md`](./docs/rls-policies.md)
 - Substack 版本：https://signal-brief-publication.vercel.app/
 - 共用預覽：https://memberhub-coral.vercel.app/
 - Vercel project: `memberhub`
-- 目前包含兩個正式案例：`Skills School 職能加速社群` 與 `Signal Brief 策略通訊`。
+- 目前包含兩個正式案例：`Skills School AI Skill 實作社群` 與 `Signal Brief 策略通訊`。
 
 ## 這是什麼
 

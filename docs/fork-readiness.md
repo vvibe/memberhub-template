@@ -5,7 +5,7 @@
 ### 這個 repo 可以直接做什麼
 
 - 可以在本機免 key 跑完整體驗：登入、內容、付費牆、課程進度、社群、打卡、Newsletter、會員自助與後台。
-- 內建兩組正式案例：Skills School 學習社群與 Signal Brief 內容訂閱站。
+- 內建兩組正式案例：Skills School AI Skill 實作社群與 Signal Brief 內容訂閱站。
 - Fork 時應先選產品模式：`skills-school` 是全功能會員社群，類 Skool / School；`signal-brief` 是出版訂閱通訊，類 Substack。
 - 可以先用 localStorage 驗證產品流程，再把資料層換成 InsForge。
 - 已包含 Portaly Vibe MCP 專案設定、InsForge migration、選配金流 function 範例、Playwright QA。

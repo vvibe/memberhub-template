@@ -39,7 +39,7 @@ RLS policy starter: [`docs/rls-policies.md`](./docs/rls-policies.md)
 - Substack-style case: https://signal-brief-publication.vercel.app/
 - Shared preview: https://memberhub-coral.vercel.app/
 - Vercel project: `memberhub`
-- Current examples: `Skills School 職能加速社群` and `Signal Brief 策略通訊`.
+- Current examples: `Skills School AI Skill 實作社群` and `Signal Brief 策略通訊`.
 
 ## What This Is
 

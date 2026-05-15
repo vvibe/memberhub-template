@@ -107,20 +107,23 @@ function navLabel(item: { id: ViewId; label: string }, preset: { id: string }) {
 }
 
 function getInitialRoute() {
-  if (typeof window === 'undefined') return { presetId: undefined, view: undefined }
+  if (typeof window === 'undefined') return { presetId: undefined, view: undefined, formalPresetId: undefined }
   const params = new URLSearchParams(window.location.search)
   const caseParam = params.get('case') ?? params.get('preset')
   const viewParam = params.get('view')
+  const formalParam = params.get('formal')
   const presetId = normalizePresetId(caseParam) ?? presetIdFromHost(window.location.hostname)
+  const formalPresetId = normalizePresetId(formalParam) ?? (formalParam === '1' || formalParam === 'true' ? presetId : undefined)
 
   return {
     presetId,
     view: viewParam && isViewId(viewParam) ? viewParam : undefined,
+    formalPresetId,
   }
 }
 
 function siteEyebrow(preset: ReturnType<typeof getPreset>) {
-  return isPublicationPreset(preset) ? '獨立策略通訊' : '職能學習社群'
+  return isPublicationPreset(preset) ? '獨立策略通訊' : 'AI Skill 實作社群'
 }
 
 function brandMark(preset: ReturnType<typeof getPreset>) {
@@ -290,7 +293,7 @@ function sourceLabel(source: string) {
     referral: '會員推薦',
     line: 'LINE',
     organic: '自然搜尋',
-    'community preview': '社群預覽頁',
+    'community preview': '公開文章',
     'public blog': '公開部落格',
     'subscriber gift': '會員贈閱',
     'referral link': '推薦連結',
@@ -476,7 +479,9 @@ function App() {
     if (typeof window === 'undefined') return undefined
     return presetIdFromHost(window.location.hostname)
   }, [])
-  const formalAuthPresetId = standalonePresetId === 'skills-school' || standalonePresetId === 'signal-brief' ? standalonePresetId : undefined
+  const formalAuthPresetId = standalonePresetId === 'skills-school' || standalonePresetId === 'signal-brief'
+    ? standalonePresetId
+    : initialRoute.formalPresetId
   const formalAuth = Boolean(formalAuthPresetId)
   const formalSkillsAuth = formalAuthPresetId === 'skills-school'
   const [state, setState] = useState<AppState>(() => {
@@ -554,8 +559,9 @@ function App() {
     const params = new URLSearchParams()
     params.set('case', state.presetId)
     params.set('view', view)
+    if (formalAuth && !standalonePresetId) params.set('formal', state.presetId)
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`)
-  }, [state.presetId, view])
+  }, [formalAuth, standalonePresetId, state.presetId, view])
 
   const preset = useMemo(() => getPreset(state.presetId), [state.presetId])
   const runtimePreset = useMemo(
@@ -830,9 +836,9 @@ function App() {
 
         {formalSkillsAuth ? (
           <div className="sidebar-panel account-panel">
-            <span className="eyebrow">測試帳號</span>
+            <span className="eyebrow">我的帳號</span>
             <strong>{authEmail ?? '尚未登入'}</strong>
-            <small>{authChecking ? '正在確認登入狀態' : `${roleLabel(state.role)}視角`}</small>
+            <small>{authChecking ? '正在確認登入狀態' : authEmail ? (state.role === 'admin' ? '管理後台已啟用' : '會員內容已啟用') : '登入後查看課程與社群'}</small>
           </div>
         ) : (
           <div className="sidebar-panel">
@@ -855,7 +861,7 @@ function App() {
             <h1>{runtimePreset.brand.productName}</h1>
           </div>
           <div className="topbar-actions">
-            {!standalonePresetId && (
+            {!standalonePresetId && !formalAuth && (
               <>
                 <label className="select-label">
                   類型
@@ -885,7 +891,7 @@ function App() {
           </div>
         </header>
 
-        <RoleStateBanner preset={runtimePreset} role={state.role} selectedPlan={selectedPlan} />
+        {!formalSkillsAuth && <RoleStateBanner preset={runtimePreset} role={state.role} selectedPlan={selectedPlan} />}
 
         {view === 'home' && (
           isPublicationPreset(runtimePreset) ? (
@@ -1216,18 +1222,18 @@ function SignalBriefStandalone({
           <form className="signal-auth-card" onSubmit={submitLogin}>
             <span className="signal-kicker">Publisher login</span>
             <h1>登入 Signal Brief</h1>
-            <p>登入後可以測試付費文章完整閱讀、Newsletter 管理、付費牆設定與出版者後台。</p>
+            <p>登入後可以閱讀完整付費文章、管理 Newsletter、調整付費牆設定與進入出版者後台。</p>
             <label>
               Email
               <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="輸入你的 Email" required />
             </label>
             <label>
               密碼
-              <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="輸入測試密碼" required />
+              <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="輸入密碼" required />
             </label>
             {loginError && <p className="auth-error" role="alert">{loginError}</p>}
             <Button className="primary-button" type="submit" disabled={isSubmitting}>
-              <LogIn data-icon="inline-start" />{isSubmitting ? '登入中' : '登入正式測試站'}
+              <LogIn data-icon="inline-start" />{isSubmitting ? '登入中' : '登入'}
             </Button>
           </form>
         </section>
@@ -1566,7 +1572,7 @@ function BlogView({
       <div className="section-heading horizontal">
         <div>
           <span className="eyebrow">{preset.id === 'signal-brief' ? '公開閱讀' : '社群預覽'}</span>
-          <h3>{preset.id === 'signal-brief' ? 'Signal Brief 公開部落格' : 'Skills School 社群預覽頁'}</h3>
+          <h3>{preset.id === 'signal-brief' ? 'Signal Brief 公開部落格' : 'Skills School AI Skill 公開內容'}</h3>
           {publicationHome && <p>閱讀公開文章，或訂閱後解鎖完整研究、資料補充與每週 Newsletter。</p>}
         </div>
         <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />{preset.id === 'signal-brief' ? '訂閱完整研究' : '加入會員'}</Button>
@@ -1686,7 +1692,7 @@ function JoinView({
       <div className="section-heading horizontal">
         <div>
           <span className="eyebrow">{preset.id === 'skills-school' ? '加入社群' : '訂閱研究'}</span>
-          <h3>{preset.id === 'skills-school' ? '加入 Skills School，開始課程、社群與每週實作' : '訂閱 Signal Brief，閱讀付費文章與每週電子報'}</h3>
+          <h3>{preset.id === 'skills-school' ? '加入 Skills School，開始 AI Skill 課程、社群與每週實作' : '訂閱 Signal Brief，閱讀付費文章與每週電子報'}</h3>
           <p>{roleCopy.label}：{roleCopy.description}</p>
         </div>
         <Button className="primary-button" onClick={() => onCheckout(memberPlan)}><CircleDollarSign data-icon="inline-start" />選擇 {memberPlan.name}</Button>
@@ -1723,7 +1729,7 @@ function JoinView({
               <>
                 <li><CheckCircle2 size={16} />完整課程與會員限定文章</li>
                 <li><CheckCircle2 size={16} />每週任務、資源下載與直播回放</li>
-                <li><CheckCircle2 size={16} />會員討論區、作品回饋與活動通知</li>
+                <li><CheckCircle2 size={16} />會員討論區、AI Skill 回饋與活動通知</li>
               </>
             ) : (
               <>
@@ -2042,7 +2048,7 @@ function LoginView({
         <h3>登入 {preset.brand.productName}</h3>
         <p>
           {formalAuth
-            ? '這是正式測試入口。登入後可以進入會員區與管理後台，實際測試課程、社群、打卡與內容管理流程。'
+            ? '登入後可以進入會員區與管理後台，使用完整課程、社群、打卡與內容管理流程。'
             : preset.id === 'signal-brief'
               ? '登入後可以閱讀會員研究、下載資料表、參與讀者問答，並管理自己的訂閱狀態。'
               : '登入後可以繼續課程進度、參與討論區、完成每週打卡，並查看自己的會員方案。'}
@@ -2075,14 +2081,14 @@ function LoginView({
               密碼
               <span className="auth-input">
                 <Lock size={18} />
-                <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="輸入測試密碼" required />
+                <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="輸入密碼" required />
               </span>
             </label>
           )}
           {error && <p className="auth-error" role="alert">{error}</p>}
-          {formalAuth && <small className="auth-helper">帳密由伺服器驗證，測試密碼不會寫在前端或 GitHub。</small>}
+          {formalAuth && <small className="auth-helper">帳密由伺服器驗證，不會寫在前端或 GitHub。</small>}
           <Button className="primary-button" type="submit" disabled={isSubmitting}>
-            <LogIn data-icon="inline-start" />{formalAuth ? (isSubmitting ? '登入中' : '登入正式測試站') : '以會員身份登入'}
+            <LogIn data-icon="inline-start" />{formalAuth ? (isSubmitting ? '登入中' : '登入') : '以會員身份登入'}
           </Button>
         </form>
         {!formalAuth && (
@@ -2104,7 +2110,7 @@ function LoginView({
           ) : (
             <>
               <li><CheckCircle2 size={16} />接續課程進度與下載學習資源</li>
-              <li><CheckCircle2 size={16} />進入會員討論區並提交作品回饋</li>
+              <li><CheckCircle2 size={16} />進入會員討論區並提交 AI Skill 回饋</li>
               <li><CheckCircle2 size={16} />查看打卡、等級、活動與回放</li>
             </>
           )}
@@ -2132,7 +2138,7 @@ function CoursesView({
     <section className="section-block">
       <div className="section-heading">
         <span className="eyebrow">{preset.id === 'signal-brief' ? '研究室課程' : '課程教室'}</span>
-        <h3>課程、進度與等級解鎖</h3>
+        <h3>AI Skill 課程、進度與等級解鎖</h3>
         {role === 'visitor' && <p>訪客可以看課程架構，但需要加入會員後才能標記進度、下載會員資源與進入討論。</p>}
         {role === 'admin' && <p>管理員正在檢查課程內容、資源權限與學員進度。</p>}
       </div>
@@ -2927,7 +2933,7 @@ function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: Verti
                   <ShieldCheck size={18} />
                 </div>
                 <div className="integration-grid">
-                  <IntegrationItem label="登入" value="正式測試登入已可使用" />
+                  <IntegrationItem label="登入" value="正式登入已可使用" />
                   <IntegrationItem label="資料庫權限" value="文章、讀者與訂閱表已準備" />
                   <IntegrationItem label="檔案儲存" value="文章圖片與付費附件" />
                   <IntegrationItem label="Portaly Vibe MCP" value="專案層級設定已加入" />
@@ -3292,7 +3298,7 @@ function SetupView({ presetId, onSelectPreset }: { presetId: PresetId; onSelectP
     <section className="section-block">
       <div className="section-heading">
         <span className="eyebrow">設定指南</span>
-        <h3>{isPublication ? '調整出版品牌、文章與訂閱設定' : '調整品牌、內容與會員設定'}</h3>
+        <h3>{isPublication ? '調整出版品牌、文章與訂閱設定' : '調整 AI Skill 品牌、內容與會員設定'}</h3>
       </div>
       <div className="setup-choice-grid" aria-label="選擇 fork 版本">
         {setupChoices.map((choice) => (
@@ -3327,7 +3333,7 @@ function SetupView({ presetId, onSelectPreset }: { presetId: PresetId; onSelectP
         </article>
         <article>
           <h4>目前版本</h4>
-          <pre className="code-block">{JSON.stringify({ 目前案例: presetId, 下一步: isPublication ? '調整出版品牌、訂閱方案、文章與 Newsletter 設定' : '調整品牌、方案、內容、課程與社群設定' }, null, 2)}</pre>
+          <pre className="code-block">{JSON.stringify({ 目前案例: presetId, 下一步: isPublication ? '調整出版品牌、訂閱方案、文章與 Newsletter 設定' : '調整 AI Skill 品牌、方案、內容、課程與社群設定' }, null, 2)}</pre>
         </article>
         <article>
           <h4>Portaly Vibe MCP</h4>
