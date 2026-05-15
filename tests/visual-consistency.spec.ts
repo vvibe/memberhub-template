@@ -1069,7 +1069,7 @@ async function expectConsistentSpacingAndTextMetrics(page: Page) {
         return item.padding.some((value) => value !== expectedPadding) || item.radius !== '8px' || item.borderStyle !== 'solid'
       })
 
-    const clippedControls = Array.from(document.querySelectorAll('button, .pill, .status-pill, [data-slot="select-trigger"]'))
+    const clippedControls = Array.from(document.querySelectorAll('button, .pill, .status-pill, .creator-stats span, .signal-author-stats span, .member-stats span, .admin-mini-stats article, [data-slot="select-trigger"]'))
       .filter(isVisible)
       .map((element) => ({
         text: (element.textContent ?? '').trim().slice(0, 80),
@@ -1086,7 +1086,7 @@ async function expectConsistentSpacingAndTextMetrics(page: Page) {
   expect(report.textMetricIssues, 'font sizes, line heights, weights, and letter spacing should stay on the shared scale').toEqual([])
   expect(report.sectionPaddingIssues, 'section padding should be consistent across pages').toEqual([])
   expect(report.surfaceIssues, 'card/panel spacing should stay consistent across pages').toEqual([])
-  expect(report.clippedControls, 'button and pill labels should not be clipped').toEqual([])
+  expect(report.clippedControls, 'button, pill, compact stat, and tab labels should not be clipped').toEqual([])
 }
 
 async function expectNoLayoutCollisions(page: Page) {

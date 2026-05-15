@@ -1135,8 +1135,8 @@ function SignalBriefStandalone({
               </div>
               <p>每週整理 AI 工具、內容產品與創作者商業模式的變化，保留公開文章，也提供付費深度分析。</p>
               <div className="signal-author-stats">
-                <span><strong>{freeReaderCount}</strong> 免費讀者</span>
-                <span><strong>{paidReaderCount}</strong> 付費讀者</span>
+                <span><strong>{freeReaderCount}</strong><small>免費讀者</small></span>
+                <span><strong>{paidReaderCount}</strong><small>付費讀者</small></span>
               </div>
             </aside>
           </section>
@@ -1397,8 +1397,8 @@ function HomeView({
               <h3>把每個 AI 操作整理成可複製的 Skill</h3>
               <p>我們每週發布 AI Skill 拆解、SOP 範本與工具實作，陪你把常做的研究、寫作、整理與交付流程變成穩定工作系統。</p>
               <div className="creator-stats">
-                <span><strong>{preset.metrics.activeMembers.toLocaleString('zh-TW')}</strong> 位免費讀者</span>
-                <span><strong>{preset.members.filter((member) => member.status === 'active').length}</strong> 位 AI Skill 會員</span>
+                <span><strong>{preset.metrics.activeMembers.toLocaleString('zh-TW')}</strong><small>免費讀者</small></span>
+                <span><strong>{preset.members.filter((member) => member.status === 'active').length}</strong><small>AI Skill 會員</small></span>
               </div>
             </div>
           ) : (
