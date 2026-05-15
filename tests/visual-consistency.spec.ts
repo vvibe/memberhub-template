@@ -1,20 +1,20 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 
 const viewCases = [
-  { id: 'home', label: '預覽', expectedText: '加入前可以先看見的內容與社群節奏' },
-  { id: 'blog', label: '部落格', expectedText: 'Skills School AI Skill 公開內容' },
+  { id: 'home', label: '預覽', expectedText: '最新 AI Skill 文章' },
+  { id: 'blog', label: '部落格', expectedText: 'AI Skill 文章、工作流拆解與工具教學' },
   { id: 'join', label: '加入會員', expectedText: '加入 Skills School，開始 AI Skill 課程、社群與每週實作' },
   { id: 'content', label: '內容庫', expectedText: '公開文章、會員內容與付費牆' },
   { id: 'newsletter', label: '通訊', expectedText: 'Email/LINE 通訊、付費轉換與推薦贈閱' },
   { id: 'courses', label: '課程', expectedText: 'AI Skill 課程、進度與等級解鎖' },
-  { id: 'community', label: '社群', expectedText: '分類、權限、公告、留言與反應' },
+  { id: 'community', label: '社群', expectedText: 'AI Skill 討論區' },
   { id: 'members', label: '成員', expectedText: '會員目錄、角色、個人頁與活躍度' },
   { id: 'search', label: '搜尋', expectedText: '搜尋文章、課程、逐字稿、討論、活動與會員' },
   { id: 'challenges', label: '打卡', expectedText: '打卡挑戰、積分、等級與排行榜' },
   { id: 'events', label: '活動', expectedText: 'Webinar、Live、Office hour 與回放' },
   { id: 'login', label: '登入', expectedText: '登入 Skills School AI Skill 實作社群' },
   { id: 'member', label: '會員', expectedText: '會員方案、收據/發票狀態與付款自助' },
-  { id: 'admin', label: '後台', expectedText: 'Skills School AI Skill 實作社群 營運後台' },
+  { id: 'admin', label: '後台', expectedText: 'Skills School AI Skill 實作社群 後台' },
   { id: 'setup', label: '設定', expectedText: '調整 AI Skill 品牌、內容與會員設定' },
 ] as const
 
@@ -76,7 +76,7 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   await page.getByRole('button', { name: /邀請會員/ }).click()
   await expect(page.getByText(/新會員/).first()).toBeVisible()
   await page.getByRole('button', { name: /入會問題/ }).click()
-  await expect(page.getByText('Skills School AI Skill 實作社群 營運後台', { exact: true })).toBeVisible()
+  await expect(page.getByText('Skills School AI Skill 實作社群 後台', { exact: true })).toBeVisible()
 
   await openNav(page, '課程')
   await page.getByRole('button', { name: /完成第一版 Skill SOP/ }).first().click()
@@ -132,7 +132,7 @@ test('visitor, member, and admin states show different screens in both reference
   await expect(page.getByText('社群營運後台開啟')).toBeVisible()
   await expect(page.locator('.nav-list').getByRole('button', { name: '後台', exact: true })).toBeVisible()
   await expect(page.locator('.nav-list').getByRole('button', { name: '設定', exact: true })).toBeVisible()
-  await expect(page.getByText('Skills School AI Skill 實作社群 營運後台')).toBeVisible()
+  await expect(page.getByText('Skills School AI Skill 實作社群 後台')).toBeVisible()
 
   await page.locator('.preset-select-trigger').click()
   await page.getByRole('option', { name: 'Signal Brief' }).click()
@@ -186,7 +186,7 @@ test('Skills School formal site removes role switching and uses real AI Skill co
   await expect(page.getByText('管理員視角')).toHaveCount(0)
   await expect(page.getByText('用每週實作，完成能被看見的職能作品')).toHaveCount(0)
   await expect(page.getByText('把 AI Skill 變成每天用得到的工作流程')).toBeVisible()
-  await openNav(page, '部落格')
+  await openNav(page, '文章')
   await expect(
     page.getByRole('button', { name: /公開文章：AI Skill 是什麼，為什麼它比單次提示詞更重要/ }).first(),
   ).toBeVisible()
@@ -213,7 +213,7 @@ test('Skills School and Signal Brief reference cases are both usable', async ({ 
 
   await expect(page.locator('.topbar h1')).toHaveText('Skills School AI Skill 實作社群')
   await openNav(page, '部落格')
-  await expect(page.getByText('Skills School AI Skill 公開內容')).toBeVisible()
+  await expect(page.getByText('AI Skill 文章、工作流拆解與工具教學')).toBeVisible()
   await expect(page.getByText('課程預覽：第一週建立你的第一個 AI Skill')).toBeVisible()
   await openNav(page, '加入會員')
   await expect(page.getByText('加入 Skills School，開始 AI Skill 課程、社群與每週實作')).toBeVisible()
@@ -396,7 +396,8 @@ test('admin can edit fork-ready site settings and newsletter configuration', asy
 
   await setRole(page, '管理員')
   await openNav(page, '後台')
-  await expect(page.getByText('Fork 後可調整的網站內容')).toBeVisible()
+  await page.locator('.skills-admin-tabs').getByRole('button', { name: /設定/ }).click()
+  await expect(page.getByText('網站、品牌與會員方案')).toBeVisible()
 
   await page.getByLabel('網站名稱').fill('Kevin Growth Letter')
   await page.getByLabel('首頁主標題').fill('把每週內容變成可訂閱的產品')
@@ -408,6 +409,7 @@ test('admin can edit fork-ready site settings and newsletter configuration', asy
   await expect(page.getByRole('button', { name: '開始訂閱' }).first()).toBeVisible()
 
   await openNav(page, '後台')
+  await page.locator('.skills-admin-tabs').getByRole('button', { name: /電子報/ }).click()
   await page.locator('input[name="newsletter-skills-school-n1-subject"]').fill('本週 AI Skill 回饋與直播提醒')
   await openNav(page, '通訊')
   await expect(page.getByText('本週 AI Skill 回饋與直播提醒')).toBeVisible()
@@ -758,8 +760,8 @@ async function expectSharedVisualTokens(page: Page) {
     radiusCard: '8px',
     radiusControl: '8px',
     baseFont: '14px',
-    textColor: '#2f3437',
-    canvas: '#f7f6f3',
+    textColor: '#282d2b',
+    canvas: '#f6f4ef',
   })
   expect(visual.buttonIssues).toEqual([])
   expect(visual.cardIssues).toEqual([])

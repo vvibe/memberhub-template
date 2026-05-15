@@ -106,6 +106,19 @@ function navLabel(item: { id: ViewId; label: string }, preset: { id: string }) {
   return labels[item.id] ?? item.label
 }
 
+function formalSkillsNavLabel(item: { id: ViewId; label: string }) {
+  const labels: Partial<Record<ViewId, string>> = {
+    home: '首頁',
+    blog: '文章',
+    join: '訂閱',
+    content: '資源',
+    courses: '課程',
+    community: '社群',
+    member: '我的帳號',
+  }
+  return labels[item.id] ?? item.label
+}
+
 function getInitialRoute() {
   if (typeof window === 'undefined') return { presetId: undefined, view: undefined, formalPresetId: undefined }
   const params = new URLSearchParams(window.location.search)
@@ -588,12 +601,23 @@ function App() {
         ? navItems.filter((item) => !publicationHiddenViews.includes(item.id))
         : navItems
 
+      if (formalSkillsAuth) {
+        const formalViews: ViewId[] = state.role === 'admin'
+          ? ['home', 'blog', 'courses', 'community', 'content', 'join', 'admin']
+          : state.role === 'member'
+            ? ['home', 'blog', 'courses', 'community', 'content', 'join', 'member']
+            : ['home', 'blog', 'courses', 'community', 'content', 'join', 'login']
+        return formalViews
+          .map((id) => navItems.find((item) => item.id === id))
+          .filter((item): item is { id: ViewId; label: string; icon: typeof LayoutDashboard } => Boolean(item))
+      }
+
       if (state.role !== 'admin') items = items.filter((item) => !['admin', 'setup', 'newsletter'].includes(item.id))
       if (state.role === 'visitor') items = items.filter((item) => !['member', 'members'].includes(item.id))
       if (state.role !== 'visitor') items = items.filter((item) => item.id !== 'login')
       return items
     },
-    [runtimePreset.id, state.role],
+    [formalSkillsAuth, runtimePreset, state.role],
   )
 
   useEffect(() => {
@@ -812,7 +836,7 @@ function App() {
   }
 
   return (
-    <main className="app-shell" style={{ ['--brand-primary' as string]: runtimePreset.brand.primary, ['--brand-accent' as string]: runtimePreset.brand.accent }}>
+    <main className={formalSkillsAuth ? 'app-shell formal-editorial-shell' : 'app-shell'} style={{ ['--brand-primary' as string]: runtimePreset.brand.primary, ['--brand-accent' as string]: runtimePreset.brand.accent }}>
       <aside className="sidebar">
         <button className="brand-button" onClick={() => setView('home')} aria-label="Open home">
           <span className="brand-mark">{brandMark(runtimePreset)}</span>
@@ -828,7 +852,7 @@ function App() {
             return (
               <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => setView(item.id)}>
                 <Icon size={18} />
-                <span>{navLabel(item, runtimePreset)}</span>
+                <span>{formalSkillsAuth ? formalSkillsNavLabel(item) : navLabel(item, runtimePreset)}</span>
               </button>
             )
           })}
@@ -1343,7 +1367,9 @@ function HomeView({
 }) {
   const publicContent = preset.content.filter((item) => !item.isPaid).slice(0, 2)
   const paidContent = preset.content.filter((item) => item.isPaid).slice(0, 2)
+  const latestContent = preset.content.slice(0, 3)
   const firstCourse = preset.courses[0]
+  const isSkillsSchool = preset.id === 'skills-school'
 
   return (
     <div className="view-stack">
@@ -1364,46 +1390,74 @@ function HomeView({
           </div>
         </div>
         <div className="hero-product">
-          <div className="mock-header">
-            <span>{preset.brand.creatorName}</span>
-            <strong>{roleLabel(role)}</strong>
-          </div>
-          <div className="mock-grid">
-            {homeMetrics(preset, selectedPlan).map((metric) => (
-              <MetricTile key={metric.label} label={metric.label} value={metric.value} icon={metric.icon} />
-            ))}
-          </div>
+          {isSkillsSchool ? (
+            <div className="creator-card">
+              <div className="creator-mark">SS</div>
+              <span className="eyebrow">關於 Skills School</span>
+              <h3>把每個 AI 操作整理成可複製的 Skill</h3>
+              <p>我們每週發布 AI Skill 拆解、SOP 範本與工具實作，陪你把常做的研究、寫作、整理與交付流程變成穩定工作系統。</p>
+              <div className="creator-stats">
+                <span><strong>{preset.metrics.activeMembers.toLocaleString('zh-TW')}</strong> 位免費讀者</span>
+                <span><strong>{preset.members.filter((member) => member.status === 'active').length}</strong> 位 AI Skill 會員</span>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="mock-header">
+                <span>{preset.brand.creatorName}</span>
+                <strong>{roleLabel(role)}</strong>
+              </div>
+              <div className="mock-grid">
+                {homeMetrics(preset, selectedPlan).map((metric) => (
+                  <MetricTile key={metric.label} label={metric.label} value={metric.value} icon={metric.icon} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </section>
 
-      <section className="section-block">
+      <section className={isSkillsSchool ? 'section-block editorial-latest-section' : 'section-block'}>
         <div className="section-heading">
-          <span className="eyebrow">{beforeJoinEyebrow(preset)}</span>
-          <h3>{beforeJoinHeading(preset)}</h3>
+          <span className="eyebrow">{isSkillsSchool ? '內容更新' : beforeJoinEyebrow(preset)}</span>
+          <h3>{isSkillsSchool ? '最新 AI Skill 文章' : beforeJoinHeading(preset)}</h3>
         </div>
-        <div className="plan-grid">
-          <article className="plan-card">
-            <span className="plan-name">{isPublicationPreset(preset) ? '公開文章' : '公開內容'}</span>
-            <strong>{publicContent.length}</strong>
-            <small>可直接閱讀</small>
-            <p>{publicContent.map((item) => item.title.replace(/^公開文章：/, '')).join('、')}</p>
-            <Button variant="outline" onClick={onOpenBlog}>閱讀公開文章</Button>
-          </article>
-          <article className="plan-card highlighted">
-            <span className="plan-name">{isPublicationPreset(preset) ? '付費文章' : '會員內容'}</span>
-            <strong>{paidContent.length}</strong>
-            <small>加入後解鎖</small>
-            <p>{paidContent.map((item) => item.category).join('、')}，適合想持續深入{isPublicationPreset(preset) ? '閱讀與追蹤的人。' : '學習或追蹤的人。'}</p>
-            <Button onClick={onOpenJoin}>{isPublicationPreset(preset) ? '查看訂閱方案' : '查看會員方案'}</Button>
-          </article>
-          <article className="plan-card">
-            <span className="plan-name">{isPublicationPreset(preset) ? 'Newsletter' : '課程與社群'}</span>
-            <strong>{isPublicationPreset(preset) ? preset.newsletter.length : `${firstCourse?.progress ?? 0}%`}</strong>
-            <small>{isPublicationPreset(preset) ? '封已排程或寄出' : '持續更新'}</small>
-            <p>{isPublicationPreset(preset) ? '訂閱後可收到完整文章、資料補充與每週研究信。' : firstCourse?.description ?? preset.audience}</p>
-            <Button variant="outline" onClick={isPublicationPreset(preset) ? onOpenBlog : onOpenJoin}>{isPublicationPreset(preset) ? '先閱讀文章' : '加入後開始使用'}</Button>
-          </article>
-        </div>
+        {isSkillsSchool ? (
+          <div className="editorial-card-grid">
+            {latestContent.map((item) => (
+              <button key={item.id} type="button" className="editorial-card article-card-button" onClick={onOpenBlog}>
+                <Badge variant="outline" className="pill">{item.isPaid ? '會員文章' : '公開文章'}</Badge>
+                <h4>{cleanPostTitle(item.title)}</h4>
+                <p>{item.excerpt}</p>
+                <small>{item.category} · {item.minutes} 分鐘閱讀</small>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="plan-grid">
+            <article className="plan-card">
+              <span className="plan-name">{isPublicationPreset(preset) ? '公開文章' : '公開內容'}</span>
+              <strong>{publicContent.length}</strong>
+              <small>可直接閱讀</small>
+              <p>{publicContent.map((item) => item.title.replace(/^公開文章：/, '')).join('、')}</p>
+              <Button variant="outline" onClick={onOpenBlog}>閱讀公開文章</Button>
+            </article>
+            <article className="plan-card highlighted">
+              <span className="plan-name">{isPublicationPreset(preset) ? '付費文章' : '會員內容'}</span>
+              <strong>{paidContent.length}</strong>
+              <small>加入後解鎖</small>
+              <p>{paidContent.map((item) => item.category).join('、')}，適合想持續深入{isPublicationPreset(preset) ? '閱讀與追蹤的人。' : '學習或追蹤的人。'}</p>
+              <Button onClick={onOpenJoin}>{isPublicationPreset(preset) ? '查看訂閱方案' : '查看會員方案'}</Button>
+            </article>
+            <article className="plan-card">
+              <span className="plan-name">{isPublicationPreset(preset) ? 'Newsletter' : '課程與社群'}</span>
+              <strong>{isPublicationPreset(preset) ? preset.newsletter.length : `${firstCourse?.progress ?? 0}%`}</strong>
+              <small>{isPublicationPreset(preset) ? '封已排程或寄出' : '持續更新'}</small>
+              <p>{isPublicationPreset(preset) ? '訂閱後可收到完整文章、資料補充與每週研究信。' : firstCourse?.description ?? preset.audience}</p>
+              <Button variant="outline" onClick={isPublicationPreset(preset) ? onOpenBlog : onOpenJoin}>{isPublicationPreset(preset) ? '先閱讀文章' : '加入後開始使用'}</Button>
+            </article>
+          </div>
+        )}
       </section>
     </div>
   )
@@ -1451,12 +1505,25 @@ function BlogView({
   publicationHome?: boolean
 }) {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
+  const [articleQuery, setArticleQuery] = useState('')
+  const [articleCategory, setArticleCategory] = useState('全部')
   const selectedPost = preset.content.find((item) => item.id === selectedPostId)
   const publicPosts = preset.content.filter((item) => !item.isPaid)
   const memberPosts = preset.content.filter((item) => item.isPaid)
   const featurePost = publicPosts[0] ?? preset.content[0]
+  const isSkillsSchool = preset.id === 'skills-school'
+  const skillCategories = ['全部', '公開文章', '會員文章', '工作流拆解', '工具教學']
+  const skillPosts = preset.content.filter((item) => {
+    const text = `${item.title} ${item.category} ${item.excerpt}`.toLowerCase()
+    const queryMatched = !articleQuery.trim() || text.includes(articleQuery.trim().toLowerCase())
+    const categoryMatched = articleCategory === '全部'
+      || (articleCategory === '公開文章' && !item.isPaid)
+      || (articleCategory === '會員文章' && item.isPaid)
+      || item.category.includes(articleCategory.replace('文章', ''))
+    return queryMatched && categoryMatched
+  })
 
-  if (selectedPost && isPublicationPreset(preset)) {
+  if (selectedPost) {
     return (
       <ArticleReader
         item={selectedPost}
@@ -1568,37 +1635,55 @@ function BlogView({
   }
 
   return (
-    <section className={publicationHome ? 'section-block publication-home' : 'section-block'}>
+    <section className={isSkillsSchool ? 'section-block editorial-article-hub' : publicationHome ? 'section-block publication-home' : 'section-block'}>
       <div className="section-heading horizontal">
         <div>
-          <span className="eyebrow">{preset.id === 'signal-brief' ? '公開閱讀' : '社群預覽'}</span>
-          <h3>{preset.id === 'signal-brief' ? 'Signal Brief 公開部落格' : 'Skills School AI Skill 公開內容'}</h3>
+          <span className="eyebrow">{preset.id === 'signal-brief' ? '公開閱讀' : isSkillsSchool ? '文章 Hub' : '社群預覽'}</span>
+          <h3>{preset.id === 'signal-brief' ? 'Signal Brief 公開部落格' : isSkillsSchool ? 'AI Skill 文章、工作流拆解與工具教學' : 'Skills School AI Skill 公開內容'}</h3>
           {publicationHome && <p>閱讀公開文章，或訂閱後解鎖完整研究、資料補充與每週 Newsletter。</p>}
         </div>
         <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />{preset.id === 'signal-brief' ? '訂閱完整研究' : '加入會員'}</Button>
       </div>
 
-      <button className="hero-product blog-feature article-card-button" type="button" onClick={() => isPublicationPreset(preset) && featurePost && setSelectedPostId(featurePost.id)}>
+      {isSkillsSchool && (
+        <div className="article-hub-toolbar">
+          <div className="article-tabs" aria-label="文章分類">
+            {skillCategories.map((category) => (
+              <button key={category} type="button" className={articleCategory === category ? 'active' : ''} onClick={() => setArticleCategory(category)}>
+                {category}
+              </button>
+            ))}
+          </div>
+          <label className="search-box">
+            <Search size={18} aria-hidden="true" />
+            <Input value={articleQuery} onChange={(event) => setArticleQuery(event.target.value)} placeholder="輸入想搜尋的東西" />
+          </label>
+        </div>
+      )}
+
+      {featurePost && !isSkillsSchool && (
+      <button className="hero-product blog-feature article-card-button" type="button" onClick={() => setSelectedPostId(featurePost.id)}>
         <Badge variant="outline" className="pill">{featurePost.category}</Badge>
         <h4>{featurePost.title}</h4>
         <p>{featurePost.excerpt}</p>
         <small>{featurePost.minutes} 分鐘閱讀 · {preset.brand.creatorName}</small>
       </button>
+      )}
 
-      <div className="content-list blog-list">
-        {publicPosts.map((item) => (
-          <button key={item.id} type="button" className="content-row article-card-button" onClick={() => isPublicationPreset(preset) && setSelectedPostId(item.id)}>
+      <div className={isSkillsSchool ? 'content-list blog-list editorial-article-list' : 'content-list blog-list'}>
+        {(isSkillsSchool ? skillPosts : publicPosts).map((item) => (
+          <button key={item.id} type="button" className="content-row article-card-button" onClick={() => setSelectedPostId(item.id)}>
             <div>
-              <Badge variant="outline" className="pill">{contentTypeLabel(item.type)}</Badge>
+              <Badge variant="outline" className="pill">{isSkillsSchool ? item.isPaid ? '會員文章' : '公開文章' : contentTypeLabel(item.type)}</Badge>
               <h4>{item.title}</h4>
               <p>{item.excerpt}</p>
               <small>{item.category} · {item.minutes} 分鐘 · {sourceLabel(item.source)}</small>
             </div>
-            <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span>
+            {item.isPaid && !hasPaidAccess ? <span className="lock-button lock-label"><Lock data-icon="inline-start" />加入後閱讀</span> : <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span>}
           </button>
         ))}
-        {memberPosts.slice(0, 3).map((item) => (
-          <button key={item.id} type="button" className="content-row article-card-button" onClick={() => isPublicationPreset(preset) && setSelectedPostId(item.id)}>
+        {!isSkillsSchool && memberPosts.slice(0, 3).map((item) => (
+          <button key={item.id} type="button" className="content-row article-card-button" onClick={() => setSelectedPostId(item.id)}>
             <div>
               <Badge variant="outline" className="pill">會員限定</Badge>
               <h4>{item.title}</h4>
@@ -1659,14 +1744,23 @@ function ArticleReader({
           <p key={`${item.id}-paragraph-${index}`}>{paragraph}</p>
         ))}
       </div>
+      {!locked && !item.isPaid ? (
+        <div className="subscribe-callout">
+          <div>
+            <strong>喜歡這類拆解？</strong>
+            <p>免費訂閱後，每週收到 AI Skill 文章、工作流拆解與公開課程更新。</p>
+          </div>
+          <Button variant="outline" className="secondary-button" onClick={onJoin}><Mail data-icon="inline-start" />免費訂閱</Button>
+        </div>
+      ) : null}
       {locked ? (
         <div className="paywall-box">
           <Lock size={18} />
           <div>
-            <strong>付費牆已啟用</strong>
-            <p>這篇文章由創作者設定在第 {gateAfter} 段後進入付費牆。訂閱後可以繼續閱讀完整內容、資料補充與每週 Newsletter。</p>
+            <strong>{preset.id === 'skills-school' ? '會員限定內容' : '付費牆已啟用'}</strong>
+            <p>{preset.id === 'skills-school' ? `加入 AI Skill 會員後，繼續閱讀完整拆解、提示詞結構與 SOP 範本。` : `這篇文章由創作者設定在第 ${gateAfter} 段後進入付費牆。訂閱後可以繼續閱讀完整內容、資料補充與每週 Newsletter。`}</p>
           </div>
-          <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />訂閱後繼續閱讀</Button>
+          <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />{preset.id === 'skills-school' ? '加入會員繼續閱讀' : '訂閱後繼續閱讀'}</Button>
         </div>
       ) : null}
     </article>
@@ -2187,29 +2281,57 @@ function CoursesView({
 }
 
 function CommunityView({ preset, role }: { preset: ReturnType<typeof getPreset>; role: Role }) {
+  const isSkillsSchool = preset.id === 'skills-school'
   return (
     <section className="section-block">
       <div className="section-heading">
         <span className="eyebrow">{preset.id === 'signal-brief' ? '讀者討論' : '社群討論'}</span>
-        <h3>分類、權限、公告、留言與反應</h3>
+        <h3>{isSkillsSchool ? 'AI Skill 討論區' : '分類、權限、公告、留言與反應'}</h3>
         {role === 'visitor' && <p>訪客只能看到公開討論與公告摘要；會員討論串會保留給已加入的人。</p>}
         {role === 'member' && <p>會員可以閱讀公開與會員討論，並依照權限參與課程討論或活動公告。</p>}
         {role === 'admin' && <p>管理員可以檢查置頂公告、發文權限、檢舉數與需要處理的討論串。</p>}
       </div>
-      <div className="thread-list">
-        {preset.threads.map((thread) => {
-          const hidden = role === 'visitor' && (thread.adminOnly || thread.canStart === 'paid')
-          return (
-            <article key={thread.id} className={hidden ? 'thread-row locked' : 'thread-row'}>
-              <div>
-                <Badge variant="outline" className="pill">{thread.category}{thread.pinned ? ' · 置頂' : ''}</Badge>
-                <h4>{hidden ? '會員限定討論串' : thread.title}</h4>
-                <small>{thread.author} · {thread.replies} 則回覆 · {thread.reactions} 個反應 · 發文權限：{accessLabel(thread.canStart ?? 'all')}{thread.reportCount ? ` · ${thread.reportCount} 則檢舉` : ''}</small>
-              </div>
-              {hidden ? <Lock size={18} /> : <MessageSquareText size={18} />}
+      <div className={isSkillsSchool ? 'community-layout' : 'thread-list'}>
+        <div className="thread-list">
+          {isSkillsSchool && (
+            <article className="community-composer">
+              <MessageSquareText size={18} />
+              <span>分享你正在設計的 Skill 或卡住的流程</span>
+              <Button variant="outline" className="ghost-button">撰寫討論</Button>
             </article>
-          )
-        })}
+          )}
+          {preset.threads.map((thread) => {
+            const hidden = role === 'visitor' && (thread.adminOnly || thread.canStart === 'paid')
+            return (
+              <article key={thread.id} className={hidden ? 'thread-row locked' : 'thread-row'}>
+                <div>
+                  <Badge variant="outline" className="pill">{thread.category}{thread.pinned ? ' · 置頂' : ''}</Badge>
+                  <h4>{hidden ? '會員限定討論串' : thread.title}</h4>
+                  <small>{thread.author} · {thread.replies} 則回覆 · {thread.reactions} 個反應 · 發文權限：{accessLabel(thread.canStart ?? 'all')}{thread.reportCount ? ` · ${thread.reportCount} 則檢舉` : ''}</small>
+                </div>
+                {hidden ? <Lock size={18} /> : <MessageSquareText size={18} />}
+              </article>
+            )
+          })}
+        </div>
+        {isSkillsSchool && (
+          <aside className="community-sidebar">
+            <article>
+              <span className="eyebrow">本週直播</span>
+              <strong>{preset.events[0]?.title ?? 'AI Skill 案例拆解'}</strong>
+              <small>{preset.events[0]?.date ?? '本週四 20:00'} · 會員可看回放</small>
+            </article>
+            <article>
+              <span className="eyebrow">熱門標籤</span>
+              <div className="tag-row">
+                <Badge variant="outline" className="pill">研究摘要</Badge>
+                <Badge variant="outline" className="pill">SOP</Badge>
+                <Badge variant="outline" className="pill">Notion</Badge>
+                <Badge variant="outline" className="pill">內容改寫</Badge>
+              </div>
+            </article>
+          </aside>
+        )}
       </div>
     </section>
   )
@@ -2677,6 +2799,16 @@ const publicationAdminTabs: Array<{ id: PublicationAdminTabId; label: string; de
   { id: 'settings', label: '設定', description: '品牌、首頁與方案', icon: Settings2 },
 ]
 
+type SkillAdminTabId = 'articles' | 'courses' | 'newsletter' | 'subscriptions' | 'settings'
+
+const skillAdminTabs: Array<{ id: SkillAdminTabId; label: string; icon: typeof LayoutDashboard }> = [
+  { id: 'articles', label: '文章', icon: BookOpen },
+  { id: 'courses', label: '課程', icon: PlayCircle },
+  { id: 'newsletter', label: '電子報', icon: Megaphone },
+  { id: 'subscriptions', label: '訂閱', icon: CircleDollarSign },
+  { id: 'settings', label: '設定', icon: Settings2 },
+]
+
 function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; state: AppState; onUpdatePreset: (patch: Partial<VerticalPreset>) => void }) {
   const [activeTab, setActiveTab] = useState<PublicationAdminTabId>('overview')
   const activeTabMeta = publicationAdminTabs.find((tab) => tab.id === activeTab) ?? publicationAdminTabs[0]
@@ -2972,6 +3104,7 @@ function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: Verti
 
 function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; state: AppState; onUpdatePreset: (patch: Partial<VerticalPreset>) => void }) {
   const isPublication = isPublicationPreset(preset)
+  const [skillAdminTab, setSkillAdminTab] = useState<SkillAdminTabId>('articles')
   const paidMembers = preset.members.filter((member) => member.status === 'active').length
   const paidContent = preset.content.filter((item) => item.isPaid).length
   const totalLessons = preset.courses.reduce((count, course) => count + course.lessons.length, 0)
@@ -2992,6 +3125,159 @@ function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; 
 
   if (isPublication) {
     return <PublicationAdminView preset={preset} state={state} onUpdatePreset={onUpdatePreset} />
+  }
+
+  if (preset.id === 'skills-school') {
+    return (
+      <div className="admin-workspace skills-admin-workspace">
+        <section className="section-block admin-hero">
+          <div className="section-heading horizontal">
+            <div>
+              <span className="eyebrow">後台內容管理</span>
+              <h3>{preset.brand.productName} 後台</h3>
+              <p>管理 AI Skill 文章、課程、電子報、訂閱方案與站點設定，讓公開內容、會員內容與每週實作維持同一個出版節奏。</p>
+            </div>
+            <div className="admin-mini-stats">
+              <StatusPill tone="green">{`免費讀者 ${preset.metrics.activeMembers}`}</StatusPill>
+              <StatusPill tone="blue">{`付費會員 ${paidMembers}`}</StatusPill>
+            </div>
+          </div>
+          <nav className="skills-admin-tabs" aria-label="Skills School 後台分頁">
+            {skillAdminTabs.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button key={tab.id} type="button" className={skillAdminTab === tab.id ? 'active' : ''} onClick={() => setSkillAdminTab(tab.id)}>
+                  <Icon size={16} />
+                  {tab.label}
+                </button>
+              )
+            })}
+          </nav>
+        </section>
+
+        {skillAdminTab === 'articles' && (
+          <section className="admin-dashboard-grid">
+            <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="content" />
+            <article className="admin-panel">
+              <div className="admin-panel-head">
+                <div>
+                  <span className="eyebrow">發送本週摘要</span>
+                  <h4>文章電子報</h4>
+                </div>
+                <Mail size={18} />
+              </div>
+              <p>選擇本週公開文章或會員文章，整理成摘要寄給免費讀者與 AI Skill 會員。</p>
+              <Button className="primary-button"><Mail data-icon="inline-start" />建立摘要</Button>
+            </article>
+          </section>
+        )}
+
+        {skillAdminTab === 'courses' && (
+          <section className="admin-dashboard-grid">
+            <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="courses" />
+            <article className="admin-panel">
+              <div className="admin-panel-head">
+                <div>
+                  <span className="eyebrow">課程狀態</span>
+                  <h4>進度與單元</h4>
+                </div>
+                <PlayCircle size={18} />
+              </div>
+              {preset.courses.map((course) => (
+                <div key={course.id} className="admin-course-summary">
+                  <div>
+                    <strong>{course.title}</strong>
+                    <small>{course.lessons.length} 個單元 · 共 {totalLessons} 筆課程紀錄</small>
+                  </div>
+                  <div className="progress-track"><span style={{ width: `${course.progress}%` }} /></div>
+                </div>
+              ))}
+            </article>
+          </section>
+        )}
+
+        {skillAdminTab === 'newsletter' && (
+          <section className="admin-dashboard-grid">
+            <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="newsletter" />
+            <article className="admin-panel">
+              <div className="admin-panel-head">
+                <div>
+                  <span className="eyebrow">發送紀錄</span>
+                  <h4>本週電子報狀態</h4>
+                </div>
+                <Megaphone size={18} />
+              </div>
+              <div className="admin-content-stack">
+                {preset.newsletter.map((issue) => (
+                  <div key={issue.id} className="admin-content-item horizontal">
+                    <span>
+                      <Badge variant="outline" className="pill">{segmentLabel(issue.segment)} · {statusLabel(issue.status)}</Badge>
+                      <strong>{issue.subject}</strong>
+                      <small>{issue.sendAt} · 開信 {issue.openRate} · 點擊 {issue.clickRate}</small>
+                    </span>
+                    <StatusPill tone={issue.paidConversions > 0 ? 'green' : 'yellow'}>{`${issue.paidConversions} 人升級`}</StatusPill>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </section>
+        )}
+
+        {skillAdminTab === 'subscriptions' && (
+          <section className="admin-dashboard-grid">
+            <article className="admin-panel span-2">
+              <div className="admin-panel-head">
+                <div>
+                  <span className="eyebrow">訂閱方案</span>
+                  <h4>免費讀者與 AI Skill 會員</h4>
+                </div>
+                <CircleDollarSign size={18} />
+              </div>
+              <div className="admin-grid">
+                <MetricTile label="月經常收入" value={preset.metrics.mrr} icon={BarChart3} />
+                <MetricTile label="免費讀者" value={String(preset.metrics.activeMembers)} icon={UsersRound} />
+                <MetricTile label="付費會員" value={String(paidMembers)} icon={ShieldCheck} />
+                <MetricTile label="主要來源" value={sourceLabel(preset.metrics.topSource)} icon={Globe2} />
+              </div>
+            </article>
+            <article className="admin-panel">
+              <div className="admin-panel-head">
+                <div>
+                  <span className="eyebrow">金流狀態</span>
+                  <h4>付款與發票</h4>
+                </div>
+                <ShieldCheck size={18} />
+              </div>
+              <div className="empty-state">
+                <strong>核心內容確認後啟用</strong>
+                <small>文章、課程與登入流程穩定後，再接上正式金流與發票。</small>
+              </div>
+            </article>
+          </section>
+        )}
+
+        {skillAdminTab === 'settings' && (
+          <section className="admin-dashboard-grid">
+            <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="site" />
+            <article className="admin-panel">
+              <div className="admin-panel-head">
+                <div>
+                  <span className="eyebrow">系統狀態</span>
+                  <h4>InsForge / Portaly Vibe</h4>
+                </div>
+                <ShieldCheck size={18} />
+              </div>
+              <div className="integration-grid">
+                <IntegrationItem label="登入" value="正式登入已可使用" />
+                <IntegrationItem label="資料庫權限" value="資料表與權限規則已準備" />
+                <IntegrationItem label="Portaly Vibe MCP" value="專案層級設定已加入" />
+                <IntegrationItem label="金流" value="確認後再啟用" />
+              </div>
+            </article>
+          </section>
+        )}
+      </div>
+    )
   }
 
   return (

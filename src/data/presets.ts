@@ -37,15 +37,6 @@ export const presets: VerticalPreset[] = [
         features: ['完整課程', '工作流模板', '每週打卡', '直播回放'],
         highlighted: true,
       },
-      {
-        id: 'lifetime',
-        name: '團隊陪跑會員',
-        price: 'NT$12,800',
-        cadence: '一次性',
-        description: '適合想把 AI Skill 導入個人或小團隊流程，取得進階案例與優先回饋名額的會員。',
-        features: ['完整內容庫', '進階案例', '導入檢查表', '優先活動名額'],
-        unlockLevel: 3,
-      },
     ],
     content: [
       {
