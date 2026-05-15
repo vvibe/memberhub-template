@@ -103,8 +103,8 @@ export default async function handler(request: Request): Promise<Response> {
   if (isDisallowedBrowserOrigin(request)) return json({ error: 'origin_not_allowed' }, 403, corsHeaders)
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, corsHeaders)
 
-  const apiKey = process.env.PORTALY_API_KEY
-  if (!apiKey) return json({ error: 'missing_portaly_api_key' }, 500, corsHeaders)
+  const apiKey = process.env.PORTALY_CHECKOUT_API_KEY
+  if (!apiKey) return json({ error: 'missing_portaly_checkout_api_key' }, 500, corsHeaders)
 
   const body = (await request.json().catch(() => null)) as Partial<CheckoutRequest> | null
   if (!body || typeof body !== 'object') return json({ error: 'invalid_json' }, 400, corsHeaders)

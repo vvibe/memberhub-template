@@ -3320,7 +3320,7 @@ function SetupView({ presetId, onSelectPreset }: { presetId: PresetId; onSelectP
           <h4>先改這些檔案</h4>
           <ul className="check-list">
             <li><Settings2 size={16} />`src/data/presets.ts`：{isPublication ? '文案、方案、文章、電子報、訂閱者' : '文案、方案、課程、社群、活動'}</li>
-            <li><Settings2 size={16} />`.env.local`：InsForge 和 Portaly Vibe MCP token</li>
+            <li><Settings2 size={16} />`.env.local`：InsForge key、PORTALY_API_TOKEN 與選配 checkout key</li>
             <li><Settings2 size={16} />`migrations/*.sql`：正式部署前套用資料表</li>
             <li><Settings2 size={16} />金流 functions：需要收款時再啟用</li>
           </ul>

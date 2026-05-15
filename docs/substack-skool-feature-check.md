@@ -70,7 +70,7 @@ To be considered feature-complete against Substack and Skool basics, a MemberHub
 
 - Public content pages with free previews and paid locks.
 - Free, monthly, yearly, lifetime, and tiered plans.
-- Portaly hosted checkout integration, starting with test mode.
+- Portaly hosted checkout integration with a separate server-side checkout key; Portaly Vibe MCP uses `PORTALY_API_TOKEN` and should not be reused as the checkout key.
 - Payment callback verification and idempotent fulfillment.
 - Receipt/invoice status or invoice task records.
 - Member self-service entry point for plan, receipts/invoices, payment method, and cancellation.

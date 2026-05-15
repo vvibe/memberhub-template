@@ -7,7 +7,7 @@ Read `README.md` first. The Chinese README is the canonical homepage; `README.en
 Before changing code for a forked install, read `docs/fork-readiness.md` and explain the key boundaries to the user in simple language:
 
 - The local demo runs without keys.
-- Production requires InsForge setup and a Portaly Vibe MCP token.
+- Production requires InsForge setup and a real Portaly Vibe MCP token from Portaly Admin.
 - Possible costs include InsForge, Portaly Vibe, payment processing, hosting, domain, Email/LINE, and invoice providers.
 - Live payment, official subscription plans, invoice issuing, and message sending are disabled until explicitly enabled.
 - Secrets must go into `.env.local` or a deployment secret manager, never into chat or GitHub.
@@ -40,7 +40,19 @@ The project also includes project-scoped Portaly Vibe MCP config:
 - `.mcp.json`
 - `.cursor/mcp.json`
 
-Both files define `portaly-vibe` with HTTP URL `https://mcp.portaly.ai` and Authorization header placeholder `Bearer <YOUR_TOKEN>`. Keep this per-project; do not move it to user/global scope unless the user explicitly asks. Never commit a real MCP token.
+Both files define `portaly-vibe` using the official Portaly MCP command:
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "@portaly-ai/portaly-mcp"],
+  "env": {
+    "PORTALY_API_TOKEN": "mcp_ptly_xxx"
+  }
+}
+```
+
+The token is created in Portaly Admin > `經營工具 > MCP 管理` and uses a format similar to `mcp_ptly_xxxxxxxx`. Keep this per-project; do not move it to user/global scope unless the user explicitly asks. Never commit a real MCP token.
 
 ## UI Components
 
@@ -96,9 +108,9 @@ Do not ask the user to paste keys into chat. Tell them to add values to `.env.lo
 - `VITE_INSFORGE_URL`
 - `VITE_INSFORGE_ANON_KEY`
 - `INSFORGE_API_KEY`
-- `PORTALY_API_KEY`
+- `PORTALY_API_TOKEN`
+- `PORTALY_CHECKOUT_API_KEY`
 - `PORTALY_CALLBACK_SECRET`
-- `PORTALY_MCP_TOKEN`
 
 Also configure `ALLOWED_ORIGINS` before production. It is not a secret, but it must list only trusted frontend origins that may call the checkout Edge Function.
 
@@ -106,6 +118,6 @@ Commit only `.env.example`.
 
 ## Payment Guard
 
-Default to Portaly test keys while building. Before live-mode plan creation, live checkout, subscription cancellation/resume, or manual payment completion, ask for explicit user confirmation.
+Portaly Vibe MCP uses a real MCP token from Portaly Admin, not a test key. Payment checkout is still optional: before official plan creation, live checkout, subscription cancellation/resume, or manual payment completion, ask for explicit user confirmation.
 
 Use Portaly hosted checkout for payment collection. Store callback results, subscription status, and invoice task state in MemberHub; do not collect card details in this app.

@@ -23,7 +23,7 @@ You can run the local experience without connecting any external service. When y
 
 ## Notes
 
-- The local experience does not require API keys. Production requires InsForge setup and a Portaly Vibe MCP token.
+- The local experience does not require API keys. Production requires InsForge setup and a Portaly Vibe MCP token. Portaly Vibe MCP uses the real MCP Token created in Portaly Admin, not a payment test key.
 - Payments, subscription plans, and invoice flow are optional and should be enabled only when you are ready.
 - Possible costs include hosting, domain, InsForge, Portaly Vibe, payment processing, Email/LINE messaging, and invoice/e-invoice providers.
 - Never commit real API keys, MCP tokens, callback secrets, or test login passwords to GitHub.
@@ -197,9 +197,19 @@ Included files:
 - `.mcp.json`
 - `.cursor/mcp.json`
 
-The MCP server name is `portaly-vibe`, the HTTP URL is `https://mcp.portaly.ai`, and the Authorization header template is `Bearer <YOUR_TOKEN>`.
+The MCP server name is `portaly-vibe`, and the project follows the official Portaly MCP guideline:
 
-Apply for a Portaly Vibe MCP token and replace `<YOUR_TOKEN>` locally. Do not commit a real token to GitHub. See `docs/mcp-setup.md`.
+```json
+{
+  "command": "npx",
+  "args": ["-y", "@portaly-ai/portaly-mcp"],
+  "env": {
+    "PORTALY_API_TOKEN": "mcp_ptly_xxx"
+  }
+}
+```
+
+Create an MCP Token in Portaly Admin > `經營工具 > MCP 管理`, then replace `mcp_ptly_xxx` locally. Do not commit a real token to GitHub. See `docs/mcp-setup.md`.
 
 ## What Production Needs
 
@@ -208,12 +218,12 @@ If you only want to try the local experience, you can skip this section. For pro
 - InsForge project URL
 - InsForge anon key
 - InsForge server/API key, server-side only
-- Portaly Vibe MCP token
+- Portaly Vibe MCP token, created in Portaly Admin and stored as `PORTALY_API_TOKEN` with a format similar to `mcp_ptly_xxxxxxxx`
 - Allowed origins, such as the production domain and local development URLs
 
 `npm ci` installs `@insforge/sdk`, `@insforge/cli`, and Playwright QA tooling. The repo includes the InsForge migration, browser SDK client, Portaly Vibe MCP config, AI install intake, and launch checklist.
 
-Payments, subscription plans, and invoices are optional. If you enable them, test the full flow before switching to live payments.
+Payments, subscription plans, and invoices are optional. If you enable them, use the production Portaly merchant setup and a server-side checkout key, and confirm again before creating official plans or collecting payments.
 
 Available commands:
 
@@ -237,8 +247,8 @@ If you are an AI agent, help the user in this order:
 5. Complete Portaly Vibe MCP setup so supported Coding Agents can read project product context and help with setup checks.
 6. Make local data work and confirm the Skills School and Signal Brief cases can switch.
 7. Only after everything else is installed, ask the user: "Do you want to enable payments, subscription plans, and invoice flow?"
-8. If the user enables payments, default to a Portaly test key. Do not run live mode first.
-9. For live mode, official plan creation, subscription cancellation/resume, or manual payment completion, ask for explicit user confirmation again.
+8. Portaly Vibe MCP uses a real MCP Token. If the user enables payments, configure a separate server-side checkout key and do not reuse the MCP token as the checkout key.
+9. For official plan creation, payment collection, subscription cancellation/resume, or manual payment completion, ask for explicit user confirmation again.
 10. Never ask the user to paste API keys or callback secrets into chat. Tell them to place secrets in `.env.local` or a secret manager themselves.
 
 Suggested payment question after core setup:
@@ -246,7 +256,7 @@ Suggested payment question after core setup:
 ```text
 Do you want to enable payments, subscription plans, and invoice flow?
 
-If yes, I will start in test mode and configure monthly/yearly/lifetime plans, payment status sync, and invoice task records. After the test flow works, you can decide whether to switch to live payments.
+If yes, I will use your production Portaly merchant setup for monthly/yearly/lifetime plans, payment status sync, and invoice task records. Before any action that creates official plans, enables payment collection, or changes subscription state, I will ask you to confirm again.
 ```
 
 ## Environment Variables
@@ -262,11 +272,11 @@ cp .env.example .env.local
 | `VITE_INSFORGE_URL` | InsForge frontend/API base URL | Yes |
 | `VITE_INSFORGE_ANON_KEY` | InsForge anon key for browser SDK | Yes |
 | `INSFORGE_API_KEY` | Server-side InsForge admin/API operations | No |
-| `PORTALY_API_KEY` | Portaly Vibe server-side API calls | No |
+| `PORTALY_API_TOKEN` | Portaly MCP token from Portaly Admin, format similar to `mcp_ptly_xxxxxxxx` | No |
+| `PORTALY_CHECKOUT_API_KEY` | Optional Portaly server-side checkout/payment API key | No |
 | `PORTALY_CALLBACK_SECRET` | Verify Portaly payment callbacks | No |
 | `PORTALY_API_HOST` | Portaly API host, default `https://portaly.cc` | No |
 | `PORTALY_CALLBACK_URL` | Public HTTPS callback URL for Portaly webhook | No |
-| `PORTALY_MCP_TOKEN` | Portaly Vibe MCP token for local Coding Agent setup | No |
 | `APP_BASE_URL` | Local or production app URL | No |
 | `ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call checkout function | No |
 | `GA_MEASUREMENT_ID` | Optional GA4 tracking ID | Yes/optional |

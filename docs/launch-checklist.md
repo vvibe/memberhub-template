@@ -19,7 +19,7 @@
 - [ ] README starts with a clear user-facing explanation of what this project can do.
 - [ ] `docs/fork-readiness.md` is current and linked from both README files.
 - [ ] Fork user has selected one product mode before customization: `skills-school` full-feature membership community, or `signal-brief` publication subscription.
-- [ ] `.mcp.json` defines project-scoped `portaly-vibe` MCP over HTTP.
+- [ ] `.mcp.json` defines project-scoped `portaly-vibe` MCP using `npx -y @portaly-ai/portaly-mcp`.
 - [ ] `.cursor/mcp.json` defines project-scoped `portaly-vibe` MCP for Cursor.
 - [ ] Real MCP tokens are kept out of Git.
 - [ ] InsForge Auth is configured.
@@ -69,8 +69,8 @@
 ## Portaly Vibe MCP
 
 - [ ] `.mcp.json` and `.cursor/mcp.json` define the project-scoped `portaly-vibe` MCP server.
-- [ ] MCP uses HTTP URL `https://mcp.portaly.ai`.
-- [ ] Real MCP token is stored locally or in a secret manager, not committed.
+- [ ] MCP uses the official Portaly MCP package `@portaly-ai/portaly-mcp`.
+- [ ] Real MCP token is created in Portaly Admin > `經營工具 > MCP 管理`, stored as `PORTALY_API_TOKEN`, and not committed.
 - [ ] Coding Agent can read the project-local MCP config before production setup.
 
 ## Payment And Invoice
@@ -83,10 +83,10 @@ Ask this only after core setup is complete:
 
 If yes:
 
-- [ ] Use Portaly test key first.
+- [ ] Use the production Portaly merchant setup and a server-side checkout key.
 - [ ] Create monthly, yearly, and lifetime test plans.
 - [ ] Create checkout session flow.
 - [ ] Verify payment callback signature if callback functions are enabled.
 - [ ] Store payment and subscription status events.
 - [ ] Store invoice task or invoice status records.
-- [ ] Confirm with the user before any live-mode money-moving action.
+- [ ] Confirm with the user before any money-moving or subscription-changing action.

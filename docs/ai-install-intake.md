@@ -9,7 +9,7 @@ Use the user's answers to update `src/data/presets.ts`, labels, plans, seed cont
 Tell the user these facts first in simple language:
 
 - The local experience can run without keys.
-- Production requires InsForge and Portaly Vibe accounts/keys.
+- Production requires InsForge and Portaly Vibe accounts/keys. Portaly Vibe MCP uses the real MCP Token from Portaly Admin, stored locally as `PORTALY_API_TOKEN`.
 - Optional services may cost money: hosting, domain, Portaly Vibe, payment processing, Email/LINE, and invoice providers.
 - Live payments, official subscription plans, invoice issuing, and message sending are disabled until the user explicitly asks for them.
 - Do not paste secrets into chat; place them in `.env.local` or a secret manager.

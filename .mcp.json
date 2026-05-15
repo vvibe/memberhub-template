@@ -1,10 +1,10 @@
 {
   "mcpServers": {
     "portaly-vibe": {
-      "type": "http",
-      "url": "https://mcp.portaly.ai",
-      "headers": {
-        "Authorization": "Bearer <YOUR_TOKEN>"
+      "command": "npx",
+      "args": ["-y", "@portaly-ai/portaly-mcp"],
+      "env": {
+        "PORTALY_API_TOKEN": "mcp_ptly_xxx"
       }
     }
   }

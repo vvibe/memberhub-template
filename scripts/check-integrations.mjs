@@ -22,10 +22,10 @@ const requiredEnv = [
   'VITE_INSFORGE_URL',
   'VITE_INSFORGE_ANON_KEY',
   'INSFORGE_API_KEY',
-  'PORTALY_API_KEY',
+  'PORTALY_CHECKOUT_API_KEY',
   'PORTALY_CALLBACK_SECRET',
   'PORTALY_CALLBACK_URL',
-  'PORTALY_MCP_TOKEN',
+  'PORTALY_API_TOKEN',
   'APP_BASE_URL',
   'ALLOWED_ORIGINS',
 ]
@@ -72,9 +72,9 @@ const webhookFunction = readFileSync('insforge/functions/portaly-webhook/index.t
 function assertPortalyMcpConfig(config, label) {
   const server = config.mcpServers?.['portaly-vibe']
   assert(Boolean(server), `${label} defines portaly-vibe MCP server`)
-  assert(server?.type === 'http', `${label} uses HTTP transport`)
-  assert(server?.url === 'https://mcp.portaly.ai', `${label} points to https://mcp.portaly.ai`)
-  assert(server?.headers?.Authorization === 'Bearer <YOUR_TOKEN>', `${label} documents Authorization bearer token placeholder`)
+  assert(server?.command === 'npx', `${label} uses official npx MCP command`)
+  assert(JSON.stringify(server?.args) === JSON.stringify(['-y', '@portaly-ai/portaly-mcp']), `${label} uses @portaly-ai/portaly-mcp`)
+  assert(server?.env?.PORTALY_API_TOKEN === 'mcp_ptly_xxx', `${label} documents official MCP token placeholder`)
 }
 
 for (const file of requiredFiles) assert(existsSync(file), `${file} exists`)
@@ -90,7 +90,7 @@ assert(packageJson.scripts?.['insforge:migrate'], 'package exposes insforge:migr
 assert(packageJson.scripts?.['insforge:functions:deploy'], 'package exposes insforge:functions:deploy')
 assert(packageJson.scripts?.['check:integrations'], 'package exposes check:integrations')
 assert(checkoutFunction.includes('/api/creator-subscription/checkout-sessions'), 'Portaly checkout function calls hosted checkout API')
-assert(checkoutFunction.includes('PORTALY_API_KEY'), 'Portaly checkout function reads server-side API key')
+assert(checkoutFunction.includes('PORTALY_CHECKOUT_API_KEY'), 'Portaly checkout function reads dedicated server-side checkout key')
 assert(checkoutFunction.includes('ALLOWED_ORIGINS'), 'Portaly checkout function restricts allowed origins')
 assert(checkoutFunction.includes('origin_not_allowed'), 'Portaly checkout function rejects untrusted browser origins')
 assert(checkoutFunction.includes('trustedRedirectUrl'), 'Portaly checkout function restricts success/cancel redirects')
@@ -106,6 +106,8 @@ assert(forkReadiness.includes('安全注意'), 'fork readiness documents securit
 assert(securityReview.includes('不要把真實 API key'), 'security review warns about real secrets')
 assert(securityReview.includes('localStorage 只適合本機預覽'), 'security review warns localStorage is preview-only')
 assert(securityReview.includes('RLS policies'), 'security review documents RLS policy requirement')
+assert(securityReview.includes('mcp_ptly'), 'security review documents official Portaly MCP token format')
+assert(agents.includes('PORTALY_API_TOKEN'), 'AGENTS documents official Portaly MCP token env var')
 assert(rlsPolicies.includes('memberhub_has_paid_membership'), 'RLS policy template covers paid member access')
 assert(rlsPolicies.includes('memberhub_is_admin'), 'RLS policy template covers admin access')
 assert(rlsPolicies.includes('Guest 可以讀公開文章'), 'RLS policy template includes role-based test checklist')

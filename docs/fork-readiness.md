@@ -13,8 +13,8 @@
 ### Fork 後需要先準備什麼
 
 - Node `^22.13.0 || ^20.12.0`。
-- 正式部署需要 InsForge 專案與 Portaly Vibe MCP token。
-- 如果要讓 Coding Agent 使用 Portaly Vibe MCP，需自行申請 Portaly MCP token，並放在本機設定或 secret manager。
+- 正式部署需要 InsForge 專案與 Portaly Vibe MCP token。Portaly Vibe MCP token 是從 Portaly 後台 `經營工具 > MCP 管理` 建立的正式 MCP Token，格式類似 `mcp_ptly_xxxxxxxx`。
+- 如果要讓 Coding Agent 使用 Portaly Vibe MCP，請把 `PORTALY_API_TOKEN` 放在本機設定或 secret manager，不要放到 GitHub。
 - 如果要通知會員，需準備 Email provider 或 LINE Messaging API。
 - 如果要正式開立發票，需準備 Portaly、發票服務商或既有商家發票系統。
 
@@ -80,7 +80,7 @@ Production 前再做：
 - 補齊並測試 RLS policies。
 - 需要金流時，再部署選配的 checkout/callback functions。
 - 把 `.env.local` 的正式值放到部署平台 secret manager。
-- 用測試模式跑完整 checkout、付款狀態同步、訂閱與發票任務流程。
+- 使用正式 Portaly 商家設定與 server-side checkout key 跑完整 checkout、付款狀態同步、訂閱與發票任務流程；任何會正式收款或修改訂閱狀態的動作前都要再次確認。
 - 確認 `npm run test:qa` 100% 通過後再上線。
 
 ### 常見卡關
@@ -105,7 +105,7 @@ Production 前再做：
 
 - Node `^22.13.0 || ^20.12.0`.
 - An InsForge project and Portaly Vibe account/key.
-- A Portaly MCP token if your Coding Agent should connect to Portaly Vibe MCP.
+- A real Portaly MCP token from Portaly Admin > `經營工具 > MCP 管理`, stored as `PORTALY_API_TOKEN`, if your Coding Agent should connect to Portaly Vibe MCP.
 - An email provider or LINE Messaging API if member notifications are enabled.
 - Portaly, an invoice provider, or an existing merchant invoice system if official invoices are required.
 
@@ -165,5 +165,5 @@ Before production:
 - Complete and test RLS policies.
 - If payments are needed, deploy the optional checkout/callback functions.
 - Move real env values into the deployment secret manager.
-- Test checkout, payment status sync, subscription, and invoice task flow in test mode.
+- Use the production Portaly merchant setup and server-side checkout key for checkout, payment status sync, subscription, and invoice task flow; confirm again before any money-moving or subscription-changing action.
 - Launch only after `npm run test:qa` passes at 100%.

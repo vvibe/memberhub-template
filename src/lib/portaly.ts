@@ -23,9 +23,9 @@ export function paymentEventToCallbackPayload(event: PaymentEvent) {
 }
 
 export const portalyIntegrationNotes = [
-  'Portaly Vibe MCP 已放在 project-scoped 設定中',
-  '使用者只需要申請 Portaly Vibe MCP token 與 InsForge key',
+  'Portaly Vibe MCP 已依官方 guideline 放在 project-scoped 設定中',
+  '使用者需要在 Portaly 後台建立正式 MCP Token，並以 PORTALY_API_TOKEN 存在本機',
   '前台、登入、內容、會員流程完成後，再詢問是否啟用金流',
-  '金流先使用測試模式，確認後才切換正式收款',
+  '金流需要另外設定 server-side checkout key，不要共用 MCP token',
   '發票狀態由 payment_events.invoice_status 追蹤',
 ]
