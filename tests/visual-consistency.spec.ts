@@ -250,7 +250,7 @@ test('Skills School and Signal Brief reference cases are both usable', async ({ 
   await expect(page.getByText('課程與社群')).toHaveCount(0)
 
   await page.getByRole('button', { name: /公開文章：AI 工具從嘗鮮走向日常工作的三個訊號/ }).first().click()
-  await expect(page.getByText('第三個訊號是責任分工開始改變')).toBeVisible()
+  await expect(page.getByText('AI 工具從輸出按鈕變成工作流程')).toBeVisible()
   await expect(page.getByText('喜歡這篇文章？')).toHaveCount(0)
   await expect(page.getByText('訂閱後可以閱讀付費分析')).toHaveCount(0)
   await page.getByRole('button', { name: '回到文章列表' }).click()
