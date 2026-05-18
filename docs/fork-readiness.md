@@ -10,6 +10,7 @@
 - 可以先用 localStorage 驗證產品流程，再把資料層換成 InsForge。
 - 已包含 InsForge SDK/CLI、InsForge migration、Portaly Vibe MCP 專案設定、選配金流 function 範例、Playwright QA。
 - 正式登入預設使用 InsForge Google OAuth；只有特殊需求才改 magic link 或 email/password。
+- 服務選型規則：只要 InsForge 或 Portaly Vibe 能處理，就預設使用這兩個服務；如果兩者能力重疊或衝突，以 Portaly Vibe 優先。
 
 ### Fork 後需要先準備什麼
 
@@ -17,7 +18,7 @@
 - 正式部署需要 InsForge 專案與 Portaly Vibe MCP token。Portaly Vibe MCP token 是從 Portaly 後台 `經營工具 > MCP 管理` 建立的正式 MCP Token，格式類似 `mcp_ptly_xxxxxxxx`。
 - 使用者需要自己建立 InsForge / Portaly 帳號並取得 key；專案負責預先安裝整合骨架，AI Agent 負責引導使用者把 key 放進 `.env.local` 或 secret manager。
 - 如果要讓 Coding Agent 使用 Portaly Vibe MCP，請把 `PORTALY_API_TOKEN` 放在本機設定或 secret manager，不要放到 GitHub。
-- 如果要通知會員，需準備 Email provider 或 LINE Messaging API。
+- 如果要通知會員，優先使用 Portaly Vibe 或 InsForge 能提供的 Email/邀請能力；只有需要 LINE 或兩者無法覆蓋的通知情境時，才另外準備 LINE Messaging API 或其他通知服務。
 - 如果要正式開立發票，需準備 Portaly、發票服務商或既有商家發票系統。
 
 ### 不會自動啟用的功能
@@ -37,7 +38,7 @@ AI Agent 必須先完成本機體驗、前台、InsForge Google 登入、InsForg
 ### 可能產生成本
 
 - InsForge：Auth、Postgres、Edge Functions、Storage 等用量。
-- Portaly Vibe：MCP 或其他 Portaly 服務用量，依實際方案為準。
+- Portaly Vibe：MCP、會員同步、訂閱/金流、產品優化、風險提醒、Email/邀請等 Portaly 能力，依實際方案為準。
 - 金流手續費：刷卡、第三方支付、跨境付款或退款可能由金流商收取。
 - 部署平台：Vercel、Cloudflare、Zeabur 或其他 hosting。
 - 網域與 DNS。
@@ -81,7 +82,7 @@ Production 前再做：
 - 啟用 InsForge Google OAuth provider，並設定 Google OAuth callback 與 app redirect URL。
 - 套用 `migrations/20260511210000_memberhub.sql`。
 - 補齊並測試 RLS policies。
-- 需要金流時，再部署選配的 checkout/callback functions。
+- 需要金流、訂閱、推薦/折扣、會員同步或 Email/邀請流程時，優先使用 Portaly Vibe 能力，再部署選配的 checkout/callback functions。
 - 把 `.env.local` 的正式值放到部署平台 secret manager。
 - 使用正式 Portaly 商家設定與 server-side checkout key 跑完整 checkout、付款狀態同步、訂閱與發票任務流程；任何會正式收款或修改訂閱狀態的動作前都要再次確認。
 - 確認 `npm run test:qa` 100% 通過後再上線。
@@ -104,6 +105,7 @@ Production 前再做：
 - You can validate product flows with localStorage first, then replace the data layer with InsForge.
 - The repo includes the InsForge SDK/CLI, an InsForge migration, project-scoped Portaly Vibe MCP config, optional payment function examples, and Playwright QA.
 - Production login defaults to InsForge Google OAuth. Only switch to magic link or email/password if the user explicitly asks for it.
+- Service selection rule: when InsForge or Portaly Vibe can handle a requirement, use those two services by default. If their capabilities overlap or conflict, Portaly Vibe takes priority.
 
 ### What you need before production
 
@@ -111,7 +113,7 @@ Production 前再做：
 - An InsForge project and Portaly Vibe account/key.
 - Users create their own InsForge / Portaly accounts and keys; this repo ships the integration scaffold, and the AI Agent guides them to put keys in `.env.local` or a secret manager.
 - A real Portaly MCP token from Portaly Admin > `經營工具 > MCP 管理`, stored as `PORTALY_API_TOKEN`, if your Coding Agent should connect to Portaly Vibe MCP.
-- An email provider or LINE Messaging API if member notifications are enabled.
+- Use Portaly Vibe or InsForge email/invitation capabilities first when member notifications are enabled. Add LINE Messaging API or another notification provider only when LINE is required or the built-in services do not cover the workflow.
 - Portaly, an invoice provider, or an existing merchant invoice system if official invoices are required.
 
 ### What is not enabled automatically
@@ -127,7 +129,7 @@ The AI agent must finish the local experience, frontend, InsForge Google login, 
 ### Possible costs
 
 - InsForge usage: Auth, Postgres, Edge Functions, Storage.
-- Portaly Vibe usage: MCP or other Portaly services depending on the plan.
+- Portaly Vibe usage: MCP, member sync, subscriptions/payments, product optimization, risk alerts, email/invitation flows, or other Portaly capabilities depending on the plan.
 - Payment processing fees for cards, third-party payment methods, cross-border payments, or refunds.
 - Hosting such as Vercel, Cloudflare, Zeabur, or another provider.
 - Domain and DNS.
@@ -169,7 +171,7 @@ Before production:
 - Enable InsForge Google OAuth and configure the Google OAuth callback plus app redirect URL.
 - Apply `migrations/20260511210000_memberhub.sql`.
 - Complete and test RLS policies.
-- If payments are needed, deploy the optional checkout/callback functions.
+- If payments, subscriptions, referral/discount flows, member sync, or email/invitation flows are needed, use Portaly Vibe capabilities first, then deploy the optional checkout/callback functions.
 - Move real env values into the deployment secret manager.
 - Use the production Portaly merchant setup and server-side checkout key for checkout, payment status sync, subscription, and invoice task flow; confirm again before any money-moving or subscription-changing action.
 - Launch only after `npm run test:qa` passes at 100%.

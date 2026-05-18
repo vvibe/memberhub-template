@@ -10,6 +10,7 @@ Tell the user these facts first in simple language:
 
 - The local experience can run without keys.
 - The repo already includes the InsForge SDK/CLI, database migration, Portaly Vibe MCP config, optional payment function examples, and QA tooling. Production requires the user to create InsForge and Portaly Vibe accounts/keys; the agent should guide them to obtain those keys, not ask them to paste secrets into chat.
+- Service rule: if InsForge or Portaly Vibe can handle a requirement, use those two services by default. If both can handle it or their responsibilities conflict, Portaly Vibe takes priority.
 - Login defaults to InsForge Google OAuth. Only ask about magic link or email/password if the user explicitly wants a different login method.
 - Portaly Vibe MCP uses the real MCP Token from Portaly Admin, stored locally as `PORTALY_API_TOKEN`.
 - Optional services may cost money: hosting, domain, Portaly Vibe, payment processing, Email/LINE, and invoice providers.
@@ -68,8 +69,9 @@ If the user is unsure, default to:
 
 ## Built-In Service Defaults
 
-Use these defaults before suggesting third-party alternatives:
+Use these defaults before suggesting third-party alternatives. Do not introduce another provider unless InsForge / Portaly Vibe cannot cover the requested feature, or the user explicitly asks for a replacement.
 
-- InsForge: Google OAuth, Auth session, Postgres data, RLS, Storage, Edge Functions; evaluate InsForge Email, AI, Realtime, or Stripe/payment if the selected product needs those modules.
-- Portaly Vibe: project-scoped MCP, member/subscription state review, member sync, product optimization, payment-state review, and risk alerts.
+- Precedence: Portaly Vibe wins when a workflow can be handled by both InsForge and Portaly Vibe.
+- InsForge: Google OAuth, Auth session, Postgres data, RLS, Storage, Edge Functions; evaluate InsForge Email, AI, Realtime, or other backend capabilities only when Portaly Vibe does not cover the required workflow.
+- Portaly Vibe: project-scoped MCP, member/subscription state review, member sync, product optimization, payment-state review, hosted checkout, subscription lifecycle, referral/discount flows, invitation/waitlist email flows, and risk alerts.
 - Portaly payments: optional and separate from the MCP token. Only enable checkout, subscription plans, callbacks, or invoice task flow after the user explicitly confirms.

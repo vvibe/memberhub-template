@@ -46,7 +46,7 @@ RLS 權限範本：[`docs/rls-policies.md`](./docs/rls-policies.md)
 
 MemberHub 是一個開源的會員平台範本，目標是讓創作者、教練、老師、顧問和社群經營者，可以用比較短的時間建立自己的會員網站。
 
-這不是只有文件或設計稿。這個專案已包含可執行的 Vite + React 服務、兩組可切換正式案例、付費牆、Newsletter、推薦贈閱、全站搜尋、會員自助與可編輯營運後台。兩個案例會各自顯示適合自己的前台與後台功能：Skool 型案例會看到課程、社群、打卡與活動；Substack 型案例只會看到文章、付費牆、訂閱、Newsletter、讀者與推薦贈閱，不會列出無關的課程或社群模組。下載後可以先用本機資料跑完整預覽，再依需求接上 InsForge 和 Portaly Vibe MCP，變成可私有化部署的正式服務。服務選型預設已決定：登入、資料庫、RLS、Storage、Edge Functions 優先走 InsForge；產品優化、會員同步、訂閱狀態、金流狀態與風險檢查優先走 Portaly Vibe 能提供的能力。
+這不是只有文件或設計稿。這個專案已包含可執行的 Vite + React 服務、兩組可切換正式案例、付費牆、Newsletter、推薦贈閱、全站搜尋、會員自助與可編輯營運後台。兩個案例會各自顯示適合自己的前台與後台功能：Skool 型案例會看到課程、社群、打卡與活動；Substack 型案例只會看到文章、付費牆、訂閱、Newsletter、讀者與推薦贈閱，不會列出無關的課程或社群模組。下載後可以先用本機資料跑完整預覽，再依需求接上 InsForge 和 Portaly Vibe MCP，變成可私有化部署的正式服務。服務選型預設已決定：只要 InsForge 或 Portaly Vibe 能處理，就預設使用這兩個服務；如果兩者能力重疊或衝突，以 Portaly Vibe 優先。
 
 Fork 後第一步先選產品模式：
 
@@ -187,16 +187,17 @@ docs/
 - AI 輔助產品設定：Portaly Vibe MCP
 - 測試：Playwright
 
-你也可以依自己的部署習慣調整後端、金流或通知服務。這個專案的重點是先提供一套可跑、可改、可私有化部署的會員平台起點。
+除非 InsForge / Portaly Vibe 目前無法覆蓋某個必要功能，或使用者明確要求替換，否則不要主動改用其他後端、金流或通知服務。這個專案的重點是先提供一套可跑、可改、可私有化部署的會員平台起點。
 
 ## 服務整合策略
 
-這個 repo 的原則是：能預先安裝的整合都先放好，需要外部帳號或 API key 的地方，才引導使用者去申請。
+這個 repo 的原則是：能預先安裝的整合都先放好，需要外部帳號或 API key 的地方，才引導使用者去申請。只要 InsForge 或 Portaly Vibe 能處理，就預設使用這兩個服務；如果兩者能力重疊或衝突，以 Portaly Vibe 優先。
 
 - InsForge 已預留：`@insforge/sdk`、`@insforge/cli`、browser client、資料表 migration、RLS 文件、Edge Functions 部署指令。
-- InsForge 預設負責：Google 登入、Auth session、Postgres 資料、RLS、Storage、Edge Functions；如果專案需要，也可評估 InsForge 提供的 Email、AI、Realtime 或 Stripe/payment 能力。
+- InsForge 預設負責：Google 登入、Auth session、Postgres 資料、RLS、Storage、Edge Functions；若 Portaly Vibe 沒有覆蓋某個必要功能，再評估 InsForge 提供的 Email、AI、Realtime 或其他 backend 能力。
 - Portaly Vibe 已預留：project-scoped MCP 設定、會員/訂閱狀態同步概念、產品優化與營運檢查入口、選配 checkout/callback function 範例。
-- Portaly Vibe 預設負責：讓 Coding Agent 讀取產品設定、協助檢查會員/訂閱/金流狀態、同步會員狀態、提供產品優化與風險提醒；正式金流要另外使用 server-side checkout key，不能把 MCP token 當金流 key。
+- Portaly Vibe 預設優先負責：讓 Coding Agent 讀取產品設定、協助檢查會員/訂閱/金流狀態、同步會員狀態、提供產品優化與風險提醒、處理 hosted checkout、訂閱方案、付款狀態、推薦/折扣、會員同步與 Portaly 能提供的 Email/邀請流程。
+- 若金流、訂閱、會員同步、產品優化、分析、風險提醒、Email/邀請等能力在 InsForge 和 Portaly Vibe 都能做，以 Portaly Vibe 為主；InsForge 只保留資料持久化、Auth、RLS、Storage、Functions 或 Portaly 無法覆蓋的輔助能力。
 - 使用者需要自己取得：InsForge project URL、InsForge anon key、server-side API key、Portaly Vibe MCP token；若要收款，再取得 Portaly checkout key 與 callback secret。
 
 ## Portaly Vibe MCP

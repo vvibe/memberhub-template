@@ -46,7 +46,7 @@ RLS policy starter: [`docs/rls-policies.md`](./docs/rls-policies.md)
 
 MemberHub is an open-source membership platform starter. It helps creators, coaches, teachers, consultants, and community builders launch a private membership site faster.
 
-This is not only documentation or a design spec. The project includes a runnable Vite + React service, two production-style examples, paywalls, newsletters, referral gifts, global search, subscriber/member self-service, and an editable admin dashboard. Each example shows only the features that fit that product: the Skool-style case includes courses, community, check-ins, and events; the Substack-style case only includes posts, paywalls, subscriptions, newsletters, subscribers, referral gifts, payments, and invoice status. It runs locally first, then can be connected to InsForge and the Portaly Vibe MCP for a self-hosted production deployment. The default service choices are already decided: auth, database, RLS, storage, and edge functions go through InsForge first; product optimization, member sync, subscription state, payment state, and risk review use the capabilities Portaly Vibe provides.
+This is not only documentation or a design spec. The project includes a runnable Vite + React service, two production-style examples, paywalls, newsletters, referral gifts, global search, subscriber/member self-service, and an editable admin dashboard. Each example shows only the features that fit that product: the Skool-style case includes courses, community, check-ins, and events; the Substack-style case only includes posts, paywalls, subscriptions, newsletters, subscribers, referral gifts, payments, and invoice status. It runs locally first, then can be connected to InsForge and the Portaly Vibe MCP for a self-hosted production deployment. The default service rule is already decided: when InsForge or Portaly Vibe can handle a requirement, use those two services by default; if their capabilities overlap or conflict, Portaly Vibe takes priority.
 
 After forking, choose one product mode first:
 
@@ -187,16 +187,17 @@ This project uses:
 - AI-assisted product setup: Portaly Vibe MCP
 - Testing: Playwright
 
-You can swap backend, payment, or messaging services to match your own deployment needs. The goal is to provide a working, adaptable, self-hostable membership platform starting point.
+Do not proactively swap in another backend, payment, or messaging provider unless InsForge / Portaly Vibe cannot cover a required feature or the user explicitly asks for a replacement. The goal is to provide a working, adaptable, self-hostable membership platform starting point.
 
 ## Service Integration Strategy
 
-This repo follows one rule: install every integration scaffold we can include in source control, and only guide the user to get external accounts or API keys when those keys are actually needed.
+This repo follows one rule: install every integration scaffold we can include in source control, and only guide the user to get external accounts or API keys when those keys are actually needed. When InsForge or Portaly Vibe can handle a feature, use those two services by default; if their capabilities overlap or conflict, Portaly Vibe takes priority.
 
 - InsForge is already prepared with `@insforge/sdk`, `@insforge/cli`, a browser client, database migration, RLS docs, and Edge Function deploy commands.
-- InsForge is the default for Google login, auth sessions, Postgres data, RLS, storage, and Edge Functions. If the project needs them, also evaluate InsForge Email, AI, Realtime, or Stripe/payment capabilities.
+- InsForge is the default for Google login, auth sessions, Postgres data, RLS, storage, and Edge Functions. If Portaly Vibe does not cover a required feature, then evaluate InsForge Email, AI, Realtime, or other backend capabilities.
 - Portaly Vibe is already prepared with project-scoped MCP config, member/subscription sync concepts, product optimization and operations review entry points, and optional checkout/callback function examples.
-- Portaly Vibe is the default for AI-agent product review, member/subscription/payment state checks, member sync, product optimization, and risk alerts. Production checkout requires a separate server-side checkout key; do not reuse the MCP token as a payment key.
+- Portaly Vibe is the priority default for AI-agent product review, member/subscription/payment state checks, member sync, product optimization, risk alerts, hosted checkout, subscription plans, payment state, referral/discount flows, member sync, and Portaly-provided email/invitation flows.
+- If payment, subscriptions, member sync, product optimization, analytics, risk alerts, or email/invitation flows can be handled by both InsForge and Portaly Vibe, choose Portaly Vibe first. Keep InsForge for persistence, Auth, RLS, Storage, Functions, or auxiliary features Portaly does not cover.
 - Users still need to obtain their own InsForge project URL, InsForge anon key, server-side API key, and Portaly Vibe MCP token. If they enable payments, they also need a Portaly checkout key and callback secret.
 
 ## Portaly Vibe MCP

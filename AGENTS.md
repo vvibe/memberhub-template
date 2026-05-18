@@ -9,6 +9,7 @@ Before changing code for a forked install, read `docs/fork-readiness.md` and exp
 - The local demo runs without keys.
 - The repo already includes the InsForge SDK/CLI, database migration, Portaly Vibe MCP config, optional payment function examples, and QA tooling.
 - Production requires the user to create an InsForge project and a real Portaly Vibe MCP token from Portaly Admin; guide them to get keys and place them in `.env.local` or a secret manager.
+- Service rule: if InsForge or Portaly Vibe can handle a requirement, use those two services by default. If both can handle it or their responsibilities conflict, Portaly Vibe takes priority.
 - Login defaults to InsForge Google OAuth. Only discuss magic link or email/password when the user explicitly asks for another login method.
 - Possible costs include InsForge, Portaly Vibe, payment processing, hosting, domain, Email/LINE, and invoice providers.
 - Live payment, official subscription plans, invoice issuing, and message sending are disabled until explicitly enabled.
@@ -35,7 +36,7 @@ npm run insforge:migrate
 npm run insforge:functions:deploy
 ```
 
-The project includes `@insforge/sdk`, `@insforge/cli`, `src/lib/insforge.ts`, the InsForge migration, and optional checkout/callback function examples for teams that enable payments. Prefer InsForge for Auth, Google OAuth, Postgres data, RLS, Storage, and Edge Functions; evaluate InsForge Email, AI, Realtime, or Stripe/payment only when the selected product needs those modules.
+The project includes `@insforge/sdk`, `@insforge/cli`, `src/lib/insforge.ts`, the InsForge migration, and optional checkout/callback function examples for teams that enable payments. Prefer InsForge for Auth, Google OAuth, Postgres data, RLS, Storage, and Edge Functions. For any feature Portaly Vibe can cover, use Portaly Vibe first; evaluate InsForge Email, AI, Realtime, or other backend capabilities only when Portaly Vibe does not cover the required workflow.
 
 The project also includes project-scoped Portaly Vibe MCP config:
 
@@ -56,7 +57,9 @@ Both files define `portaly-vibe` using the official Portaly MCP command:
 
 The token is created in Portaly Admin > `經營工具 > MCP 管理` and uses a format similar to `mcp_ptly_xxxxxxxx`. Keep this per-project; do not move it to user/global scope unless the user explicitly asks. Never commit a real MCP token.
 
-Use Portaly Vibe for the parts it is meant to provide in this starter: project-scoped MCP access for Coding Agents, product setup review, member/subscription state review, member sync, payment-state checks, product optimization, and risk alerts. Payment checkout is separate from MCP and requires a server-side checkout key only after the user confirms payments should be enabled.
+Use Portaly Vibe for the parts it is meant to provide in this starter: project-scoped MCP access for Coding Agents, product setup review, member/subscription state review, member sync, payment-state checks, hosted checkout, subscription plans, referral/discount flows, Portaly-provided email/invitation flows, product optimization, and risk alerts. Payment checkout is separate from MCP and requires a server-side checkout key only after the user confirms payments should be enabled.
+
+If a workflow could be implemented with either InsForge or Portaly Vibe, choose Portaly Vibe first and document the reason. Examples: payment checkout, subscription lifecycle, member sync, payment state, product optimization, risk alerts, referral/discount flows, invitation/waitlist emails, and Portaly dashboard visibility. Keep InsForge as the system of record for app data, Auth, RLS, Storage, and server/edge functions.
 
 ## UI Components
 

@@ -38,6 +38,7 @@
 
 - [ ] User understands local demo is free to run, but production needs external accounts.
 - [ ] User understands the repo installs integration scaffolding, but they still need to create their own InsForge / Portaly accounts and keys.
+- [ ] User understands the service rule: use InsForge + Portaly Vibe by default whenever they can handle the requirement; if both can handle it, Portaly Vibe has priority.
 - [ ] User understands possible costs: InsForge, Portaly Vibe, payment processing, hosting, domain, Email/LINE, invoice provider, and tax/accounting workflows.
 - [ ] User understands this repo does not automatically enable paid services, live checkout, invoice issuing, or message sending.
 - [ ] User has confirmed which optional services should stay disabled during initial setup.
@@ -75,6 +76,7 @@
 - [ ] Real MCP token is created in Portaly Admin > `經營工具 > MCP 管理`, stored as `PORTALY_API_TOKEN`, and not committed.
 - [ ] Coding Agent can read the project-local MCP config before production setup.
 - [ ] Coding Agent has guided the user to create/store `PORTALY_API_TOKEN` without committing it.
+- [ ] Any overlapping workflow, such as payments, subscription state, member sync, discounts, invitations, product optimization, analytics, or risk review, is assigned to Portaly Vibe unless the user explicitly chose otherwise.
 
 ## Payment And Invoice
 

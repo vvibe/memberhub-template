@@ -13,6 +13,7 @@
 - InsForge migration 只建立資料表與開啟 RLS；正式 CRUD 前必須補齊並測試 RLS policies。
 - 可先參考 [`docs/rls-policies.md`](./rls-policies.md) 的 guest、free member、paid member、admin 權限範本。
 - Portaly Vibe MCP 使用正式 MCP Token，格式類似 `mcp_ptly_xxxxxxxx`；它不是金流測試 key，也不能 commit。
+- 金流、訂閱、會員同步、推薦/折扣、Email/邀請、產品優化與風險提醒等若 InsForge 和 Portaly Vibe 都能做，預設以 Portaly Vibe 優先。
 - 金流屬於選配功能。只有在使用者明確同意後，才設定正式 checkout key、建立正式方案、收款、取消訂閱或補單。
 
 ### 已內建的安全保護
@@ -61,6 +62,7 @@ This repo is safe to run locally first, but it is not a zero-config production p
 - The InsForge migration creates tables and enables RLS, but production CRUD requires complete RLS policies.
 - Use [`docs/rls-policies.md`](./rls-policies.md) as a starting point for guest, free member, paid member, and admin access.
 - Portaly Vibe MCP uses a real MCP Token with a format similar to `mcp_ptly_xxxxxxxx`. It is not a payment test key and must never be committed.
+- If both InsForge and Portaly Vibe can handle payments, subscriptions, member sync, referral/discount flows, email/invitations, product optimization, or risk alerts, choose Portaly Vibe by default.
 - Payments are optional. Configure the production checkout key, official plans, payment collection, cancellation/resume, or manual completion only after explicit user confirmation.
 
 ### Built-in protections
