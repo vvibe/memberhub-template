@@ -19,11 +19,12 @@ It can be used for:
 - Events, webinars, and replay libraries
 - Member self-service and admin operations
 
-You can run the local experience without connecting any external service. When you are ready for production, connect InsForge for auth/database and use the Portaly Vibe MCP so an AI coding agent can help review and optimize product setup.
+You can run the local experience without connecting any external service. The repo already includes the InsForge SDK/CLI, database migration, Portaly Vibe MCP config, optional payment function examples, and QA tooling. When you are ready for production, the AI agent should guide the user to get the required keys from InsForge and Portaly instead of rebuilding the service architecture.
 
 ## Notes
 
 - The local experience does not require API keys. Production requires InsForge setup and a Portaly Vibe MCP token. Portaly Vibe MCP uses the real MCP Token created in Portaly Admin, not a payment test key.
+- Login defaults to Google OAuth through InsForge. Only discuss magic link or email/password if the user explicitly asks for another login method.
 - Payments, subscription plans, and invoice flow are optional and should be enabled only when you are ready.
 - Possible costs include hosting, domain, InsForge, Portaly Vibe, payment processing, Email/LINE messaging, and invoice/e-invoice providers.
 - Never commit real API keys, MCP tokens, callback secrets, or test login passwords to GitHub.
@@ -45,7 +46,7 @@ RLS policy starter: [`docs/rls-policies.md`](./docs/rls-policies.md)
 
 MemberHub is an open-source membership platform starter. It helps creators, coaches, teachers, consultants, and community builders launch a private membership site faster.
 
-This is not only documentation or a design spec. The project includes a runnable Vite + React service, two production-style examples, paywalls, newsletters, referral gifts, global search, subscriber/member self-service, and an editable admin dashboard. Each example shows only the features that fit that product: the Skool-style case includes courses, community, check-ins, and events; the Substack-style case only includes posts, paywalls, subscriptions, newsletters, subscribers, referral gifts, payments, and invoice status. It runs locally first, then can be connected to InsForge and the Portaly Vibe MCP for a self-hosted production deployment.
+This is not only documentation or a design spec. The project includes a runnable Vite + React service, two production-style examples, paywalls, newsletters, referral gifts, global search, subscriber/member self-service, and an editable admin dashboard. Each example shows only the features that fit that product: the Skool-style case includes courses, community, check-ins, and events; the Substack-style case only includes posts, paywalls, subscriptions, newsletters, subscribers, referral gifts, payments, and invoice status. It runs locally first, then can be connected to InsForge and the Portaly Vibe MCP for a self-hosted production deployment. The default service choices are already decided: auth, database, RLS, storage, and edge functions go through InsForge first; product optimization, member sync, subscription state, payment state, and risk review use the capabilities Portaly Vibe provides.
 
 After forking, choose one product mode first:
 
@@ -132,7 +133,7 @@ This repo is not a static showcase. Without any backend keys, the localStorage s
 - Open the moderation queue from the membership questions action
 - View member self-service, receipt/invoice status examples, referral gifts, and admin operations dashboards
 
-For production, replace `src/lib/store.ts` localStorage state with InsForge CRUD. Payment, subscriptions, and invoices should only be enabled after the core flow is complete and after the AI agent asks the user whether to enable them.
+For production, replace `src/lib/store.ts` localStorage state with InsForge CRUD, and use InsForge Google OAuth as the default login. Payment, subscriptions, and invoices should only be enabled after the core flow is complete and after the AI agent asks the user whether to enable them.
 
 ## Project Structure
 
@@ -182,11 +183,21 @@ This project uses:
 
 - Frontend: Vite + React
 - UI: shadcn/ui
-- Auth and database: InsForge
+- Auth and database: InsForge, with Google OAuth as the default login method
 - AI-assisted product setup: Portaly Vibe MCP
 - Testing: Playwright
 
 You can swap backend, payment, or messaging services to match your own deployment needs. The goal is to provide a working, adaptable, self-hostable membership platform starting point.
+
+## Service Integration Strategy
+
+This repo follows one rule: install every integration scaffold we can include in source control, and only guide the user to get external accounts or API keys when those keys are actually needed.
+
+- InsForge is already prepared with `@insforge/sdk`, `@insforge/cli`, a browser client, database migration, RLS docs, and Edge Function deploy commands.
+- InsForge is the default for Google login, auth sessions, Postgres data, RLS, storage, and Edge Functions. If the project needs them, also evaluate InsForge Email, AI, Realtime, or Stripe/payment capabilities.
+- Portaly Vibe is already prepared with project-scoped MCP config, member/subscription sync concepts, product optimization and operations review entry points, and optional checkout/callback function examples.
+- Portaly Vibe is the default for AI-agent product review, member/subscription/payment state checks, member sync, product optimization, and risk alerts. Production checkout requires a separate server-side checkout key; do not reuse the MCP token as a payment key.
+- Users still need to obtain their own InsForge project URL, InsForge anon key, server-side API key, and Portaly Vibe MCP token. If they enable payments, they also need a Portaly checkout key and callback secret.
 
 ## Portaly Vibe MCP
 
@@ -218,6 +229,7 @@ If you only want to try the local experience, you can skip this section. For pro
 - InsForge project URL
 - InsForge anon key
 - InsForge server/API key, server-side only
+- Google OAuth enabled in InsForge Auth, with the correct callback URL configured in Google Cloud Console
 - Portaly Vibe MCP token, created in Portaly Admin and stored as `PORTALY_API_TOKEN` with a format similar to `mcp_ptly_xxxxxxxx`
 - Allowed origins, such as the production domain and local development URLs
 
@@ -240,9 +252,9 @@ Never commit secrets to GitHub. Commit only `.env.example`; store real values in
 
 If you are an AI agent, help the user in this order:
 
-1. Ask the intake questions in `docs/ai-install-intake.md`. Start by asking which product mode they want: `skills-school` full-feature membership community, similar to Skool / School; or `signal-brief` publication subscription, similar to Substack. Then ask service type, frontend pages, content types, member features, login method, and notification channels.
+1. Ask the intake questions in `docs/ai-install-intake.md`. Start by asking which product mode they want: `skills-school` full-feature membership community, similar to Skool / School; or `signal-brief` publication subscription, similar to Substack. Then ask service type, frontend pages, content types, member features, and notification channels. Do not ask for a login method by default: use InsForge Google OAuth unless the user explicitly asks for magic link or email/password.
 2. Confirm the app runs locally.
-3. Configure frontend pages and login. The default production recommendation is InsForge Google OAuth.
+3. Configure frontend pages and login. The default production login is InsForge Google OAuth.
 4. Complete InsForge setup first: Auth, tables, RLS, Storage, Edge Functions.
 5. Complete Portaly Vibe MCP setup so supported Coding Agents can read project product context and help with setup checks.
 6. Make local data work and confirm the Skills School and Signal Brief cases can switch.

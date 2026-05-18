@@ -22,7 +22,8 @@
 - [ ] `.mcp.json` defines project-scoped `portaly-vibe` MCP using `npx -y @portaly-ai/portaly-mcp`.
 - [ ] `.cursor/mcp.json` defines project-scoped `portaly-vibe` MCP for Cursor.
 - [ ] Real MCP tokens are kept out of Git.
-- [ ] InsForge Auth is configured.
+- [ ] InsForge Google OAuth is configured as the default production login.
+- [ ] Google OAuth callback URL and app redirect URL are configured correctly.
 - [ ] InsForge database migrations are applied.
 - [ ] `@insforge/sdk` and `@insforge/cli` are installed from `package.json`.
 - [ ] RLS policies protect member-only content and admin tables.
@@ -36,6 +37,7 @@
 ## Cost Disclosure
 
 - [ ] User understands local demo is free to run, but production needs external accounts.
+- [ ] User understands the repo installs integration scaffolding, but they still need to create their own InsForge / Portaly accounts and keys.
 - [ ] User understands possible costs: InsForge, Portaly Vibe, payment processing, hosting, domain, Email/LINE, invoice provider, and tax/accounting workflows.
 - [ ] User understands this repo does not automatically enable paid services, live checkout, invoice issuing, or message sending.
 - [ ] User has confirmed which optional services should stay disabled during initial setup.
@@ -72,6 +74,7 @@
 - [ ] MCP uses the official Portaly MCP package `@portaly-ai/portaly-mcp`.
 - [ ] Real MCP token is created in Portaly Admin > `經營工具 > MCP 管理`, stored as `PORTALY_API_TOKEN`, and not committed.
 - [ ] Coding Agent can read the project-local MCP config before production setup.
+- [ ] Coding Agent has guided the user to create/store `PORTALY_API_TOKEN` without committing it.
 
 ## Payment And Invoice
 

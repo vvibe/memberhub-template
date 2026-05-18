@@ -8,7 +8,7 @@
 
 - 不要把真實 API key、MCP token、callback secret、測試登入密碼 commit 到 GitHub。
 - 把真實值放在 `.env.local` 或部署平台 secret manager。
-- Production 不要長期使用內建測試登入；請改接 InsForge Auth，建議 Google OAuth 或 magic link。
+- Production 不要長期使用內建測試登入；請改接 InsForge Auth，預設使用 Google OAuth。
 - localStorage 只適合本機預覽，不適合保存正式會員、付款、發票或個資資料。
 - InsForge migration 只建立資料表與開啟 RLS；正式 CRUD 前必須補齊並測試 RLS policies。
 - 可先參考 [`docs/rls-policies.md`](./rls-policies.md) 的 guest、free member、paid member、admin 權限範本。
@@ -46,7 +46,7 @@
 | RLS policies 未補齊 | 資料庫會擋住前端查詢，或錯誤開放資料 | 依角色逐條測試 policy |
 | 真 key commit 到 GitHub | MCP、金流、資料庫可能被濫用 | 立即 rotate key，清除 Git history 或換 repo |
 | 未確認就正式收款 | 錯誤方案、退款、發票與稅務問題 | 建立方案、收款、取消訂閱或補單前都要再次確認 |
-| 測試登入當正式登入 | 沒有完整註冊、密碼重設、風控、角色管理 | 改用 InsForge Auth |
+| 測試登入當正式登入 | 沒有完整註冊、OAuth session、風控、角色管理 | 改用 InsForge Google OAuth |
 
 ## English
 
@@ -56,7 +56,7 @@ This repo is safe to run locally first, but it is not a zero-config production p
 
 - Never commit real API keys, MCP tokens, callback secrets, or test login passwords.
 - Store real values in `.env.local` or a deployment secret manager.
-- Do not keep the built-in test login as the long-term production auth system. Use InsForge Auth, preferably Google OAuth or magic link.
+- Do not keep the built-in test login as the long-term production auth system. Use InsForge Auth with Google OAuth by default.
 - localStorage is only for preview data, not production members, payments, invoices, or personal data.
 - The InsForge migration creates tables and enables RLS, but production CRUD requires complete RLS policies.
 - Use [`docs/rls-policies.md`](./rls-policies.md) as a starting point for guest, free member, paid member, and admin access.
@@ -82,5 +82,5 @@ This repo is safe to run locally first, but it is not a zero-config production p
 4. Verify webhook requests require Portaly signatures.
 5. Add and test InsForge RLS policies for guest, free member, paid member, and admin roles.
 6. Replace localStorage state with InsForge CRUD or your own backend.
-7. Keep built-in test login for reference/staging only.
+7. Keep built-in test login for reference/staging only; production login should use InsForge Google OAuth by default.
 8. Run `npm run check:integrations`, `npm run build`, and `npm run test:qa` before launch.

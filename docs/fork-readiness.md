@@ -8,12 +8,14 @@
 - 內建兩組正式案例：Skills School AI Skill 實作社群與 Signal Brief 內容訂閱站。
 - Fork 時應先選產品模式：`skills-school` 是全功能會員社群，類 Skool / School；`signal-brief` 是出版訂閱通訊，類 Substack。
 - 可以先用 localStorage 驗證產品流程，再把資料層換成 InsForge。
-- 已包含 Portaly Vibe MCP 專案設定、InsForge migration、選配金流 function 範例、Playwright QA。
+- 已包含 InsForge SDK/CLI、InsForge migration、Portaly Vibe MCP 專案設定、選配金流 function 範例、Playwright QA。
+- 正式登入預設使用 InsForge Google OAuth；只有特殊需求才改 magic link 或 email/password。
 
 ### Fork 後需要先準備什麼
 
 - Node `^22.13.0 || ^20.12.0`。
 - 正式部署需要 InsForge 專案與 Portaly Vibe MCP token。Portaly Vibe MCP token 是從 Portaly 後台 `經營工具 > MCP 管理` 建立的正式 MCP Token，格式類似 `mcp_ptly_xxxxxxxx`。
+- 使用者需要自己建立 InsForge / Portaly 帳號並取得 key；專案負責預先安裝整合骨架，AI Agent 負責引導使用者把 key 放進 `.env.local` 或 secret manager。
 - 如果要讓 Coding Agent 使用 Portaly Vibe MCP，請把 `PORTALY_API_TOKEN` 放在本機設定或 secret manager，不要放到 GitHub。
 - 如果要通知會員，需準備 Email provider 或 LINE Messaging API。
 - 如果要正式開立發票，需準備 Portaly、發票服務商或既有商家發票系統。
@@ -26,7 +28,7 @@
 - 不會自動寄送 Email 或 LINE 訊息。
 - 不會自動把 localStorage 資料變成 production database。
 
-AI Agent 必須先完成本機體驗、前台、登入、InsForge、Portaly Vibe MCP 設定，再詢問：
+AI Agent 必須先完成本機體驗、前台、InsForge Google 登入、InsForge、Portaly Vibe MCP 設定，再詢問：
 
 ```text
 是否需要啟用金流、訂閱方案與發票流程？
@@ -76,6 +78,7 @@ npm run test:qa
 Production 前再做：
 
 - 建立 InsForge project。
+- 啟用 InsForge Google OAuth provider，並設定 Google OAuth callback 與 app redirect URL。
 - 套用 `migrations/20260511210000_memberhub.sql`。
 - 補齊並測試 RLS policies。
 - 需要金流時，再部署選配的 checkout/callback functions。
@@ -86,7 +89,7 @@ Production 前再做：
 ### 常見卡關
 
 - 沒有 key 不能上 production：本機體驗可免 key；production 必須先申請 InsForge 與 Portaly。
-- 登入無法使用：先確認 InsForge Auth provider、redirect URL、allowed domain。
+- 登入無法使用：先確認 InsForge Google OAuth provider、Google callback URL、app redirect URL、allowed domain。
 - 金流呼叫被擋：檢查 `ALLOWED_ORIGINS` 是否包含目前前端網域。
 - 付款 callback 失敗：檢查 `PORTALY_CALLBACK_SECRET`、timestamp、signature 與 callback URL。
 - 會員看不到付費內容：檢查 membership 狀態、content paywall 設定與 RLS policy。
@@ -99,12 +102,14 @@ Production 前再做：
 - The local experience runs without keys and includes login, content, paywalls, course progress, community, check-ins, newsletters, member self-service, and admin operations.
 - Two production-style product modes can be adapted quickly: `skills-school` for a full-feature membership community, similar to Skool / School; and `signal-brief` for a publication subscription site, similar to Substack.
 - You can validate product flows with localStorage first, then replace the data layer with InsForge.
-- The repo includes project-scoped Portaly Vibe MCP config, an InsForge migration, optional payment function examples, and Playwright QA.
+- The repo includes the InsForge SDK/CLI, an InsForge migration, project-scoped Portaly Vibe MCP config, optional payment function examples, and Playwright QA.
+- Production login defaults to InsForge Google OAuth. Only switch to magic link or email/password if the user explicitly asks for it.
 
 ### What you need before production
 
 - Node `^22.13.0 || ^20.12.0`.
 - An InsForge project and Portaly Vibe account/key.
+- Users create their own InsForge / Portaly accounts and keys; this repo ships the integration scaffold, and the AI Agent guides them to put keys in `.env.local` or a secret manager.
 - A real Portaly MCP token from Portaly Admin > `經營工具 > MCP 管理`, stored as `PORTALY_API_TOKEN`, if your Coding Agent should connect to Portaly Vibe MCP.
 - An email provider or LINE Messaging API if member notifications are enabled.
 - Portaly, an invoice provider, or an existing merchant invoice system if official invoices are required.
@@ -117,7 +122,7 @@ Production 前再做：
 - Email or LINE sending.
 - Production database persistence for localStorage data.
 
-The AI agent must finish the local experience, frontend, login, InsForge, and Portaly Vibe MCP setup first, then ask whether to enable payments, subscription plans, and invoice flow.
+The AI agent must finish the local experience, frontend, InsForge Google login, InsForge, and Portaly Vibe MCP setup first, then ask whether to enable payments, subscription plans, and invoice flow.
 
 ### Possible costs
 
@@ -161,6 +166,7 @@ npm run test:qa
 Before production:
 
 - Create an InsForge project.
+- Enable InsForge Google OAuth and configure the Google OAuth callback plus app redirect URL.
 - Apply `migrations/20260511210000_memberhub.sql`.
 - Complete and test RLS policies.
 - If payments are needed, deploy the optional checkout/callback functions.
