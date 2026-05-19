@@ -26,6 +26,7 @@ export type ContentItem = {
   limitedFreeUntil?: string
   minutes: number
   source: string
+  requiredLevel?: number
 }
 
 export type NewsletterIssue = {
@@ -68,6 +69,38 @@ export type Course = {
   accessMode?: CourseAccessMode
   published?: boolean
   coverLabel?: string
+  requiredLevel?: number
+}
+
+export type LevelPointRule = {
+  id: string
+  label: string
+  action: 'post' | 'comment' | 'lesson-complete' | 'challenge-checkin' | 'live-attend' | 'resource-submit'
+  points: number
+  enabled: boolean
+}
+
+export type LevelDefinition = {
+  level: number
+  name: string
+  pointsRequired: number
+  memberPercent: number
+  unlocks: string[]
+  permissions: string[]
+}
+
+export type LevelAccessBinding = {
+  id: string
+  feature: 'article' | 'course' | 'community' | 'event' | 'resource'
+  title: string
+  requiredLevel: number
+  benefit: string
+}
+
+export type LevelSystem = {
+  rules: LevelPointRule[]
+  levels: LevelDefinition[]
+  bindings: LevelAccessBinding[]
 }
 
 export type Thread = {
@@ -181,6 +214,7 @@ export type VerticalPreset = {
   referrals: ReferralCampaign[]
   moderation: ModerationItem[]
   notifications: NotificationItem[]
+  levelSystem?: LevelSystem
   metrics: {
     mrr: string
     activeMembers: number

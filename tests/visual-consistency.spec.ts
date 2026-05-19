@@ -81,6 +81,10 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   await expect(page.getByText(/新會員/).first()).toBeVisible()
   await page.getByRole('button', { name: /入會問題/ }).click()
   await expect(page.getByText('Skills School AI Skill 實作社群 設定', { exact: true })).toBeVisible()
+  await page.getByLabel('Skills School 管理分頁').getByRole('button', { name: '會員' }).click()
+  await expect(page.getByText('會員等級與權限')).toBeVisible()
+  await page.getByLabel('發表一篇 Skill 進度貼文 點數').fill('15')
+  await expect(page.getByLabel('發表一篇 Skill 進度貼文 點數')).toHaveValue('15')
 
   await openNav(page, '課程')
   await expect(page.getByLabel('新增課程')).toBeVisible()
@@ -140,6 +144,8 @@ test('visitor, member, and admin states show different screens in both reference
   await openNav(page, '課程')
   await expect(page.getByRole('button', { name: /完成第一版 Skill SOP/ }).first()).not.toBeDisabled()
   await openNav(page, '打卡')
+  await expect(page.getByText('Level 2 · Skill 練習生').first()).toBeVisible()
+  await expect(page.getByText('網站功能權限綁定')).toHaveCount(0)
   await page.getByRole('button', { name: '完成打卡' }).first().click()
   await expect(page.getByRole('button', { name: '今日已打卡' }).first()).toBeVisible()
 

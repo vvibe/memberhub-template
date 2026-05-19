@@ -41,7 +41,7 @@ import { getPreset, presets } from './data/presets'
 import { createCheckoutSessionPreview, portalyIntegrationNotes } from './lib/portaly'
 import { richTextBlocks, richTextPlainText } from './lib/rich-text'
 import { createPaymentEvent, loadState, presetLabel, resetState, roleLabel, saveState } from './lib/store'
-import type { AppState, ContentItem, Course, CourseAccessMode, Member, ModerationItem, NewsletterIssue, Plan, PresetId, ReferralCampaign, Role, VerticalPreset, ViewId } from './types'
+import type { AppState, ContentItem, Course, CourseAccessMode, LevelAccessBinding, LevelDefinition, LevelPointRule, LevelSystem, Member, ModerationItem, NewsletterIssue, Plan, PresetId, ReferralCampaign, Role, VerticalPreset, ViewId } from './types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -465,6 +465,60 @@ function courseAccessLabel(access: CourseAccessMode = 'open') {
   return courseAccessOptions.find((option) => option.id === access)?.label ?? '公開'
 }
 
+const fallbackLevelSystem: LevelSystem = {
+  rules: [
+    { id: 'fallback-rule-post', label: '發表內容', action: 'post', points: 10, enabled: true },
+    { id: 'fallback-rule-comment', label: '回覆討論', action: 'comment', points: 3, enabled: true },
+    { id: 'fallback-rule-lesson', label: '完成課程', action: 'lesson-complete', points: 15, enabled: true },
+  ],
+  levels: [
+    { level: 1, name: '入門會員', pointsRequired: 0, memberPercent: 100, unlocks: ['公開內容'], permissions: ['public-content'] },
+    { level: 2, name: '進階會員', pointsRequired: 300, memberPercent: 0, unlocks: ['會員內容'], permissions: ['member-content'] },
+  ],
+  bindings: [],
+}
+
+function getLevelSystem(preset: Pick<VerticalPreset, 'levelSystem'>) {
+  return preset.levelSystem ?? fallbackLevelSystem
+}
+
+function levelForPoints(levelSystem: LevelSystem, points: number) {
+  return levelSystem.levels
+    .slice()
+    .sort((a, b) => b.pointsRequired - a.pointsRequired)
+    .find((level) => points >= level.pointsRequired) ?? levelSystem.levels[0]
+}
+
+function nextLevelForPoints(levelSystem: LevelSystem, points: number) {
+  return levelSystem.levels
+    .slice()
+    .sort((a, b) => a.pointsRequired - b.pointsRequired)
+    .find((level) => level.pointsRequired > points)
+}
+
+function pointRuleLabel(action: LevelPointRule['action']) {
+  const labels: Record<LevelPointRule['action'], string> = {
+    post: '發文',
+    comment: '回文',
+    'lesson-complete': '上課',
+    'challenge-checkin': '打卡',
+    'live-attend': '直播',
+    'resource-submit': '交作業',
+  }
+  return labels[action]
+}
+
+function featureBindingLabel(feature: LevelAccessBinding['feature']) {
+  const labels: Record<LevelAccessBinding['feature'], string> = {
+    article: '文章',
+    course: '課程',
+    community: '社群',
+    event: '活動',
+    resource: '資源',
+  }
+  return labels[feature]
+}
+
 function roleDisplayLabel(role: string) {
   const labels: Record<string, string> = {
     member: '會員',
@@ -636,7 +690,12 @@ function App() {
   )
   const selectedPlan = runtimePreset.plans.find((plan) => plan.id === state.selectedPlanId) ?? runtimePreset.plans[0]
   const currentMember = runtimePreset.members[0]
-  const activeLevel = state.role === 'visitor' ? 0 : currentMember.level
+  const levelSystem = getLevelSystem(runtimePreset)
+  const checkedInPoints = runtimePreset.challenges
+    .filter((challenge) => state.checkedInChallenges.includes(challenge.id))
+    .reduce((total, challenge) => total + challenge.points, 0)
+  const activePoints = state.role === 'visitor' ? 0 : currentMember.points + checkedInPoints
+  const activeLevel = state.role === 'visitor' ? 0 : levelForPoints(levelSystem, activePoints).level
   const hasPaidAccess = state.role === 'admin' || state.selectedPlanId !== 'free'
   const visibleNavItems = useMemo(
     () => {
@@ -646,9 +705,9 @@ function App() {
 
       if (formalSkillsAuth) {
         const formalViews: ViewId[] = state.role === 'admin'
-          ? ['community', 'courses', 'events', 'members', 'content', 'admin']
+          ? ['community', 'courses', 'challenges', 'events', 'members', 'content', 'admin']
           : state.role === 'member'
-            ? ['home', 'blog', 'courses', 'community', 'content', 'join', 'member']
+            ? ['home', 'blog', 'courses', 'community', 'challenges', 'content', 'join', 'member']
             : ['home', 'blog', 'courses', 'community', 'content', 'join', 'login']
         return formalViews
           .map((id) => navItems.find((item) => item.id === id))
@@ -997,6 +1056,7 @@ function App() {
           <ContentView
             preset={runtimePreset}
             items={visibleContent}
+            level={activeLevel}
             query={query}
             onQuery={setQuery}
             hasPaidAccess={hasPaidAccess}
@@ -1029,6 +1089,8 @@ function App() {
           <ChallengesView
             preset={runtimePreset}
             role={state.role}
+            currentMember={currentMember}
+            activePoints={activePoints}
             checkedInChallenges={state.checkedInChallenges}
             onCheckIn={(challengeId) =>
               updateState({
@@ -1334,6 +1396,7 @@ function SignalBriefStandalone({
           <ContentView
             preset={preset}
             items={visibleContent}
+            level={99}
             query={query}
             onQuery={onQuery}
             hasPaidAccess={hasPaidAccess}
@@ -1890,6 +1953,7 @@ function JoinView({
 function ContentView({
   preset,
   items,
+  level,
   query,
   onQuery,
   hasPaidAccess,
@@ -1899,6 +1963,7 @@ function ContentView({
 }: {
   preset: ReturnType<typeof getPreset>
   items: ContentItem[]
+  level: number
   query: string
   onQuery: (value: string) => void
   hasPaidAccess: boolean
@@ -1915,6 +1980,7 @@ function ContentView({
     body: '',
     isPaid: false,
     paywallAfterParagraph: 1,
+    requiredLevel: 1,
   })
 
   const draftBodyText = richTextPlainText(draft.body)
@@ -1932,6 +1998,7 @@ function ContentView({
       body: draft.body.trim(),
       isPaid: draft.isPaid,
       paywallAfterParagraph: draft.isPaid ? draft.paywallAfterParagraph : undefined,
+      requiredLevel: draft.requiredLevel > 1 ? draft.requiredLevel : undefined,
     })
     setDraft({
       title: '',
@@ -1941,6 +2008,7 @@ function ContentView({
       body: '',
       isPaid: false,
       paywallAfterParagraph: 1,
+      requiredLevel: 1,
     })
   }
 
@@ -2000,6 +2068,17 @@ function ContentView({
                 />
               </label>
             )}
+            {!isPublication && (
+              <label>
+                需要等級
+                <Input
+                  type="number"
+                  min={1}
+                  value={draft.requiredLevel}
+                  onChange={(event) => updateDraft({ requiredLevel: Math.max(1, Number(event.target.value) || 1) })}
+                />
+              </label>
+            )}
           </div>
           <label className="editor-field">
             摘要
@@ -2023,19 +2102,22 @@ function ContentView({
 
       <div className="content-list">
         {items.map((item) => {
-          const locked = item.isPaid && !hasPaidAccess
+          const paidLocked = item.isPaid && !hasPaidAccess
+          const levelLocked = item.requiredLevel != null && level < item.requiredLevel
+          const locked = paidLocked || levelLocked
           return (
             <article key={item.id} className="content-row">
               <div>
-              <Badge variant="outline" className="pill">{contentTypeLabel(item.type)}</Badge>
+                <Badge variant="outline" className="pill">{contentTypeLabel(item.type)}</Badge>
+                {item.requiredLevel && <Badge variant="outline" className="pill">Level {item.requiredLevel}</Badge>}
                 <h4>{item.title}</h4>
                 <p>{item.excerpt}</p>
                 <small>{item.category} · {item.minutes} 分鐘 · {sourceLabel(item.source)}</small>
               </div>
               {locked ? (
-                <Button className="lock-button" onClick={onCheckout}><Lock data-icon="inline-start" />升級解鎖</Button>
+                <Button className="lock-button" onClick={onCheckout}><Lock data-icon="inline-start" />{levelLocked ? `Level ${item.requiredLevel} 解鎖` : '升級解鎖'}</Button>
               ) : (
-              <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span>
+                <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span>
               )}
             </article>
           )
@@ -2283,6 +2365,7 @@ function CoursesView({
   const [courseName, setCourseName] = useState('')
   const [courseDescription, setCourseDescription] = useState('')
   const [courseAccessMode, setCourseAccessMode] = useState<CourseAccessMode>('open')
+  const [courseRequiredLevel, setCourseRequiredLevel] = useState(1)
   const [coursePublished, setCoursePublished] = useState(true)
   const nameLength = courseName.trim().length
   const descriptionLength = courseDescription.trim().length
@@ -2297,12 +2380,14 @@ function CoursesView({
       lessons: [],
       accessMode: courseAccessMode,
       published: coursePublished,
+      requiredLevel: courseAccessMode === 'level-unlock' || courseAccessMode === 'private' ? courseRequiredLevel : undefined,
       coverLabel: '1460 x 752 px',
     }
     onUpdatePreset({ courses: [nextCourse, ...preset.courses] })
     setCourseName('')
     setCourseDescription('')
     setCourseAccessMode('open')
+    setCourseRequiredLevel(1)
     setCoursePublished(true)
   }
   return (
@@ -2362,6 +2447,23 @@ function CoursesView({
               </button>
             ))}
           </div>
+          {(courseAccessMode === 'level-unlock' || courseAccessMode === 'private') && (
+            <div className="course-builder-fields compact-fields">
+              <label>
+                解鎖等級
+                <Input
+                  type="number"
+                  min={1}
+                  value={courseRequiredLevel}
+                  onChange={(event) => setCourseRequiredLevel(Math.max(1, Number(event.target.value) || 1))}
+                  aria-label="課程解鎖等級"
+                />
+              </label>
+              <small className="settings-helper">
+                學員達到這個等級後，才會看到課程完整內容與可操作的課程任務。
+              </small>
+            </div>
+          )}
           <div className="course-cover-row">
             <div className="course-cover-upload">上傳封面</div>
             <div>
@@ -2384,6 +2486,7 @@ function CoursesView({
                   setCourseName('')
                   setCourseDescription('')
                   setCourseAccessMode('open')
+                  setCourseRequiredLevel(1)
                   setCoursePublished(true)
                 }}
               >
@@ -2395,12 +2498,15 @@ function CoursesView({
         </article>
       )}
       <div className="course-grid">
-        {preset.courses.map((course) => (
-          <article key={course.id} className="course-panel">
+        {preset.courses.map((course) => {
+          const courseLocked = course.requiredLevel != null && role !== 'admin' && level < course.requiredLevel
+          return (
+          <article key={course.id} className={`course-panel${courseLocked ? ' course-locked' : ''}`}>
             <div className="course-title">
               <div>
                 <div className="course-panel-meta">
                   <Badge variant="outline" className="pill">{courseAccessLabel(course.accessMode)}</Badge>
+                  {course.requiredLevel && <Badge variant="outline" className="pill">Level {course.requiredLevel}</Badge>}
                   {course.published === false && <Badge variant="outline" className="pill">未發布</Badge>}
                 </div>
                 <h4>{course.title}</h4>
@@ -2413,13 +2519,13 @@ function CoursesView({
               {course.lessons.map((lesson) => {
                 const locked = lesson.lockedLevel != null && level < lesson.lockedLevel
                 const complete = lesson.complete || completedLessons.includes(lesson.id)
-                const unavailable = locked || !canUseLessons
+                const unavailable = courseLocked || locked || !canUseLessons
                 return (
                   <div key={lesson.id} className={`lesson-card${complete ? ' complete' : ''}${unavailable ? ' locked' : ''}`}>
                     <button className="lesson-row" disabled={unavailable} onClick={() => onToggleLesson(lesson.id)}>
                       {unavailable ? <Lock size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
                       <span>{lesson.title}</span>
-                      <small>{!canUseLessons ? '會員限定' : locked ? `Level ${lesson.lockedLevel}` : `${lesson.minutes} 分鐘`}</small>
+                      <small>{!canUseLessons ? '會員限定' : courseLocked ? `Level ${course.requiredLevel}` : locked ? `Level ${lesson.lockedLevel}` : `${lesson.minutes} 分鐘`}</small>
                     </button>
                     <div className="lesson-meta">
                       {lesson.transcript && <span><FileText size={14} aria-hidden="true" />逐字稿可搜尋</span>}
@@ -2437,7 +2543,7 @@ function CoursesView({
               })}
             </div>
           </article>
-        ))}
+        )})}
       </div>
     </section>
   )
@@ -2723,6 +2829,101 @@ function MembersView({
   )
 }
 
+function LevelSettingsPanel({ preset, onUpdatePreset }: { preset: VerticalPreset; onUpdatePreset: (patch: Partial<VerticalPreset>) => void }) {
+  const levelSystem = getLevelSystem(preset)
+  const updateLevelSystem = (patch: Partial<LevelSystem>) => {
+    onUpdatePreset({ levelSystem: { ...levelSystem, ...patch } })
+  }
+  const updateRule = (ruleId: string, patch: Partial<LevelPointRule>) => {
+    updateLevelSystem({ rules: levelSystem.rules.map((rule) => rule.id === ruleId ? { ...rule, ...patch } : rule) })
+  }
+  const updateLevel = (levelNumber: number, patch: Partial<LevelDefinition>) => {
+    updateLevelSystem({ levels: levelSystem.levels.map((level) => level.level === levelNumber ? { ...level, ...patch } : level) })
+  }
+  const updateBinding = (bindingId: string, patch: Partial<LevelAccessBinding>) => {
+    updateLevelSystem({ bindings: levelSystem.bindings.map((binding) => binding.id === bindingId ? { ...binding, ...patch } : binding) })
+  }
+
+  return (
+    <article className="admin-panel span-3 level-settings-panel">
+      <div className="admin-panel-head">
+        <div>
+          <span className="eyebrow">會員等級與權限</span>
+          <h4>升級規則、等級福利與功能權限綁定</h4>
+        </div>
+        <Trophy size={18} />
+      </div>
+      <div className="level-settings-grid">
+        <section>
+          <h5>積分規則</h5>
+          <div className="settings-stack">
+            {levelSystem.rules.map((rule) => (
+              <div key={rule.id} className="level-rule-editor">
+                <label className="editor-toggle compact-toggle">
+                  <input type="checkbox" checked={rule.enabled} onChange={(event) => updateRule(rule.id, { enabled: event.target.checked })} />
+                  啟用
+                </label>
+                <label>
+                  行為
+                  <Input value={rule.label} onChange={(event) => updateRule(rule.id, { label: event.target.value })} aria-label={`${rule.label} 規則名稱`} />
+                </label>
+                <label>
+                  點數
+                  <Input type="number" min={0} value={rule.points} onChange={(event) => updateRule(rule.id, { points: Number(event.target.value) })} aria-label={`${rule.label} 點數`} />
+                </label>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section>
+          <h5>等級門檻與福利</h5>
+          <div className="settings-stack">
+            {levelSystem.levels.map((level) => (
+              <div key={level.level} className="level-definition-editor">
+                <strong>Level {level.level}</strong>
+                <label>
+                  等級名稱
+                  <Input value={level.name} onChange={(event) => updateLevel(level.level, { name: event.target.value })} aria-label={`Level ${level.level} 名稱`} />
+                </label>
+                <label>
+                  升級點數
+                  <Input type="number" min={0} value={level.pointsRequired} onChange={(event) => updateLevel(level.level, { pointsRequired: Number(event.target.value) })} aria-label={`Level ${level.level} 升級點數`} />
+                </label>
+                <label>
+                  解鎖福利
+                  <Textarea value={level.unlocks.join('、')} onChange={(event) => updateLevel(level.level, { unlocks: event.target.value.split('、').map((item) => item.trim()).filter(Boolean) })} aria-label={`Level ${level.level} 解鎖福利`} />
+                </label>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section>
+          <h5>網站功能權限綁定</h5>
+          <div className="settings-stack">
+            {levelSystem.bindings.map((binding) => (
+              <div key={binding.id} className="level-binding-editor">
+                <Badge variant="outline" className="pill">{featureBindingLabel(binding.feature)}</Badge>
+                <label>
+                  功能或內容
+                  <Input value={binding.title} onChange={(event) => updateBinding(binding.id, { title: event.target.value })} aria-label={`${binding.title} 權限名稱`} />
+                </label>
+                <label>
+                  需要等級
+                  <Input type="number" min={1} value={binding.requiredLevel} onChange={(event) => updateBinding(binding.id, { requiredLevel: Number(event.target.value) })} aria-label={`${binding.title} 需要等級`} />
+                </label>
+                <label>
+                  解鎖後福利
+                  <Input value={binding.benefit} onChange={(event) => updateBinding(binding.id, { benefit: event.target.value })} aria-label={`${binding.title} 福利`} />
+                </label>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </article>
+  )
+}
+
 function SearchView({
   preset,
   query,
@@ -2780,15 +2981,33 @@ function SearchView({
 function ChallengesView({
   preset,
   role,
+  currentMember,
+  activePoints,
   checkedInChallenges,
   onCheckIn,
 }: {
   preset: ReturnType<typeof getPreset>
   role: Role
+  currentMember: Member
+  activePoints: number
   checkedInChallenges: string[]
   onCheckIn: (challengeId: string) => void
 }) {
   const canCheckIn = role !== 'visitor'
+  const levelSystem = getLevelSystem(preset)
+  const currentLevel = role === 'visitor' ? levelSystem.levels[0] : levelForPoints(levelSystem, activePoints)
+  const nextLevel = role === 'visitor' ? levelSystem.levels[1] : nextLevelForPoints(levelSystem, activePoints)
+  const previousPoints = currentLevel?.pointsRequired ?? 0
+  const nextPoints = nextLevel?.pointsRequired ?? Math.max(activePoints, previousPoints + 1)
+  const levelProgress = Math.min(100, Math.max(0, ((activePoints - previousPoints) / Math.max(1, nextPoints - previousPoints)) * 100))
+  const pointsToNext = nextLevel ? Math.max(0, nextLevel.pointsRequired - activePoints) : 0
+  const rankedMembers = preset.members.slice().sort((a, b) => b.points - a.points)
+  const thirtyDayMembers = rankedMembers
+    .map((member, index) => ({ ...member, periodPoints: Math.max(12, Math.round(member.points * (0.08 - index * 0.01))) }))
+    .sort((a, b) => b.periodPoints - a.periodPoints)
+  const sevenDayMembers = rankedMembers
+    .map((member, index) => ({ ...member, periodPoints: Math.max(5, Math.round(member.contributions.comments * 0.8 + member.contributions.posts * 1.2 - index)) }))
+    .sort((a, b) => b.periodPoints - a.periodPoints)
   return (
     <section className="section-block">
       <div className="section-heading">
@@ -2797,6 +3016,42 @@ function ChallengesView({
         {role === 'visitor' && <p>訪客可以先看到挑戰節奏與排行榜；加入會員後才能完成打卡、累積積分與更新連續紀錄。</p>}
         {role === 'member' && <p>會員可以完成每日或每週打卡，累積積分並在排行榜中追蹤自己的進度。</p>}
         {role === 'admin' && <p>管理員可以檢查挑戰參與狀態、積分規則與排行榜呈現是否正常。</p>}
+      </div>
+      <article className="level-overview-card">
+        <div className="level-profile">
+          <div className="level-avatar-ring">
+            <div className="level-avatar">{currentMember.name.slice(0, 1)}</div>
+            <span>{currentLevel?.level ?? 1}</span>
+          </div>
+          <h4>{role === 'visitor' ? '訪客' : currentMember.name}</h4>
+          <strong>Level {currentLevel?.level ?? 1} · {currentLevel?.name ?? '入門會員'}</strong>
+          <p>{nextLevel ? `${pointsToNext} 分後升到 Level ${nextLevel.level}` : '已達目前最高等級'}</p>
+          <div className="progress-track"><span style={{ width: `${levelProgress}%` }} /></div>
+        </div>
+        <div className="level-ladder">
+          {levelSystem.levels.map((level) => {
+            const unlocked = role !== 'visitor' && activePoints >= level.pointsRequired
+            return (
+              <div key={level.level} className={unlocked ? 'unlocked' : ''}>
+                <span>{unlocked ? level.level : <Lock size={16} />}</span>
+                <div>
+                  <strong>Level {level.level} · {level.name}</strong>
+                  <small>{level.pointsRequired} 分解鎖 · {level.memberPercent}% 會員達成</small>
+                  {level.unlocks.length > 0 && <p>解鎖：{level.unlocks.join('、')}</p>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </article>
+      <div className="level-rules-grid">
+        {levelSystem.rules.map((rule) => (
+          <article key={rule.id} className={rule.enabled ? 'level-rule-card' : 'level-rule-card disabled'}>
+            <span>{pointRuleLabel(rule.action)}</span>
+            <strong>{rule.label}</strong>
+            <small>{rule.enabled ? `+${rule.points} 分` : '已停用'}</small>
+          </article>
+        ))}
       </div>
       <div className="challenge-grid">
         {preset.challenges.map((challenge) => {
@@ -2814,10 +3069,24 @@ function ChallengesView({
           )
         })}
       </div>
+      {preset.levelSystem && preset.levelSystem.bindings.length > 0 && (
+        <div className="level-binding-grid">
+          {preset.levelSystem.bindings.map((binding) => (
+            <article key={binding.id}>
+              <Badge variant="outline" className="pill">{featureBindingLabel(binding.feature)} · Level {binding.requiredLevel}</Badge>
+              <strong>{binding.title}</strong>
+              <small>{binding.benefit}</small>
+            </article>
+          ))}
+        </div>
+      )}
+      <div className="leaderboard-cards">
+        <LeaderboardCard title="7 日排行榜" members={sevenDayMembers.slice(0, 4)} score={(member) => `+${member.periodPoints}`} />
+        <LeaderboardCard title="30 日排行榜" members={thirtyDayMembers.slice(0, 4)} score={(member) => `+${member.periodPoints}`} />
+        <LeaderboardCard title="總積分排行榜" members={rankedMembers.slice(0, 4)} score={(member) => `${member.points}`} />
+      </div>
       <div className="leaderboard">
-        {preset.members
-          .slice()
-          .sort((a, b) => b.points - a.points)
+        {rankedMembers
           .map((member, index) => (
             <div key={member.id}>
               <span>#{index + 1}</span>
@@ -2827,6 +3096,32 @@ function ChallengesView({
           ))}
       </div>
     </section>
+  )
+}
+
+function LeaderboardCard<T extends Member & { periodPoints?: number }>({
+  title,
+  members,
+  score,
+}: {
+  title: string
+  members: T[]
+  score: (member: T) => string
+}) {
+  return (
+    <article className="leaderboard-card">
+      <h4>{title}</h4>
+      <div>
+        {members.map((member, index) => (
+          <div key={`${title}-${member.id}`} className="leaderboard-card-row">
+            <span>{index + 1}</span>
+            <div className="member-avatar small">{member.name.slice(0, 1)}</div>
+            <strong>{member.name}</strong>
+            <small>{score(member)}</small>
+          </div>
+        ))}
+      </div>
+    </article>
   )
 }
 
@@ -3054,6 +3349,19 @@ function AdminSettingsEditor({
                   標題
                   <Input name={`content-${item.id}-title`} value={item.title} onChange={(event) => updateContent(item.id, { title: event.target.value })} autoComplete="off" />
                 </label>
+                {!isPublication && (
+                  <label>
+                    需要等級
+                    <Input
+                      name={`content-${item.id}-required-level`}
+                      type="number"
+                      min={1}
+                      value={item.requiredLevel ?? 1}
+                      onChange={(event) => updateContent(item.id, { requiredLevel: Math.max(1, Number(event.target.value) || 1) })}
+                      autoComplete="off"
+                    />
+                  </label>
+                )}
                 <label>
                   摘要
                   <Textarea name={`content-${item.id}-excerpt`} value={item.excerpt} onChange={(event) => updateContent(item.id, { excerpt: event.target.value })} autoComplete="off" />
@@ -3091,6 +3399,19 @@ function AdminSettingsEditor({
                   課程說明
                   <Textarea name={`course-${course.id}-description`} value={course.description} onChange={(event) => updateCourse(course.id, { description: event.target.value })} autoComplete="off" />
                 </label>
+                {!isPublication && (
+                  <label>
+                    解鎖等級
+                    <Input
+                      name={`course-${course.id}-required-level`}
+                      type="number"
+                      min={1}
+                      value={course.requiredLevel ?? 1}
+                      onChange={(event) => updateCourse(course.id, { requiredLevel: Math.max(1, Number(event.target.value) || 1) })}
+                      autoComplete="off"
+                    />
+                  </label>
+                )}
               </div>
             ))}
           </div>
@@ -3619,6 +3940,7 @@ function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; 
                 </article>
               </aside>
             </div>
+            <LevelSettingsPanel preset={preset} onUpdatePreset={onUpdatePreset} />
           </section>
         )}
 

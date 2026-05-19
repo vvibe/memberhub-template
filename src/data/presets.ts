@@ -69,6 +69,7 @@ export const presets: VerticalPreset[] = [
         excerpt: '把一段 AI 操作整理成別人也能執行的 SOP，包含角色設定、輸入格式、錯誤處理與輸出範例。',
         body: '可交付的 AI Skill 不能只寫一段提示詞。你需要說明適用情境、必要資料、執行步驟、品質檢查與失敗時如何修正。這堂課會用內容企劃 Skill 作為範例，帶你完成一份可以交給同事使用的 SOP。',
         isPaid: true,
+        requiredLevel: 2,
         minutes: 42,
         source: 'classroom',
       },
@@ -80,6 +81,7 @@ export const presets: VerticalPreset[] = [
         excerpt: '用一張表檢查任務是否清楚、輸入是否完整、輸出是否可用、錯誤情境是否有處理方式。',
         body: '這份檢查表適合用在建立新 Skill、修改提示詞、導入團隊流程與每週打卡回顧。',
         isPaid: true,
+        requiredLevel: 2,
         minutes: 4,
         source: 'resource',
       },
@@ -133,6 +135,9 @@ export const presets: VerticalPreset[] = [
         title: 'AI Skill 基礎到實戰',
         description: '從任務拆解、提示設計、資料輸入到品質檢查，完成一個可以反覆使用的 AI Skill。',
         progress: 46,
+        accessMode: 'open',
+        published: true,
+        requiredLevel: 1,
         lessons: [
           {
             id: 'skills-school-l1',
@@ -177,6 +182,9 @@ export const presets: VerticalPreset[] = [
         title: 'AI 工作流陪跑週計畫',
         description: '用短任務、固定打卡與每週回顧，把 AI Skill 放進真實工作節奏。',
         progress: 31,
+        accessMode: 'level-unlock',
+        published: true,
+        requiredLevel: 2,
         lessons: [
           { id: 'skills-school-l5', title: '設定本週 AI 工作流任務', minutes: 12, complete: true, resources: [{ id: 'skills-school-r6', title: '週任務表', kind: 'template', access: 'free' }] },
           { id: 'skills-school-l6', title: '提交可被測試的 Skill 版本', minutes: 20, complete: false, resources: [{ id: 'skills-school-r7', title: 'Skill 提交格式', kind: 'template', access: 'member' }] },
@@ -222,6 +230,28 @@ export const presets: VerticalPreset[] = [
       { id: 'skills-school-notify3', channel: 'in-app', trigger: 'course-reminder', audience: 'paid', status: 'ready' },
       { id: 'skills-school-notify4', channel: 'email', trigger: 'payment-failed', audience: 'at-risk', status: 'ready' },
     ],
+    levelSystem: {
+      rules: [
+        { id: 'skills-school-rule-post', label: '發表一篇 Skill 進度貼文', action: 'post', points: 12, enabled: true },
+        { id: 'skills-school-rule-comment', label: '回覆同學並提供可執行建議', action: 'comment', points: 4, enabled: true },
+        { id: 'skills-school-rule-lesson', label: '完成一個課程單元', action: 'lesson-complete', points: 18, enabled: true },
+        { id: 'skills-school-rule-checkin', label: '完成每日或每週打卡', action: 'challenge-checkin', points: 25, enabled: true },
+        { id: 'skills-school-rule-live', label: '參加直播或 Office hour', action: 'live-attend', points: 30, enabled: true },
+      ],
+      levels: [
+        { level: 1, name: 'AI Skill 新手', pointsRequired: 0, memberPercent: 63, unlocks: ['公開文章', '課程預覽', '一般社群討論'], permissions: ['public-content', 'community-read'] },
+        { level: 2, name: 'Skill 練習生', pointsRequired: 300, memberPercent: 22, unlocks: ['會員文章', '基礎課程完整觀看', '課程討論發文'], permissions: ['member-article', 'course-basic', 'community-post'] },
+        { level: 3, name: '工作流實戰家', pointsRequired: 900, memberPercent: 10, unlocks: ['進階案例包', 'Level 3 課程', '投稿直播修改'], permissions: ['level-gated-resource', 'course-advanced', 'live-submit'] },
+        { level: 4, name: 'AI Skill 導入者', pointsRequired: 1400, memberPercent: 4, unlocks: ['小班回饋', '模板庫完整下載', '優先審稿'], permissions: ['workshop-feedback', 'template-library', 'priority-review'] },
+        { level: 5, name: '社群協作者', pointsRequired: 2200, memberPercent: 1, unlocks: ['協作討論區', '案例共編權限', 'Beta 工具試用'], permissions: ['collab-room', 'case-coedit', 'beta-access'] },
+      ],
+      bindings: [
+        { id: 'skills-school-binding-member-article', feature: 'article', title: '會員課：把 AI Skill 寫成可交付的 SOP', requiredLevel: 2, benefit: '會員文章完整閱讀' },
+        { id: 'skills-school-binding-course-basic', feature: 'course', title: 'AI 工作流陪跑週計畫', requiredLevel: 2, benefit: '課程完整觀看與作業提交' },
+        { id: 'skills-school-binding-advanced-case', feature: 'resource', title: '進階 Skill 案例包', requiredLevel: 3, benefit: '下載進階案例與模板' },
+        { id: 'skills-school-binding-live-submit', feature: 'event', title: '直播投稿修改', requiredLevel: 3, benefit: '優先投稿給直播講師修改' },
+      ],
+    },
     metrics: {
       mrr: 'NT$386,260',
       activeMembers: 612,
