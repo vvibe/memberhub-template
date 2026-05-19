@@ -14,7 +14,7 @@ const viewCases = [
   { id: 'events', label: '活動', expectedText: 'Webinar、Live、Office hour 與回放' },
   { id: 'login', label: '登入', expectedText: '登入 Skills School AI Skill 實作社群' },
   { id: 'member', label: '會員', expectedText: '會員方案、收據/發票狀態與付款自助' },
-  { id: 'admin', label: '後台', expectedText: 'Skills School AI Skill 實作社群 後台' },
+  { id: 'admin', label: '後台', expectedText: 'Skills School AI Skill 實作社群 設定' },
   { id: 'setup', label: '設定', expectedText: '調整 AI Skill 品牌、內容與會員設定' },
 ] as const
 
@@ -80,7 +80,7 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   await page.getByRole('button', { name: /邀請會員/ }).click()
   await expect(page.getByText(/新會員/).first()).toBeVisible()
   await page.getByRole('button', { name: /入會問題/ }).click()
-  await expect(page.getByText('Skills School AI Skill 實作社群 後台', { exact: true })).toBeVisible()
+  await expect(page.getByText('Skills School AI Skill 實作社群 設定', { exact: true })).toBeVisible()
 
   await openNav(page, '課程')
   await page.getByRole('button', { name: /完成第一版 Skill SOP/ }).first().click()
@@ -133,10 +133,10 @@ test('visitor, member, and admin states show different screens in both reference
 
   await setRole(page, '管理員')
   await expect(page.getByText('管理員視角')).toBeVisible()
-  await expect(page.getByText('社群營運後台開啟')).toBeVisible()
+  await expect(page.getByText('管理員編輯權限開啟')).toBeVisible()
   await expect(page.locator('.nav-list').getByRole('button', { name: '後台', exact: true })).toBeVisible()
   await expect(page.locator('.nav-list').getByRole('button', { name: '設定', exact: true })).toBeVisible()
-  await expect(page.getByText('Skills School AI Skill 實作社群 後台')).toBeVisible()
+  await expect(page.getByText('Skills School AI Skill 實作社群 設定')).toBeVisible()
 
   await page.locator('.preset-select-trigger').click()
   await page.getByRole('option', { name: 'Signal Brief' }).click()
@@ -407,8 +407,8 @@ test('admin can edit fork-ready site settings and newsletter configuration', asy
 
   await setRole(page, '管理員')
   await openNav(page, '後台')
-  await expect(page.locator('.skills-admin-tabs').getByRole('button', { name: /Dashboard/ })).toHaveClass(/active/)
-  await expect(page.getByText('今日營運總覽')).toBeVisible()
+  await expect(page.locator('.skills-admin-tabs').getByRole('button', { name: /社團設定/ })).toHaveClass(/active/)
+  await expect(page.getByText('這裡不是另一個後台')).toBeVisible()
   await expect(page.getByText('會員名單與狀態')).toHaveCount(0)
   await page.locator('.skills-admin-tabs').getByRole('button', { name: /會員/ }).click()
   await expect(page.getByText('會員名單與狀態')).toBeVisible()
@@ -422,7 +422,7 @@ test('admin can edit fork-ready site settings and newsletter configuration', asy
   await expect(skillsAdminEditor.getByRole('button', { name: '項目清單' })).toBeVisible()
   await skillsAdminEditor.locator('[contenteditable="true"]').fill('Skills School 後台富文字內容')
   await expect(skillsAdminEditor.locator('[contenteditable="true"]')).toContainText('Skills School 後台富文字內容')
-  await page.locator('.skills-admin-tabs').getByRole('button', { name: /設定/ }).click()
+  await page.locator('.skills-admin-tabs').getByRole('button', { name: /社團設定/ }).click()
   await expect(page.getByText('網站、品牌與會員方案')).toBeVisible()
 
   await page.getByLabel('網站名稱').fill('Kevin Growth Letter')

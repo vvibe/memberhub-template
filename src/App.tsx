@@ -140,6 +140,9 @@ function formalSkillsNavLabel(item: { id: ViewId; label: string }) {
     content: '資源',
     courses: '課程',
     community: '社群',
+    events: '活動',
+    members: '會員',
+    admin: '設定',
     member: '我的帳號',
   }
   return labels[item.id] ?? item.label
@@ -236,9 +239,9 @@ function roleProfile(preset: ReturnType<typeof getPreset>, role: Role) {
   if (role === 'admin') {
     return {
       label: '管理員視角',
-      title: '社群營運後台開啟',
-      description: '可以編輯內容與課程、邀請會員、查看審核佇列、管理活動與付款狀態。',
-      points: ['後台與設定可見', '可邀請會員', '可管理課程與社群'],
+      title: '管理員編輯權限開啟',
+      description: '看到的是同一個私密社團，只是多了編輯、邀請、設定與審核能力。',
+      points: ['社團內編輯可見', '可邀請會員', '可管理課程與社群'],
     }
   }
   if (role === 'member') {
@@ -252,8 +255,8 @@ function roleProfile(preset: ReturnType<typeof getPreset>, role: Role) {
   return {
     label: '訪客視角',
     title: '只看到公開預覽',
-    description: '可以瀏覽公開內容與方案；課程進度、會員討論、打卡與後台功能會被保留給會員或管理員。',
-    points: ['公開內容可讀', '會員功能鎖定', '不顯示後台'],
+    description: '可以瀏覽公開內容與方案；課程進度、會員討論、打卡與管理功能會保留給會員或管理員。',
+    points: ['公開內容可讀', '會員功能鎖定', '不顯示管理工具'],
   }
 }
 
@@ -575,7 +578,7 @@ function App() {
             selectedPlanId: memberPlan.id,
           }))
           setAuthEmail(payload.user.email)
-          setView(role === 'admin' ? 'admin' : 'member')
+          setView(role === 'admin' && formalAuthPresetId === 'skills-school' ? 'community' : role === 'admin' ? 'admin' : 'member')
           return
         }
         setAuthEmail(null)
@@ -630,7 +633,7 @@ function App() {
 
       if (formalSkillsAuth) {
         const formalViews: ViewId[] = state.role === 'admin'
-          ? ['home', 'blog', 'courses', 'community', 'content', 'join', 'admin']
+          ? ['community', 'courses', 'events', 'members', 'content', 'admin']
           : state.role === 'member'
             ? ['home', 'blog', 'courses', 'community', 'content', 'join', 'member']
             : ['home', 'blog', 'courses', 'community', 'content', 'join', 'login']
@@ -720,7 +723,7 @@ function App() {
       role,
       selectedPlanId: role === 'visitor' ? 'free' : memberPlan.id,
     })
-    setView(role === 'admin' ? 'admin' : 'member')
+    setView(role === 'admin' && formalSkillsAuth ? 'community' : role === 'admin' ? 'admin' : 'member')
   }
 
   const handleCredentialsLogin = async (email: string, password: string): Promise<AuthResult> => {
@@ -744,7 +747,7 @@ function App() {
         role,
         selectedPlanId: memberPlan.id,
       })
-      setView(role === 'admin' ? 'admin' : 'member')
+      setView(role === 'admin' && formalSkillsAuth ? 'community' : role === 'admin' ? 'admin' : 'member')
       return { ok: true }
     } catch {
       return { ok: false, error: '暫時無法連線到登入服務，請稍後再試。' }
@@ -889,7 +892,7 @@ function App() {
           <div className="sidebar-panel account-panel">
             <span className="eyebrow">我的帳號</span>
             <strong>{authEmail ?? '尚未登入'}</strong>
-            <small>{authChecking ? '正在確認登入狀態' : authEmail ? (state.role === 'admin' ? '管理後台已啟用' : '會員內容已啟用') : '登入後查看課程與社群'}</small>
+            <small>{authChecking ? '正在確認登入狀態' : authEmail ? (state.role === 'admin' ? '管理權限已啟用' : '會員內容已啟用') : '登入後查看課程與社群'}</small>
           </div>
         ) : (
           <div className="sidebar-panel">
@@ -2175,7 +2178,7 @@ function LoginView({
         <h3>登入 {preset.brand.productName}</h3>
         <p>
           {formalAuth
-            ? '登入後可以進入會員區與管理後台，使用完整課程、社群、打卡與內容管理流程。'
+            ? '登入後會進入同一個私密社團；管理員只會多看到編輯、邀請、設定與審核工具。'
             : preset.id === 'signal-brief'
               ? '登入後可以閱讀會員研究、下載資料表、參與讀者問答，並管理自己的訂閱狀態。'
               : '登入後可以繼續課程進度、參與討論區、完成每週打卡，並查看自己的會員方案。'}
@@ -2316,6 +2319,116 @@ function CoursesView({
 
 function CommunityView({ preset, role }: { preset: ReturnType<typeof getPreset>; role: Role }) {
   const isSkillsSchool = preset.id === 'skills-school'
+  const paidMembers = preset.members.filter((member) => member.status === 'active').length
+  const freeMembers = preset.members.filter((member) => member.status === 'free').length
+  const openModeration = preset.moderation.filter((item) => item.status !== 'resolved').length
+
+  if (isSkillsSchool && role === 'admin') {
+    return (
+      <section className="private-group-shell">
+        <div className="private-group-top">
+          <div className="private-search">
+            <Search size={18} />
+            <span>搜尋文章、課程、討論與會員</span>
+          </div>
+          <div className="private-admin-icons">
+            <span><MessageSquareText size={18} /><strong>2</strong></span>
+            <span><Bell size={18} /><strong>9</strong></span>
+            <span className="private-avatar">S</span>
+          </div>
+        </div>
+
+        <div className="private-group-tabs" aria-label="私密社團分頁">
+          <button type="button" className="active">Community</button>
+          <button type="button">Classroom</button>
+          <button type="button">Calendar</button>
+          <button type="button">Members</button>
+          <button type="button">Leaderboard</button>
+          <button type="button">About</button>
+        </div>
+
+        <div className="private-group-layout">
+          <div className="private-feed">
+            <article className="private-composer">
+              <div className="private-avatar">S</div>
+              <span>Write something</span>
+              <Button variant="outline" className="secondary-button"><PlayCircle data-icon="inline-start" />Go Live</Button>
+            </article>
+
+            <div className="private-filter-row">
+              <div className="member-status-tabs">
+                <button type="button" className="active">All</button>
+                <button type="button">General discussion</button>
+                <button type="button">Skill feedback</button>
+              </div>
+              <Button variant="outline" className="ghost-button"><SlidersHorizontal data-icon="inline-start" />Filter</Button>
+            </div>
+
+            <article className="private-setup-card">
+              <div className="private-setup-head">
+                <span className="setup-progress-ring" />
+                <strong>Set up your group</strong>
+                <ChevronRight size={18} />
+              </div>
+              <ul>
+                <li><span />調整社群封面與介紹</li>
+                <li><span />邀請 3 位 AI Skill 會員</li>
+                <li><span />發布第一篇置頂公告</li>
+                <li><span />確認課程權限與入會問題</li>
+              </ul>
+            </article>
+
+            <div className="thread-list">
+              {preset.threads.map((thread) => (
+                <article key={thread.id} className="thread-row">
+                  <div>
+                    <Badge variant="outline" className="pill">{thread.category}{thread.pinned ? ' · 置頂' : ''}</Badge>
+                    <h4>{thread.title}</h4>
+                    <small>{thread.author} · {thread.replies} 則回覆 · {thread.reactions} 個反應 · 發文權限：{accessLabel(thread.canStart ?? 'all')}{thread.reportCount ? ` · ${thread.reportCount} 則檢舉` : ''}</small>
+                  </div>
+                  <MessageSquareText size={18} />
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <aside className="private-group-sidebar">
+            <article className="private-group-card">
+              <div className="private-cover-edit">Upload cover photo</div>
+              <div className="private-card-body">
+                <strong>{preset.brand.creatorName}</strong>
+                <small>skills-school-memberhub.vercel.app</small>
+                <p>{preset.copy.heroBody}</p>
+                <div className="private-stats">
+                  <span><strong>{paidMembers + freeMembers}</strong><small>Member</small></span>
+                  <span><strong>{paidMembers}</strong><small>Online</small></span>
+                  <span><strong>1</strong><small>Admin</small></span>
+                </div>
+                <Button variant="outline" className="secondary-button"><Settings2 data-icon="inline-start" />Settings</Button>
+              </div>
+            </article>
+
+            <article className="private-side-panel">
+              <div className="admin-panel-head">
+                <div>
+                  <span className="eyebrow">會員管理</span>
+                  <h4>社群狀態</h4>
+                </div>
+                <UsersRound size={18} />
+              </div>
+              <div className="integration-grid">
+                <IntegrationItem label="Active" value={`${paidMembers} 位 AI Skill 會員`} />
+                <IntegrationItem label="Free" value={`${freeMembers} 位免費讀者`} />
+                <IntegrationItem label="待審核" value={`${openModeration} 件需處理`} />
+                <IntegrationItem label="邀請連結" value="可在設定分頁複製或寄送" />
+              </div>
+            </article>
+          </aside>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="section-block">
       <div className="section-heading">
@@ -2843,16 +2956,15 @@ const publicationAdminTabs: Array<{ id: PublicationAdminTabId; label: string; de
   { id: 'settings', label: '設定', description: '品牌、首頁與方案', icon: Settings2 },
 ]
 
-type SkillAdminTabId = 'dashboard' | 'members' | 'articles' | 'courses' | 'newsletter' | 'subscriptions' | 'settings'
+type SkillAdminTabId = 'settings' | 'members' | 'articles' | 'courses' | 'newsletter' | 'subscriptions'
 
 const skillAdminTabs: Array<{ id: SkillAdminTabId; label: string; icon: typeof LayoutDashboard }> = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'settings', label: '社團設定', icon: Settings2 },
   { id: 'members', label: '會員', icon: UsersRound },
   { id: 'articles', label: '文章', icon: BookOpen },
   { id: 'courses', label: '課程', icon: PlayCircle },
   { id: 'newsletter', label: '電子報', icon: Megaphone },
   { id: 'subscriptions', label: '訂閱', icon: CircleDollarSign },
-  { id: 'settings', label: '設定', icon: Settings2 },
 ]
 
 function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; state: AppState; onUpdatePreset: (patch: Partial<VerticalPreset>) => void }) {
@@ -3150,7 +3262,7 @@ function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: Verti
 
 function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; state: AppState; onUpdatePreset: (patch: Partial<VerticalPreset>) => void }) {
   const isPublication = isPublicationPreset(preset)
-  const [skillAdminTab, setSkillAdminTab] = useState<SkillAdminTabId>('dashboard')
+  const [skillAdminTab, setSkillAdminTab] = useState<SkillAdminTabId>('settings')
   const [inviteEmail, setInviteEmail] = useState('')
   const [copiedInvite, setCopiedInvite] = useState(false)
   const paidMembers = preset.members.filter((member) => member.status === 'active').length
@@ -3184,16 +3296,16 @@ function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; 
         <section className="section-block admin-hero">
           <div className="section-heading horizontal">
             <div>
-              <span className="eyebrow">後台內容管理</span>
-              <h3>{preset.brand.productName} 後台</h3>
-              <p>管理 AI Skill 文章、課程、電子報、訂閱方案與站點設定，讓公開內容、會員內容與每週實作維持同一個出版節奏。</p>
+              <span className="eyebrow">社團管理工具</span>
+              <h3>{preset.brand.productName} 設定</h3>
+              <p>這裡不是另一個後台，而是管理員在同一個私密社團裡使用的設定層；主要社群、課程、活動與會員畫面會和學員看到的前台保持一致。</p>
             </div>
             <div className="admin-mini-stats">
               <StatusPill tone="green">{`免費讀者 ${preset.metrics.activeMembers}`}</StatusPill>
               <StatusPill tone="blue">{`付費會員 ${paidMembers}`}</StatusPill>
             </div>
           </div>
-          <nav className="skills-admin-tabs" aria-label="Skills School 後台分頁">
+          <nav className="skills-admin-tabs" aria-label="Skills School 管理分頁">
             {skillAdminTabs.map((tab) => {
               const Icon = tab.icon
               return (
@@ -3205,71 +3317,6 @@ function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; 
             })}
           </nav>
         </section>
-
-        {skillAdminTab === 'dashboard' && (
-          <section className="skills-dashboard-layout">
-            <article className="admin-panel span-2">
-              <div className="admin-panel-head">
-                <div>
-                  <span className="eyebrow">Dashboard</span>
-                  <h4>今日營運總覽</h4>
-                </div>
-                <LayoutDashboard size={18} />
-              </div>
-              <div className="admin-grid">
-                <MetricTile label="AI Skill 會員" value={String(paidMembers)} icon={ShieldCheck} />
-                <MetricTile label="免費讀者" value={String(freeMembers)} icon={UsersRound} />
-                <MetricTile label="待處理事項" value={String(openModeration)} icon={AlertCircle} />
-                <MetricTile label="本週排程" value={String(preset.newsletter.filter((issue) => issue.status === 'scheduled').length)} icon={CalendarDays} />
-              </div>
-            </article>
-            <article className="admin-panel">
-              <div className="admin-panel-head">
-                <div>
-                  <span className="eyebrow">快速動作</span>
-                  <h4>常用管理</h4>
-                </div>
-                <UserPlus size={18} />
-              </div>
-              <div className="skills-quick-actions">
-                <Button className="primary-button" onClick={() => setSkillAdminTab('members')}><UserPlus data-icon="inline-start" />邀請會員</Button>
-                <Button variant="outline" className="secondary-button" onClick={() => setSkillAdminTab('articles')}><FileText data-icon="inline-start" />新增文章</Button>
-                <Button variant="outline" className="ghost-button" onClick={() => setSkillAdminTab('courses')}><PlayCircle data-icon="inline-start" />檢查課程</Button>
-              </div>
-            </article>
-            <article className="admin-panel span-2">
-              <div className="admin-panel-head">
-                <div>
-                  <span className="eyebrow">待處理</span>
-                  <h4>需要管理員確認的項目</h4>
-                </div>
-                <ClipboardCheck size={18} />
-              </div>
-              <div className="admin-queue">
-                {adminQueue.map((item) => (
-                  <div key={item.label}>
-                    <StatusPill tone={item.tone}>{item.value}</StatusPill>
-                    <span>{item.label}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-            <article className="admin-panel">
-              <div className="admin-panel-head">
-                <div>
-                  <span className="eyebrow">會員狀態</span>
-                  <h4>本週會員健康度</h4>
-                </div>
-                <UsersRound size={18} />
-              </div>
-              <div className="integration-grid">
-                <IntegrationItem label="Active" value={`${paidMembers} 位付費會員`} />
-                <IntegrationItem label="Free" value={`${freeMembers} 位免費讀者`} />
-                <IntegrationItem label="Paused" value={`${pausedMembers} 位暫停`} />
-              </div>
-            </article>
-          </section>
-        )}
 
         {skillAdminTab === 'members' && (
           <section className="skills-member-admin">
