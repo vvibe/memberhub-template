@@ -4033,6 +4033,13 @@ button:active {
   align-items: start;
 }
 
+.publication-admin-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+  align-items: start;
+}
+
 .publication-admin-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -4329,6 +4336,85 @@ button:active {
   gap: 9px;
 }
 
+.publication-publish-flow {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(46, 110, 86, 0.18);
+  border-radius: var(--radius-card);
+  background: #f8fbf8;
+}
+
+.publication-publish-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.publication-publish-copy small {
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.publication-publish-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.publication-publish-options button {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 5px 9px;
+  align-items: start;
+  min-width: 0;
+  padding: 13px 12px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text);
+  text-align: left;
+}
+
+.publication-publish-options button:last-child {
+  border-right: 0;
+}
+
+.publication-publish-options button > span {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(47, 52, 55, 0.32);
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 4px #ffffff;
+}
+
+.publication-publish-options button strong {
+  min-width: 0;
+}
+
+.publication-publish-options button small {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.publication-publish-options button.selected {
+  background: #eef6ef;
+}
+
+.publication-publish-options button.selected > span {
+  border-color: var(--brand-accent);
+  background: var(--brand-accent);
+}
+
+.publication-recipient-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
 .settings-helper {
   color: var(--text-muted);
   font-size: var(--font-xs);
@@ -4489,6 +4575,7 @@ button:active {
   .signal-plan-grid,
   .signal-paywall,
   .signal-reader-cta,
+  .publication-admin-overview,
   .publication-admin-shell,
   .publication-admin-tab-grid,
   .skills-dashboard-layout,
@@ -4776,6 +4863,8 @@ button:active {
 	  .signal-plan-grid,
 	  .course-grid,
 	  .course-access-picker,
+	  .publication-publish-options,
+	  .publication-recipient-grid,
 	  .level-ladder,
 	  .level-rules-grid,
 	  .level-binding-grid,

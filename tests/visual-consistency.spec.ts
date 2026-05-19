@@ -179,7 +179,7 @@ test('visitor, member, and admin states show different screens in both reference
   await expect(page.getByText('出版者後台開啟')).toBeVisible()
   await expect(page.locator('.nav-list').getByRole('button', { name: '電子報', exact: true })).toBeVisible()
   await expect(page.getByText('Signal Brief 策略通訊 出版後台')).toBeVisible()
-  await expect(page.locator('.publication-admin-tabs').getByRole('button', { name: /文章與付費牆/ })).toBeVisible()
+  await expect(page.locator('.publication-admin-tabs').getByRole('button', { name: /文章發布/ })).toBeVisible()
   await page.locator('.publication-admin-tabs').getByRole('button', { name: /設定/ }).click()
   await expect(page.getByText('站點、品牌與訂閱方案')).toBeVisible()
   await expect(page.getByText('課程與進度')).toHaveCount(0)
@@ -314,13 +314,18 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
   await expect(page.getByRole('heading', { name: '先閱讀公開文章' })).toBeVisible()
   await expect(page.getByText('出版站可調整的內容')).toHaveCount(0)
   await setRole(page, '管理員')
-  await expect(page.getByText('用分頁管理出版站日常工作')).toBeVisible()
+  await expect(page.getByText('文章與電子報已整合在同一個發布流程')).toBeVisible()
   await expectPublicationAdminTabs(page)
-  await page.locator('.publication-admin-tabs').getByRole('button', { name: /文章與付費牆/ }).click()
+  await expect(page.getByRole('heading', { name: '今日待辦' })).toBeVisible()
+  await page.locator('.publication-admin-tabs').getByRole('button', { name: /文章發布/ }).click()
   await expect(page.getByText('付費牆段落位置').first()).toBeVisible()
+  await expect(page.getByText('文章與電子報同時發布')).toBeVisible()
+  await page.getByRole('radio', { name: /文章與電子報同時發布/ }).click()
+  await expect(page.getByLabel('發送給讀者')).toBeVisible()
   await page.locator('.publication-admin-tabs').getByRole('button', { name: /讀者/ }).click()
   await expect(page.getByRole('heading', { name: '讀者與訂閱狀態' })).toBeVisible()
-  await page.locator('.publication-admin-tabs').getByRole('button', { name: /總覽/ }).click()
+  await expect(page.locator('.publication-admin-tabs').getByRole('button', { name: /總覽/ })).toHaveCount(0)
+  await expect(page.locator('.publication-admin-tabs').getByRole('button', { name: /Newsletter/ })).toHaveCount(0)
   await expect(page.getByText('留言、讀者回覆與付款爭議')).toBeVisible()
   await expect(page.getByText('課程與進度')).toHaveCount(0)
   await expect(page.getByText('社群審核與互動')).toHaveCount(0)
@@ -348,9 +353,7 @@ test('reference cases have direct online URLs', async ({ page }, testInfo) => {
 test('Signal Brief admin separates functions into consistent tabs', async ({ page }, testInfo) => {
   const consoleErrors = collectConsoleErrors(page)
   const tabChecks = [
-    { button: /總覽/, expected: '今日待辦' },
-    { button: /文章與付費牆/, expected: '文章、付費牆與限時免費' },
-    { button: /Newsletter/, expected: 'Newsletter 發送設定' },
+    { button: /文章發布/, expected: '文章發布、付費牆與電子報' },
     { button: /讀者/, expected: '讀者與訂閱狀態' },
     { button: /成長/, expected: '推薦、贈閱與來源成長' },
     { button: /金流與系統/, expected: 'InsForge / Portaly Vibe 設定狀態' },
@@ -362,7 +365,13 @@ test('Signal Brief admin separates functions into consistent tabs', async ({ pag
   await expect(page.getByText('Signal Brief 策略通訊 出版後台')).toBeVisible()
   await expectPublicationAdminTabs(page)
 
-  await page.locator('.publication-admin-tabs').getByRole('button', { name: /文章與付費牆/ }).click()
+  await expect(page.getByRole('heading', { name: '今日待辦' })).toBeVisible()
+  await page.locator('.publication-admin-tabs').getByRole('button', { name: /文章發布/ }).click()
+  await expect(page.getByText('只發布文章')).toBeVisible()
+  await expect(page.getByText('文章與電子報同時發布')).toBeVisible()
+  await page.getByRole('radio', { name: /文章與電子報同時發布/ }).click()
+  await expect(page.getByLabel('發送給讀者')).toBeVisible()
+  await expect(page.getByText(/目前設定：文章發布後會寄給/)).toBeVisible()
   const signalEditor = page.locator('.publication-admin-content .rich-text-editor').first()
   await expect(signalEditor.getByRole('button', { name: '粗體' })).toBeVisible()
   await expect(signalEditor.getByRole('button', { name: '項目清單' })).toBeVisible()
@@ -528,7 +537,7 @@ test('Signal Brief standalone article and limited-free rules work', async ({ pag
 
   await page.goto('/?case=signal-brief&view=admin')
   await setRole(page, '管理員')
-  await page.locator('.publication-admin-tabs').getByRole('button', { name: /文章與付費牆/ }).click()
+  await page.locator('.publication-admin-tabs').getByRole('button', { name: /文章發布/ }).click()
   await expect(page.getByText('限時免費公開到').first()).toBeVisible()
   await expect(page.getByText('時間過後會自動回到付費牆').first()).toBeVisible()
 
@@ -942,7 +951,7 @@ async function expectFormControlConsistency(page: Page) {
 }
 
 async function expectPublicationAdminTabs(page: Page) {
-  const tabLabels = ['總覽', '文章與付費牆', 'Newsletter', '讀者', '成長', '金流與系統', '設定']
+  const tabLabels = ['文章發布', '讀者', '成長', '金流與系統', '設定']
   const tabs = page.locator('.publication-admin-tabs')
   await expect(tabs).toBeVisible()
   for (const label of tabLabels) {

@@ -3235,6 +3235,9 @@ function AdminSettingsEditor({
   const showContent = section === 'all' || section === 'content'
   const showNewsletter = section === 'all' || section === 'newsletter'
   const showCourses = section === 'all' || section === 'courses'
+  const [publicationMode, setPublicationMode] = useState<'article' | 'article-newsletter'>('article')
+  const [publicationAudience, setPublicationAudience] = useState<NewsletterIssue['segment']>('all')
+  const [publicationSchedule, setPublicationSchedule] = useState('立即寄出')
   const editorTitle = {
     all: isPublication ? '出版站可調整的內容' : 'Fork 後可調整的網站內容',
     site: isPublication ? '站點、品牌與訂閱方案' : '網站、品牌與會員方案',
@@ -3327,8 +3330,59 @@ function AdminSettingsEditor({
         <div className="settings-editor-section">
           <div>
             <span className="eyebrow">文章與付費牆</span>
-            <h5>{isPublication ? '公開文章、付費文章與付費牆' : '公開內容、會員內容與課程素材'}</h5>
+            <h5>{isPublication ? '文章發布、付費牆與電子報' : '公開內容、會員內容與課程素材'}</h5>
           </div>
+          {isPublication && (
+            <div className="publication-publish-flow">
+              <div className="publication-publish-copy">
+                <span className="eyebrow">發布方式</span>
+                <strong>發布文章時決定是否同步寄出電子報</strong>
+                <small>創作者可以只把文章發布到網站，也可以同時建立 Newsletter 並發給指定讀者分眾。</small>
+              </div>
+              <div className="publication-publish-options" role="radiogroup" aria-label="文章發布方式">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={publicationMode === 'article'}
+                  className={publicationMode === 'article' ? 'selected' : ''}
+                  onClick={() => setPublicationMode('article')}
+                >
+                  <span aria-hidden="true" />
+                  <strong>只發布文章</strong>
+                  <small>文章上架到網站，不寄電子報。</small>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={publicationMode === 'article-newsletter'}
+                  className={publicationMode === 'article-newsletter' ? 'selected' : ''}
+                  onClick={() => setPublicationMode('article-newsletter')}
+                >
+                  <span aria-hidden="true" />
+                  <strong>文章與電子報同時發布</strong>
+                  <small>文章上架後，同步寄給指定讀者。</small>
+                </button>
+              </div>
+              {publicationMode === 'article-newsletter' && (
+                <div className="publication-recipient-grid">
+                  <label>
+                    發送給讀者
+                    <select className="editor-select" value={publicationAudience} onChange={(event) => setPublicationAudience(event.target.value as NewsletterIssue['segment'])}>
+                      <option value="all">全部讀者</option>
+                      <option value="free">免費讀者</option>
+                      <option value="paid">付費讀者</option>
+                      <option value="founding">創始訂閱讀者</option>
+                    </select>
+                  </label>
+                  <label>
+                    發送時間
+                    <Input value={publicationSchedule} onChange={(event) => setPublicationSchedule(event.target.value)} autoComplete="off" />
+                  </label>
+                  <small className="settings-helper span-2">目前設定：文章發布後會寄給{segmentLabel(publicationAudience)}，發送時間為「{publicationSchedule}」。</small>
+                </div>
+              )}
+            </div>
+          )}
           <div className="settings-stack">
             {preset.content.slice(0, 4).map((item) => (
               <div key={item.id} className="settings-card compact">
@@ -3477,12 +3531,10 @@ function AdminSettingsEditor({
   )
 }
 
-type PublicationAdminTabId = 'overview' | 'articles' | 'newsletter' | 'readers' | 'growth' | 'system' | 'settings'
+type PublicationAdminTabId = 'articles' | 'readers' | 'growth' | 'system' | 'settings'
 
 const publicationAdminTabs: Array<{ id: PublicationAdminTabId; label: string; description: string; icon: typeof LayoutDashboard }> = [
-  { id: 'overview', label: '總覽', description: '今日狀態與待處理事項', icon: LayoutDashboard },
-  { id: 'articles', label: '文章與付費牆', description: '公開、付費、限時免費', icon: BookOpen },
-  { id: 'newsletter', label: 'Newsletter', description: '發送、分眾與歡迎信', icon: Megaphone },
+  { id: 'articles', label: '文章發布', description: '文章、付費牆與電子報發送', icon: BookOpen },
   { id: 'readers', label: '讀者', description: '免費與付費讀者狀態', icon: UsersRound },
   { id: 'growth', label: '成長', description: '推薦、贈閱與升級', icon: Gift },
   { id: 'system', label: '金流與系統', description: '付款、發票與整合狀態', icon: ShieldCheck },
@@ -3501,7 +3553,7 @@ const skillAdminTabs: Array<{ id: SkillAdminTabId; label: string; icon: typeof L
 ]
 
 function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; state: AppState; onUpdatePreset: (patch: Partial<VerticalPreset>) => void }) {
-  const [activeTab, setActiveTab] = useState<PublicationAdminTabId>('overview')
+  const [activeTab, setActiveTab] = useState<PublicationAdminTabId>('articles')
   const activeTabMeta = publicationAdminTabs.find((tab) => tab.id === activeTab) ?? publicationAdminTabs[0]
   const paidMembers = preset.members.filter((member) => member.status === 'active').length
   const freeMembers = preset.members.filter((member) => member.status === 'free').length
@@ -3522,7 +3574,7 @@ function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: Verti
         <div className="section-heading">
           <span className="eyebrow">出版後台</span>
           <h3>{preset.brand.productName} 出版後台</h3>
-          <p>用分頁管理出版站日常工作：文章與付費牆、Newsletter、讀者、推薦成長、付款發票與站點設定各自獨立，避免所有功能擠在同一頁。</p>
+          <p>先看整體狀態，再處理文章發布、電子報發送、讀者、成長、付款發票與站點設定。文章與電子報已整合在同一個發布流程。</p>
         </div>
         <div className="admin-grid">
           <MetricTile label="月訂閱收入" value={preset.metrics.mrr} icon={BarChart3} />
@@ -3530,6 +3582,45 @@ function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: Verti
           <MetricTile label="付費讀者" value={String(paidMembers)} icon={ShieldCheck} />
           <MetricTile label="公開 / 付費文章" value={`${publicContent} / ${paidContent}`} icon={BookOpen} />
         </div>
+      </section>
+
+      <section className="publication-admin-overview">
+        <article className="admin-panel">
+          <div className="admin-panel-head">
+            <div>
+              <span className="eyebrow">總覽</span>
+              <h4>今日待辦</h4>
+            </div>
+            <AlertCircle size={18} />
+          </div>
+          <div className="admin-queue">
+            {adminQueue.map((item) => (
+              <div key={item.label}>
+                <StatusPill tone={item.tone}>{item.value}</StatusPill>
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="admin-panel">
+          <div className="admin-panel-head">
+            <div>
+              <span className="eyebrow">審核</span>
+              <h4>留言、讀者回覆與付款爭議</h4>
+            </div>
+            <ShieldCheck size={18} />
+          </div>
+          <div className="admin-content-stack">
+            {preset.moderation.map((item) => (
+              <div key={item.id} className="admin-content-item">
+                <Badge variant="outline" className="pill">{moderationKindLabel(item.kind, true)} · {statusLabel(item.status)}</Badge>
+                <strong>{item.title}</strong>
+                <small>{item.subject} · 優先度 {priorityLabel(item.priority)}</small>
+              </div>
+            ))}
+          </div>
+        </article>
       </section>
 
       <section className="publication-admin-shell">
@@ -3553,48 +3644,6 @@ function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: Verti
             </nav>
           </div>
 
-          {activeTab === 'overview' && (
-            <div className="publication-admin-tab-grid">
-              <article className="admin-panel">
-                <div className="admin-panel-head">
-                  <div>
-                    <span className="eyebrow">待辦</span>
-                    <h4>今日待辦</h4>
-                  </div>
-                  <AlertCircle size={18} />
-                </div>
-                <div className="admin-queue">
-                  {adminQueue.map((item) => (
-                    <div key={item.label}>
-                      <StatusPill tone={item.tone}>{item.value}</StatusPill>
-                      <span>{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </article>
-
-              <article className="admin-panel">
-                <div className="admin-panel-head">
-                  <div>
-                    <span className="eyebrow">審核</span>
-                    <h4>留言、讀者回覆與付款爭議</h4>
-                  </div>
-                  <ShieldCheck size={18} />
-                </div>
-                <div className="admin-content-stack">
-                  {preset.moderation.map((item) => (
-                    <div key={item.id} className="admin-content-item">
-                      <Badge variant="outline" className="pill">{moderationKindLabel(item.kind, true)} · {statusLabel(item.status)}</Badge>
-                      <strong>{item.title}</strong>
-                      <small>{item.subject} · 優先度 {priorityLabel(item.priority)}</small>
-                      <small>{item.action}</small>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            </div>
-          )}
-
           {activeTab === 'articles' && (
             <div className="publication-admin-tab-grid">
               <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="content" />
@@ -3602,7 +3651,7 @@ function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: Verti
                 <div className="admin-panel-head">
                   <div>
                     <span className="eyebrow">文章狀態</span>
-                    <h4>內容與付費牆總覽</h4>
+                    <h4>文章、付費牆與限時免費</h4>
                   </div>
                   <BookOpen size={18} />
                 </div>
@@ -3617,17 +3666,12 @@ function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: Verti
                   ))}
                 </div>
               </article>
-            </div>
-          )}
 
-          {activeTab === 'newsletter' && (
-            <div className="publication-admin-tab-grid">
-              <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="newsletter" />
               <article className="admin-panel">
                 <div className="admin-panel-head">
                   <div>
-                    <span className="eyebrow">成效</span>
-                    <h4>發信、分眾與升級</h4>
+                    <span className="eyebrow">電子報成效</span>
+                    <h4>發信、讀者分眾與升級</h4>
                   </div>
                   <Megaphone size={18} />
                 </div>
