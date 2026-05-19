@@ -2319,68 +2319,121 @@ function CoursesView({
 
 function CommunityView({ preset, role }: { preset: ReturnType<typeof getPreset>; role: Role }) {
   const isSkillsSchool = preset.id === 'skills-school'
+  const [postDraft, setPostDraft] = useState('')
+  const [localPosts, setLocalPosts] = useState<Array<{ id: string; author: string; body: string; createdAt: string }>>([])
   const paidMembers = preset.members.filter((member) => member.status === 'active').length
   const freeMembers = preset.members.filter((member) => member.status === 'free').length
   const openModeration = preset.moderation.filter((item) => item.status !== 'resolved').length
+  const canPost = role !== 'visitor'
+  const feedAuthor = role === 'admin' ? 'Skills Team' : preset.members[0]?.name ?? '會員'
+  const feedPosts = [
+    ...localPosts,
+    {
+      id: 'seed-post-1',
+      author: 'Yuna',
+      body: '我今天把會議摘要 Skill 的輸出格式改成「結論、待辦、風險」三段，回顧時比較容易直接交付給主管。',
+      createdAt: '今天 09:20',
+    },
+    {
+      id: 'seed-post-2',
+      author: 'Rae',
+      body: '本週直播前可以先把你的 Skill SOP 貼上來，我會優先看「輸入資料是否足夠」和「輸出能不能被檢查」。',
+      createdAt: '昨天 21:10',
+    },
+  ]
 
-  if (isSkillsSchool && role === 'admin') {
+  if (isSkillsSchool && canPost) {
     return (
       <section className="private-group-shell">
         <div className="private-group-top">
           <div className="private-search">
             <Search size={18} />
-            <span>搜尋文章、課程、討論與會員</span>
+            <span>搜尋社群、課程與成員</span>
           </div>
           <div className="private-admin-icons">
             <span><MessageSquareText size={18} /><strong>2</strong></span>
             <span><Bell size={18} /><strong>9</strong></span>
-            <span className="private-avatar">S</span>
+            <span className="private-avatar">{role === 'admin' ? 'S' : feedAuthor.slice(0, 1)}</span>
           </div>
         </div>
 
         <div className="private-group-tabs" aria-label="私密社團分頁">
-          <button type="button" className="active">Community</button>
-          <button type="button">Classroom</button>
-          <button type="button">Calendar</button>
-          <button type="button">Members</button>
-          <button type="button">Leaderboard</button>
-          <button type="button">About</button>
+          <button type="button" className="active">社群</button>
+          <button type="button">課程</button>
+          <button type="button">行事曆</button>
+          <button type="button">成員</button>
+          <button type="button">排行榜</button>
+          <button type="button">關於</button>
         </div>
 
         <div className="private-group-layout">
           <div className="private-feed">
-            <article className="private-composer">
-              <div className="private-avatar">S</div>
-              <span>Write something</span>
-              <Button variant="outline" className="secondary-button"><PlayCircle data-icon="inline-start" />Go Live</Button>
-            </article>
+            <form
+              className="private-composer"
+              onSubmit={(event) => {
+                event.preventDefault()
+                const body = postDraft.trim()
+                if (!body) return
+                setLocalPosts((posts) => [
+                  { id: `post-${Date.now()}`, author: feedAuthor, body, createdAt: '剛剛' },
+                  ...posts,
+                ])
+                setPostDraft('')
+              }}
+            >
+              <div className="private-avatar">{role === 'admin' ? 'S' : feedAuthor.slice(0, 1)}</div>
+              <Textarea value={postDraft} onChange={(event) => setPostDraft(event.target.value)} placeholder="分享你的 AI Skill 進度、問題或成果" aria-label="撰寫社群貼文" />
+              <div className="private-composer-actions">
+                <Button variant="outline" className="secondary-button" type="button"><PlayCircle data-icon="inline-start" />開直播</Button>
+                <Button className="primary-button" type="submit" disabled={!postDraft.trim()}><MessageSquareText data-icon="inline-start" />發布</Button>
+              </div>
+            </form>
 
             <div className="private-filter-row">
               <div className="member-status-tabs">
-                <button type="button" className="active">All</button>
-                <button type="button">General discussion</button>
-                <button type="button">Skill feedback</button>
+                <button type="button" className="active">全部</button>
+                <button type="button">一般討論</button>
+                <button type="button">Skill 回饋</button>
               </div>
-              <Button variant="outline" className="ghost-button"><SlidersHorizontal data-icon="inline-start" />Filter</Button>
+              <Button variant="outline" className="ghost-button"><SlidersHorizontal data-icon="inline-start" />篩選</Button>
             </div>
 
-            <article className="private-setup-card">
-              <div className="private-setup-head">
-                <span className="setup-progress-ring" />
-                <strong>Set up your group</strong>
-                <ChevronRight size={18} />
-              </div>
-              <ul>
-                <li><span />調整社群封面與介紹</li>
-                <li><span />邀請 3 位 AI Skill 會員</li>
-                <li><span />發布第一篇置頂公告</li>
-                <li><span />確認課程權限與入會問題</li>
-              </ul>
-            </article>
+            {role === 'admin' && (
+              <article className="private-setup-card">
+                <div className="private-setup-head">
+                  <span className="setup-progress-ring" />
+                  <strong>設定你的社群</strong>
+                  <ChevronRight size={18} />
+                </div>
+                <ul>
+                  <li><span />調整社群封面與介紹</li>
+                  <li><span />邀請 3 位 AI Skill 會員</li>
+                  <li><span />發布第一篇置頂公告</li>
+                  <li><span />確認課程權限與入會問題</li>
+                </ul>
+              </article>
+            )}
 
-            <div className="thread-list">
+            <div className="private-post-list" aria-label="社群河道">
+              {feedPosts.map((post) => (
+                <article key={post.id} className="private-feed-post">
+                  <div className="private-avatar">{post.author.slice(0, 1)}</div>
+                  <div>
+                    <div className="private-post-meta">
+                      <strong>{post.author}</strong>
+                      <small>{post.createdAt}</small>
+                    </div>
+                    <p>{post.body}</p>
+                    <div className="private-post-actions">
+                      <button type="button">讚</button>
+                      <button type="button">留言</button>
+                      <button type="button">分享</button>
+                    </div>
+                  </div>
+                </article>
+              ))}
               {preset.threads.map((thread) => (
-                <article key={thread.id} className="thread-row">
+                <article key={thread.id} className="thread-row private-thread-row">
                   <div>
                     <Badge variant="outline" className="pill">{thread.category}{thread.pinned ? ' · 置頂' : ''}</Badge>
                     <h4>{thread.title}</h4>
@@ -2394,33 +2447,37 @@ function CommunityView({ preset, role }: { preset: ReturnType<typeof getPreset>;
 
           <aside className="private-group-sidebar">
             <article className="private-group-card">
-              <div className="private-cover-edit">Upload cover photo</div>
+              <div className="private-cover-edit">{role === 'admin' ? '上傳社群封面' : '社群封面'}</div>
               <div className="private-card-body">
                 <strong>{preset.brand.creatorName}</strong>
                 <small>skills-school-memberhub.vercel.app</small>
                 <p>{preset.copy.heroBody}</p>
                 <div className="private-stats">
-                  <span><strong>{paidMembers + freeMembers}</strong><small>Member</small></span>
-                  <span><strong>{paidMembers}</strong><small>Online</small></span>
-                  <span><strong>1</strong><small>Admin</small></span>
+                  <span><strong>{paidMembers + freeMembers}</strong><small>會員</small></span>
+                  <span><strong>{paidMembers}</strong><small>在線</small></span>
+                  <span><strong>1</strong><small>管理員</small></span>
                 </div>
-                <Button variant="outline" className="secondary-button"><Settings2 data-icon="inline-start" />Settings</Button>
+                {role === 'admin' ? (
+                  <Button variant="outline" className="secondary-button"><Settings2 data-icon="inline-start" />設定</Button>
+                ) : (
+                  <Button variant="outline" className="secondary-button"><UserRound data-icon="inline-start" />我的會員資料</Button>
+                )}
               </div>
             </article>
 
             <article className="private-side-panel">
               <div className="admin-panel-head">
                 <div>
-                  <span className="eyebrow">會員管理</span>
-                  <h4>社群狀態</h4>
+                  <span className="eyebrow">{role === 'admin' ? '會員管理' : '社群資訊'}</span>
+                  <h4>{role === 'admin' ? '社群狀態' : '目前社群'}</h4>
                 </div>
                 <UsersRound size={18} />
               </div>
               <div className="integration-grid">
-                <IntegrationItem label="Active" value={`${paidMembers} 位 AI Skill 會員`} />
-                <IntegrationItem label="Free" value={`${freeMembers} 位免費讀者`} />
-                <IntegrationItem label="待審核" value={`${openModeration} 件需處理`} />
-                <IntegrationItem label="邀請連結" value="可在設定分頁複製或寄送" />
+                <IntegrationItem label="付費會員" value={`${paidMembers} 位 AI Skill 會員`} />
+                <IntegrationItem label="免費讀者" value={`${freeMembers} 位免費讀者`} />
+                <IntegrationItem label={role === 'admin' ? '待審核' : '本週直播'} value={role === 'admin' ? `${openModeration} 件需處理` : '週四 20:00'} />
+                <IntegrationItem label={role === 'admin' ? '邀請連結' : '可參與內容'} value={role === 'admin' ? '可在設定分頁複製或寄送' : '討論、課程、打卡'} />
               </div>
             </article>
           </aside>

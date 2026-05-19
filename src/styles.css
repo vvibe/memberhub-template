@@ -2930,10 +2930,34 @@ button:active {
   box-shadow: var(--shadow-soft);
 }
 
-.private-composer span {
+.private-composer [data-slot="textarea"] {
+  min-height: 46px;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: #fbfbfa;
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+
+.private-composer [data-slot="textarea"]::placeholder {
   color: var(--text-muted);
   font-size: var(--font-lg);
   font-weight: var(--weight-semibold);
+}
+
+.private-composer [data-slot="textarea"]:focus-visible {
+  border-color: rgba(46, 110, 86, 0.38);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(46, 110, 86, 0.1);
+  outline: none;
+}
+
+.private-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .private-filter-row {
@@ -2982,6 +3006,59 @@ button:active {
   height: 22px;
   border: 2px solid var(--text-muted);
   border-radius: 999px;
+}
+
+.private-post-list {
+  display: grid;
+  gap: 10px;
+}
+
+.private-feed-post {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: #ffffff;
+}
+
+.private-post-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.private-post-meta small {
+  color: var(--text-muted);
+}
+
+.private-feed-post p {
+  margin: 7px 0 10px;
+  color: var(--text);
+  line-height: 1.65;
+}
+
+.private-post-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.private-post-actions button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--text-muted);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-medium);
+}
+
+.private-thread-row {
+  background: #ffffff;
 }
 
 .private-cover-edit {
@@ -4186,8 +4263,14 @@ button:active {
     grid-template-columns: 42px minmax(0, 1fr);
   }
 
-  .private-composer [data-slot="button"] {
+  .private-composer-actions {
     grid-column: 1 / -1;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .private-composer-actions [data-slot="button"] {
+    width: 100%;
   }
 
   .invite-link-box span {
