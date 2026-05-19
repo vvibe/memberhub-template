@@ -538,6 +538,39 @@ test('Signal Brief standalone article and limited-free rules work', async ({ pag
   expect(consoleErrors.errors).toEqual([])
 })
 
+test('formal admin login opens dashboards without a blank screen', async ({ page }, testInfo) => {
+  const consoleErrors = collectConsoleErrors(page)
+
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authenticated: false }) })
+  })
+  await page.route('**/api/auth/login', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, user: { email: 'lotushj1@gmail.com', role: 'admin' } }),
+    })
+  })
+
+  await page.goto('/?formal=skills-school&case=skills-school&view=login')
+  await page.locator('.auth-card').getByLabel('Email').fill('lotushj1@gmail.com')
+  await page.locator('.auth-card').getByLabel('密碼').fill('test-password')
+  await page.locator('.auth-card').getByRole('button', { name: '登入' }).click()
+  await expect(page.getByRole('button', { name: '發布' })).toBeVisible()
+  await expectPageHasVisibleContent(page)
+
+  await page.goto('/?formal=signal-brief&case=signal-brief')
+  await page.locator('.signal-header').getByRole('button', { name: '登入' }).click()
+  await page.locator('.signal-auth-card').getByLabel('Email').fill('lotushj1@gmail.com')
+  await page.locator('.signal-auth-card').getByLabel('密碼').fill('test-password')
+  await page.locator('.signal-auth-card').getByRole('button', { name: '登入' }).click()
+  await expect(page.getByText('Signal Brief 出版後台')).toBeVisible()
+  await expectPageHasVisibleContent(page)
+  await attachViewportScreenshot(page, testInfo, 'formal-login-admin')
+
+  expect(consoleErrors.errors).toEqual([])
+})
+
 function collectConsoleErrors(page: Page) {
   const errors: string[] = []
   page.on('console', (message) => {
@@ -564,6 +597,21 @@ async function setRole(page: Page, label: '訪客' | '會員' | '管理員') {
 
 async function openNav(page: Page, label: string) {
   await page.locator('.nav-list').getByRole('button', { name: label, exact: true }).click()
+}
+
+async function expectPageHasVisibleContent(page: Page) {
+  const report = await page.evaluate(() => ({
+    textLength: document.body.innerText.trim().length,
+    visibleBlocks: Array.from(document.body.querySelectorAll('main, section, article, form, header'))
+      .filter((element) => {
+        const rect = element.getBoundingClientRect()
+        const style = window.getComputedStyle(element)
+        return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden'
+      }).length,
+  }))
+
+  expect(report.textLength, JSON.stringify(report)).toBeGreaterThan(40)
+  expect(report.visibleBlocks, JSON.stringify(report)).toBeGreaterThan(0)
 }
 
 async function expectNoHorizontalOverflow(page: Page) {

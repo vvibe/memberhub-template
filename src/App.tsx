@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import {
   AlertCircle,
   BarChart3,
@@ -207,6 +207,7 @@ function defaultViewForRole(role: Role): ViewId {
 
 type AuthResult = {
   ok: boolean
+  role?: Role
   error?: string
 }
 
@@ -621,6 +622,7 @@ function App() {
   const [globalQuery, setGlobalQuery] = useState('')
   const [authEmail, setAuthEmail] = useState<string | null>(null)
   const [authChecking, setAuthChecking] = useState(formalAuth)
+  const authRequestIdRef = useRef(0)
 
   useEffect(() => {
     saveState(state)
@@ -629,11 +631,14 @@ function App() {
   useEffect(() => {
     if (!formalAuthPresetId) return
     let active = true
+    const requestId = authRequestIdRef.current + 1
+    authRequestIdRef.current = requestId
+    const isStale = () => !active || requestId !== authRequestIdRef.current
 
     fetch('/api/auth/me')
       .then((response) => response.json())
       .then((payload) => {
-        if (!active) return
+        if (isStale()) return
         if (payload?.authenticated && payload?.user?.email) {
           const role: Role = payload.user.role === 'member' ? 'member' : 'admin'
           const authenticatedPreset = getPreset(formalAuthPresetId)
@@ -652,12 +657,12 @@ function App() {
         setState((prev) => ({ ...prev, presetId: formalAuthPresetId, role: 'visitor', selectedPlanId: 'free' }))
       })
       .catch(() => {
-        if (!active) return
+        if (isStale()) return
         setAuthEmail(null)
         setState((prev) => ({ ...prev, presetId: formalAuthPresetId, role: 'visitor', selectedPlanId: 'free' }))
       })
       .finally(() => {
-        if (active) setAuthChecking(false)
+        if (!isStale()) setAuthChecking(false)
       })
 
     return () => {
@@ -800,6 +805,7 @@ function App() {
 
   const handleCredentialsLogin = async (email: string, password: string): Promise<AuthResult> => {
     try {
+      authRequestIdRef.current += 1
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -808,6 +814,7 @@ function App() {
       const payload = await response.json().catch(() => null)
 
       if (!response.ok || !payload?.ok) {
+        setAuthChecking(false)
         if (payload?.error === 'auth_not_configured') return { ok: false, error: '登入服務尚未完成環境變數設定。' }
         return { ok: false, error: '帳號或密碼不正確。' }
       }
@@ -815,13 +822,15 @@ function App() {
       const role: Role = payload.user?.role === 'member' ? 'member' : 'admin'
       const memberPlan = runtimePreset.plans.find((plan) => plan.highlighted) ?? runtimePreset.plans[1] ?? runtimePreset.plans[0]
       setAuthEmail(payload.user.email)
+      setAuthChecking(false)
       updateState({
         role,
         selectedPlanId: memberPlan.id,
       })
       setView(role === 'admin' && formalSkillsAuth ? 'community' : role === 'admin' ? 'admin' : 'member')
-      return { ok: true }
+      return { ok: true, role }
     } catch {
+      setAuthChecking(false)
       return { ok: false, error: '暫時無法連線到登入服務，請稍後再試。' }
     }
   }
@@ -915,7 +924,7 @@ function App() {
     return haystack.includes(query.toLowerCase())
   })
 
-  if (standalonePresetId === 'signal-brief') {
+  if (standalonePresetId === 'signal-brief' || formalAuthPresetId === 'signal-brief') {
     return (
       <SignalBriefStandalone
         preset={runtimePreset}
@@ -1160,6 +1169,7 @@ function SignalBriefStandalone({
   const [loginError, setLoginError] = useState('')
   const [subscribedEmail, setSubscribedEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [openAdminAfterLogin, setOpenAdminAfterLogin] = useState(false)
   const publicPosts = preset.content.filter((item) => !item.isPaid)
   const paidPosts = preset.content.filter((item) => item.isPaid)
   const featurePost = publicPosts[0] ?? preset.content[0]
@@ -1184,7 +1194,11 @@ function SignalBriefStandalone({
       setLoginError(result.error ?? '登入失敗，請稍後再試。')
       return
     }
-    setScreen('admin')
+    if (result.role === 'admin') {
+      setOpenAdminAfterLogin(true)
+      return
+    }
+    setScreen('account')
   }
 
   const submitSubscribe = (event: FormEvent<HTMLFormElement>) => {
@@ -1198,6 +1212,12 @@ function SignalBriefStandalone({
     await onLogout()
     setScreen('home')
   }
+
+  useEffect(() => {
+    if (!openAdminAfterLogin || role !== 'admin') return
+    setScreen('admin')
+    setOpenAdminAfterLogin(false)
+  }, [openAdminAfterLogin, role])
 
   return (
     <main className="signal-site">
@@ -1404,6 +1424,15 @@ function SignalBriefStandalone({
             onCreateContent={onCreateContent}
             onCheckout={() => onCheckout(paidPlan)}
           />
+        </section>
+      )}
+      {screen === 'admin' && role !== 'admin' && (
+        <section className="signal-auth-page">
+          <div className="signal-auth-card">
+            <span className="signal-kicker">Publisher studio</span>
+            <h1>正在開啟後台</h1>
+            <p>登入狀態同步中，完成後會直接進入出版後台。</p>
+          </div>
         </section>
       )}
     </main>
