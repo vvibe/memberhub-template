@@ -9,24 +9,31 @@ import {
   ChevronRight,
   CircleDollarSign,
   ClipboardCheck,
+  Copy,
+  Download,
+  ExternalLink,
   FileText,
   Flame,
   Gift,
   Globe2,
   Hash,
   LayoutDashboard,
+  Link2,
   LogIn,
   Lock,
   Mail,
   Megaphone,
   MessageSquareText,
   PlayCircle,
+  Send,
   Search,
   Settings2,
   ShieldCheck,
   SlidersHorizontal,
+  Tag,
   Trophy,
   UserRound,
+  UserPlus,
   UsersRound,
 } from 'lucide-react'
 import { getPreset, presets } from './data/presets'
@@ -2836,9 +2843,11 @@ const publicationAdminTabs: Array<{ id: PublicationAdminTabId; label: string; de
   { id: 'settings', label: '設定', description: '品牌、首頁與方案', icon: Settings2 },
 ]
 
-type SkillAdminTabId = 'articles' | 'courses' | 'newsletter' | 'subscriptions' | 'settings'
+type SkillAdminTabId = 'dashboard' | 'members' | 'articles' | 'courses' | 'newsletter' | 'subscriptions' | 'settings'
 
 const skillAdminTabs: Array<{ id: SkillAdminTabId; label: string; icon: typeof LayoutDashboard }> = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'members', label: '會員', icon: UsersRound },
   { id: 'articles', label: '文章', icon: BookOpen },
   { id: 'courses', label: '課程', icon: PlayCircle },
   { id: 'newsletter', label: '電子報', icon: Megaphone },
@@ -3141,11 +3150,16 @@ function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: Verti
 
 function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; state: AppState; onUpdatePreset: (patch: Partial<VerticalPreset>) => void }) {
   const isPublication = isPublicationPreset(preset)
-  const [skillAdminTab, setSkillAdminTab] = useState<SkillAdminTabId>('articles')
+  const [skillAdminTab, setSkillAdminTab] = useState<SkillAdminTabId>('dashboard')
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [copiedInvite, setCopiedInvite] = useState(false)
   const paidMembers = preset.members.filter((member) => member.status === 'active').length
+  const freeMembers = preset.members.filter((member) => member.status === 'free').length
+  const pausedMembers = preset.members.filter((member) => member.status === 'paused').length
   const paidContent = preset.content.filter((item) => item.isPaid).length
   const totalLessons = preset.courses.reduce((count, course) => count + course.lessons.length, 0)
   const openModeration = preset.moderation.filter((item) => item.status !== 'resolved').length
+  const inviteLink = 'https://skills-school-memberhub.vercel.app/join'
   const adminQueue = isPublication
     ? [
         { label: '付費文章草稿', value: `${paidContent}`, tone: 'yellow' },
@@ -3191,6 +3205,192 @@ function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; 
             })}
           </nav>
         </section>
+
+        {skillAdminTab === 'dashboard' && (
+          <section className="skills-dashboard-layout">
+            <article className="admin-panel span-2">
+              <div className="admin-panel-head">
+                <div>
+                  <span className="eyebrow">Dashboard</span>
+                  <h4>今日營運總覽</h4>
+                </div>
+                <LayoutDashboard size={18} />
+              </div>
+              <div className="admin-grid">
+                <MetricTile label="AI Skill 會員" value={String(paidMembers)} icon={ShieldCheck} />
+                <MetricTile label="免費讀者" value={String(freeMembers)} icon={UsersRound} />
+                <MetricTile label="待處理事項" value={String(openModeration)} icon={AlertCircle} />
+                <MetricTile label="本週排程" value={String(preset.newsletter.filter((issue) => issue.status === 'scheduled').length)} icon={CalendarDays} />
+              </div>
+            </article>
+            <article className="admin-panel">
+              <div className="admin-panel-head">
+                <div>
+                  <span className="eyebrow">快速動作</span>
+                  <h4>常用管理</h4>
+                </div>
+                <UserPlus size={18} />
+              </div>
+              <div className="skills-quick-actions">
+                <Button className="primary-button" onClick={() => setSkillAdminTab('members')}><UserPlus data-icon="inline-start" />邀請會員</Button>
+                <Button variant="outline" className="secondary-button" onClick={() => setSkillAdminTab('articles')}><FileText data-icon="inline-start" />新增文章</Button>
+                <Button variant="outline" className="ghost-button" onClick={() => setSkillAdminTab('courses')}><PlayCircle data-icon="inline-start" />檢查課程</Button>
+              </div>
+            </article>
+            <article className="admin-panel span-2">
+              <div className="admin-panel-head">
+                <div>
+                  <span className="eyebrow">待處理</span>
+                  <h4>需要管理員確認的項目</h4>
+                </div>
+                <ClipboardCheck size={18} />
+              </div>
+              <div className="admin-queue">
+                {adminQueue.map((item) => (
+                  <div key={item.label}>
+                    <StatusPill tone={item.tone}>{item.value}</StatusPill>
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </article>
+            <article className="admin-panel">
+              <div className="admin-panel-head">
+                <div>
+                  <span className="eyebrow">會員狀態</span>
+                  <h4>本週會員健康度</h4>
+                </div>
+                <UsersRound size={18} />
+              </div>
+              <div className="integration-grid">
+                <IntegrationItem label="Active" value={`${paidMembers} 位付費會員`} />
+                <IntegrationItem label="Free" value={`${freeMembers} 位免費讀者`} />
+                <IntegrationItem label="Paused" value={`${pausedMembers} 位暫停`} />
+              </div>
+            </article>
+          </section>
+        )}
+
+        {skillAdminTab === 'members' && (
+          <section className="skills-member-admin">
+            <div className="skills-member-toolbar">
+              <div className="member-status-tabs" aria-label="會員狀態篩選">
+                <button type="button" className="active">Active <strong>{paidMembers}</strong></button>
+                <button type="button">Cancelling <strong>0</strong></button>
+                <button type="button">Churned <strong>{pausedMembers}</strong></button>
+                <button type="button">Banned <strong>0</strong></button>
+              </div>
+              <div className="member-toolbar-actions">
+                <Button variant="outline" className="secondary-button"><SlidersHorizontal data-icon="inline-start" />Filter</Button>
+                <Button variant="outline" className="secondary-button"><Download data-icon="inline-start" />Export</Button>
+                <Button className="primary-button"><UserPlus data-icon="inline-start" />Invite</Button>
+              </div>
+            </div>
+
+            <div className="skills-member-layout">
+              <article className="admin-panel">
+                <div className="admin-panel-head">
+                  <div>
+                    <span className="eyebrow">會員管理</span>
+                    <h4>會員名單與狀態</h4>
+                  </div>
+                  <UsersRound size={18} />
+                </div>
+                <div className="skills-member-list">
+                  {preset.members.map((member, index) => {
+                    const plan = preset.plans.find((item) => item.id === member.planId)
+                    const memberStatus = member.status === 'active' ? 'Online now' : member.status === 'free' ? 'Free reader' : 'Paused'
+                    return (
+                      <article key={member.id} className="skills-member-record">
+                        <div className="skills-member-avatar">
+                          {member.name.slice(0, 1)}
+                          <span>{member.level}</span>
+                        </div>
+                        <div className="skills-member-main">
+                          <div className="skills-member-name">
+                            <strong>{member.name}</strong>
+                            <small>{index === 0 ? '(Owner)' : roleDisplayLabel(member.groupRole)}</small>
+                          </div>
+                          <p>@{member.email.split('@')[0].replace(/\./g, '-')}</p>
+                          <strong className="skills-member-title">{member.bio}</strong>
+                          <div className="skills-member-meta">
+                            <span><span className={`member-live-dot ${member.status}`} />{memberStatus}</span>
+                            <span><Tag size={16} />{plan?.name ?? member.planId}</span>
+                            <span><CalendarDays size={16} />Joined {member.joinedAt}</span>
+                            <span><ShieldCheck size={16} />{member.status === 'active' ? 'Membership active' : 'Membership preview'}</span>
+                          </div>
+                        </div>
+                        <div className="skills-member-side">
+                          <StatusPill tone={member.risk === 'high' ? 'red' : member.risk === 'medium' ? 'yellow' : 'green'}>{riskLabel(member.risk)}</StatusPill>
+                          <small>{member.contributions.posts} posts · {member.contributions.comments} comments</small>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              </article>
+
+              <aside className="skills-invite-panel">
+                <article className="admin-panel">
+                  <div className="admin-panel-head">
+                    <div>
+                      <span className="eyebrow">邀請連結</span>
+                      <h4>Share your group link</h4>
+                    </div>
+                    <Link2 size={18} />
+                  </div>
+                  <p>這個連結會帶新學員到加入會員頁，讓他們選擇免費讀者或 AI Skill 會員方案。</p>
+                  <div className="invite-link-box">
+                    <span>{inviteLink}</span>
+                    <Button
+                      className="primary-button"
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(inviteLink)
+                        setCopiedInvite(true)
+                      }}
+                    >
+                      <Copy data-icon="inline-start" />{copiedInvite ? '已複製' : 'Copy'}
+                    </Button>
+                  </div>
+                </article>
+
+                <article className="admin-panel">
+                  <div className="admin-panel-head">
+                    <div>
+                      <span className="eyebrow">直接邀請</span>
+                      <h4>Invite members</h4>
+                    </div>
+                    <Send size={18} />
+                  </div>
+                  <p>邀請信會提供加入頁連結，正式發送時優先使用 Portaly Vibe 或 InsForge 的 Email / 邀請能力。</p>
+                  <div className="invite-email-row">
+                    <Input value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} type="email" placeholder="Email address" />
+                    <Button className="primary-button" disabled={!inviteEmail.trim()}><Send data-icon="inline-start" />Send</Button>
+                  </div>
+                </article>
+
+                <article className="admin-panel">
+                  <div className="invite-method-row">
+                    <div className="invite-method-icon csv">CSV</div>
+                    <div>
+                      <strong>Import .CSV file</strong>
+                      <small>批次匯入會員 Email，適合從既有名單搬移到 Skills School。</small>
+                    </div>
+                    <Button variant="outline" className="secondary-button"><ExternalLink data-icon="inline-start" />Import</Button>
+                  </div>
+                  <div className="invite-method-row">
+                    <div className="invite-method-icon portaly"><Link2 size={20} /></div>
+                    <div>
+                      <strong>Portaly / InsForge integration</strong>
+                      <small>需要自動邀請或同步會員時，優先走 Portaly Vibe，再補 InsForge function。</small>
+                    </div>
+                    <Button variant="outline" className="secondary-button"><ExternalLink data-icon="inline-start" />Integrate</Button>
+                  </div>
+                </article>
+              </aside>
+            </div>
+          </section>
+        )}
 
         {skillAdminTab === 'articles' && (
           <section className="admin-dashboard-grid">
