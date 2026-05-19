@@ -83,6 +83,13 @@ test('interactive flows stay usable and visually stable', async ({ page }, testI
   await expect(page.getByText('Skills School AI Skill 實作社群 設定', { exact: true })).toBeVisible()
 
   await openNav(page, '課程')
+  await expect(page.getByLabel('新增課程')).toBeVisible()
+  await page.getByLabel('課程名稱').fill('AI Skill 任務設計實戰')
+  await page.getByLabel('課程說明').fill('帶學員把真實工作任務拆成可重複的 AI Skill，完成輸入、流程、檢查與交付模板。')
+  await page.getByRole('radio', { name: /等級解鎖/ }).click()
+  await page.getByRole('button', { name: '新增課程' }).click()
+  await expect(page.getByRole('heading', { name: 'AI Skill 任務設計實戰' })).toBeVisible()
+  await expect(page.getByText('等級解鎖').first()).toBeVisible()
   await page.getByRole('button', { name: /完成第一版 Skill SOP/ }).first().click()
   await expect(page.locator('.lesson-card.complete').filter({ hasText: '完成第一版 Skill SOP' })).toBeVisible()
 

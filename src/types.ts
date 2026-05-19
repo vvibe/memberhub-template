@@ -57,12 +57,17 @@ export type CourseResource = {
   access: 'free' | 'member' | 'level-gated'
 }
 
+export type CourseAccessMode = 'open' | 'level-unlock' | 'buy-now' | 'time-unlock' | 'private'
+
 export type Course = {
   id: string
   title: string
   description: string
   progress: number
   lessons: Lesson[]
+  accessMode?: CourseAccessMode
+  published?: boolean
+  coverLabel?: string
 }
 
 export type Thread = {

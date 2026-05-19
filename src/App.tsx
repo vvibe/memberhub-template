@@ -17,6 +17,7 @@ import {
   Gift,
   Globe2,
   Hash,
+  KeyRound,
   LayoutDashboard,
   Link2,
   LogIn,
@@ -40,7 +41,7 @@ import { getPreset, presets } from './data/presets'
 import { createCheckoutSessionPreview, portalyIntegrationNotes } from './lib/portaly'
 import { richTextBlocks, richTextPlainText } from './lib/rich-text'
 import { createPaymentEvent, loadState, presetLabel, resetState, roleLabel, saveState } from './lib/store'
-import type { AppState, ContentItem, Course, Member, ModerationItem, NewsletterIssue, Plan, PresetId, ReferralCampaign, Role, VerticalPreset, ViewId } from './types'
+import type { AppState, ContentItem, Course, CourseAccessMode, Member, ModerationItem, NewsletterIssue, Plan, PresetId, ReferralCampaign, Role, VerticalPreset, ViewId } from './types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -450,6 +451,18 @@ function accessLabel(access: string) {
     all: '全部會員',
   }
   return labels[access] ?? access
+}
+
+const courseAccessOptions: Array<{ id: CourseAccessMode; label: string; description: string }> = [
+  { id: 'open', label: '公開', description: '所有會員都能進入課程。' },
+  { id: 'level-unlock', label: '等級解鎖', description: '學員達到指定等級後解鎖。' },
+  { id: 'buy-now', label: '單次購買', description: '學員付一次性費用解鎖。' },
+  { id: 'time-unlock', label: '時間解鎖', description: '加入後第 N 天自動開放。' },
+  { id: 'private', label: '私人', description: '只開放給指定方案或指定會員。' },
+]
+
+function courseAccessLabel(access: CourseAccessMode = 'open') {
+  return courseAccessOptions.find((option) => option.id === access)?.label ?? '公開'
 }
 
 function roleDisplayLabel(role: string) {
@@ -999,6 +1012,7 @@ function App() {
             level={activeLevel}
             role={state.role}
             completedLessons={state.completedLessons}
+            onUpdatePreset={handleUpdatePreset}
             onToggleLesson={(lessonId) =>
               updateState({
                 completedLessons: state.completedLessons.includes(lessonId)
@@ -2255,15 +2269,42 @@ function CoursesView({
   level,
   role,
   completedLessons,
+  onUpdatePreset,
   onToggleLesson,
 }: {
   preset: ReturnType<typeof getPreset>
   level: number
   role: Role
   completedLessons: string[]
+  onUpdatePreset: (patch: Partial<VerticalPreset>) => void
   onToggleLesson: (lessonId: string) => void
 }) {
   const canUseLessons = role !== 'visitor'
+  const [courseName, setCourseName] = useState('')
+  const [courseDescription, setCourseDescription] = useState('')
+  const [courseAccessMode, setCourseAccessMode] = useState<CourseAccessMode>('open')
+  const [coursePublished, setCoursePublished] = useState(true)
+  const nameLength = courseName.trim().length
+  const descriptionLength = courseDescription.trim().length
+  const canAddCourse = nameLength > 0 && descriptionLength > 0
+  const handleAddCourse = () => {
+    if (!canAddCourse) return
+    const nextCourse: Course = {
+      id: `course-${Date.now()}`,
+      title: courseName.trim(),
+      description: courseDescription.trim(),
+      progress: 0,
+      lessons: [],
+      accessMode: courseAccessMode,
+      published: coursePublished,
+      coverLabel: '1460 x 752 px',
+    }
+    onUpdatePreset({ courses: [nextCourse, ...preset.courses] })
+    setCourseName('')
+    setCourseDescription('')
+    setCourseAccessMode('open')
+    setCoursePublished(true)
+  }
   return (
     <section className="section-block">
       <div className="section-heading">
@@ -2272,11 +2313,96 @@ function CoursesView({
         {role === 'visitor' && <p>訪客可以看課程架構，但需要加入會員後才能標記進度、下載會員資源與進入討論。</p>}
         {role === 'admin' && <p>管理員正在檢查課程內容、資源權限與學員進度。</p>}
       </div>
+      {role === 'admin' && (
+        <article className="course-builder" aria-label="新增課程">
+          <div className="course-builder-head">
+            <div>
+              <span className="eyebrow">課程管理</span>
+              <h4>新增課程</h4>
+            </div>
+            <Button variant="outline" className="ghost-button" type="button"><KeyRound data-icon="inline-start" />用匯入碼匯入</Button>
+          </div>
+          <div className="course-builder-fields">
+            <label>
+              課程名稱
+              <Input
+                value={courseName}
+                onChange={(event) => setCourseName(event.target.value.slice(0, 50))}
+                placeholder="輸入課程名稱"
+                aria-label="課程名稱"
+                autoComplete="off"
+              />
+              <small>{nameLength} / 50</small>
+            </label>
+            <label>
+              課程說明
+              <Textarea
+                value={courseDescription}
+                onChange={(event) => setCourseDescription(event.target.value.slice(0, 500))}
+                placeholder="說明這門課會帶學員完成什麼成果"
+                aria-label="課程說明"
+                autoComplete="off"
+              />
+              <small>{descriptionLength} / 500</small>
+            </label>
+          </div>
+          <div className="course-access-picker" role="radiogroup" aria-label="課程開放方式">
+            {courseAccessOptions.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={courseAccessMode === option.id}
+                className={courseAccessMode === option.id ? 'selected' : ''}
+                onClick={() => setCourseAccessMode(option.id)}
+              >
+                <span aria-hidden="true" />
+                <strong>{option.label}</strong>
+                <small>{option.description}</small>
+              </button>
+            ))}
+          </div>
+          <div className="course-cover-row">
+            <div className="course-cover-upload">上傳封面</div>
+            <div>
+              <strong>課程封面</strong>
+              <small>建議尺寸 1460 x 752 px</small>
+              <Button variant="outline" className="secondary-button" type="button">更換圖片</Button>
+            </div>
+          </div>
+          <div className="course-builder-footer">
+            <label className="editor-toggle course-publish-toggle">
+              <span>已發布</span>
+              <input type="checkbox" checked={coursePublished} onChange={(event) => setCoursePublished(event.target.checked)} />
+            </label>
+            <div>
+              <Button
+                variant="outline"
+                className="ghost-button"
+                type="button"
+                onClick={() => {
+                  setCourseName('')
+                  setCourseDescription('')
+                  setCourseAccessMode('open')
+                  setCoursePublished(true)
+                }}
+              >
+                取消
+              </Button>
+              <Button className="primary-button" type="button" disabled={!canAddCourse} onClick={handleAddCourse}>新增課程</Button>
+            </div>
+          </div>
+        </article>
+      )}
       <div className="course-grid">
         {preset.courses.map((course) => (
           <article key={course.id} className="course-panel">
             <div className="course-title">
               <div>
+                <div className="course-panel-meta">
+                  <Badge variant="outline" className="pill">{courseAccessLabel(course.accessMode)}</Badge>
+                  {course.published === false && <Badge variant="outline" className="pill">未發布</Badge>}
+                </div>
                 <h4>{course.title}</h4>
                 <p>{course.description}</p>
               </div>
