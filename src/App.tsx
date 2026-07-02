@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ChevronRight,
   CircleDollarSign,
-  ClipboardCheck,
   Download,
   ExternalLink,
   FileText,
@@ -33,7 +32,6 @@ import {
   UserPlus,
   UsersRound,
 } from 'lucide-react'
-import { getInsForgeClient, hasInsForgeConfig } from './lib/insforge'
 import { sanitizeRichTextHtml } from './lib/rich-text'
 import { loadState, planLabel, roleLabel, saveState } from './lib/store'
 import type {
@@ -351,14 +349,6 @@ function EventCalendarAction({ event, onOpen }: { event: CalendarEvent; onOpen: 
   )
 }
 
-function authError(error: { statusCode?: number; message?: string } | null | undefined) {
-  if (!error) return '登入失敗，請稍後再試。'
-  if (error.statusCode === 401) return '帳號或密碼不正確。'
-  if (error.statusCode === 403) return '請先完成 Email 驗證後再登入。'
-  if (error.statusCode === 409) return '這個 Email 已註冊，請直接登入。'
-  return error.message || '登入失敗，請稍後再試。'
-}
-
 function App() {
   const [state, setState] = useState<AppState>(() => loadState())
   const [view, setView] = useState<ViewId>(() => {
@@ -383,24 +373,6 @@ function App() {
     params.set('view', view)
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`)
   }, [view])
-
-  useEffect(() => {
-    if (!hasInsForgeConfig()) return
-    let active = true
-    getInsForgeClient()
-      .then((client) => client?.auth.getCurrentUser())
-      .then((result) => {
-        if (!active) return
-        const email = result?.data?.user?.email
-        if (!email) return
-        setAuthEmail(email)
-        setState((current) => ({ ...current, role: current.role === 'admin' ? 'admin' : 'member' }))
-      })
-      .catch(() => undefined)
-    return () => {
-      active = false
-    }
-  }, [])
 
   useEscapeKey(loginOpen, () => setLoginOpen(false))
   useEscapeKey(Boolean(joinPlan), () => setJoinPlan(null))
@@ -448,23 +420,15 @@ function App() {
   }
 
   const handleVerifyEmail = async (email: string, otp: string, role: Role): Promise<AuthResult> => {
-    const client = await getInsForgeClient()
-    if (!client) return { ok: false, error: 'InsForge 尚未設定。' }
-    const { data, error } = await client.auth.verifyEmail({ email, otp })
-    if (error) return { ok: false, error: authError(error) }
-    completeSession(role, data?.user?.email ?? email)
-    return { ok: true, role, email: data?.user?.email ?? email }
+    if (!otp.trim()) return { ok: false, error: '請輸入驗證碼。' }
+    completeSession(role, email)
+    return { ok: true, role, email }
   }
 
   const handleForgotPassword = async (email: string): Promise<AuthResult> => {
     const resetEmail = email.trim().toLowerCase()
     if (!resetEmail.includes('@')) return { ok: false, error: '請先輸入 Email。' }
-    if (!hasInsForgeConfig()) return { ok: true, message: '本機 demo 不會寄信；fork 後請由 AI 引導你串接正式重設密碼流程。' }
-    const client = await getInsForgeClient()
-    if (!client) return { ok: false, error: 'InsForge 尚未設定。' }
-    const { error } = await client.auth.sendResetPasswordEmail({ email: resetEmail, redirectTo: window.location.href })
-    if (error) return { ok: false, error: authError(error) }
-    return { ok: true, message: '已寄出密碼重設信，請檢查信箱。' }
+    return { ok: true, message: '本機 demo 不會寄信；正式站請串接你選擇的 Auth provider 重設密碼流程。' }
   }
 
   const handleCredentialsLogin = async (email: string, password: string, role: Role): Promise<AuthResult> => {
@@ -474,20 +438,11 @@ function App() {
       return { ok: true, role: 'admin', email: loginEmail }
     }
     if (role === 'admin') return { ok: false, role, email, error: '請使用測試管理員帳號登入。' }
-    if (!hasInsForgeConfig()) {
-      completeSession(role, email)
-      return { ok: true, role, email }
-    }
-    const client = await getInsForgeClient()
-    if (!client) return { ok: false, error: 'InsForge 尚未設定。' }
-    const { data, error } = await client.auth.signInWithPassword({ email, password })
-    if (error) return { ok: false, error: authError(error) }
-    completeSession(role, data?.user?.email ?? email)
-    return { ok: true, role, email: data?.user?.email ?? email }
+    completeSession(role, email)
+    return { ok: true, role, email }
   }
 
   const handleLogout = async () => {
-    if (hasInsForgeConfig()) await (await getInsForgeClient())?.auth.signOut().catch(() => undefined)
     setAuthEmail(null)
     updateState({ role: 'visitor', selectedPlanId: 'free', currentMemberPoints: 0 }, '已登出社群。')
     setView('about')
@@ -808,7 +763,7 @@ function JoinRequestView({ plan, questions, onSubmit }: { plan: Plan; questions:
       <article className="join-card">
         <SectionHeading eyebrow="Join request" title={isPaidPlan ? '訂閱申請已建立' : '申請已送出，等待審核'}>
           {isPaidPlan
-            ? '管理員可先設定訂閱金額，再請 AI Agent 串 Portaly Payment 建立 checkout。'
+            ? '管理員可先確認方案與入會回答，再接上你選擇的付款服務。'
             : '免費會員不會直接進入社群，管理員會在後台審核你的回答後核准。'}
         </SectionHeading>
       </article>
@@ -818,7 +773,7 @@ function JoinRequestView({ plan, questions, onSubmit }: { plan: Plan; questions:
   return (
     <article className="join-card">
       <SectionHeading eyebrow="Join request" title={`加入 ${plan.name}`}>
-        {isPaidPlan ? `${plan.price} ${plan.cadence}，付款流程建議用 AI 串 Portaly Payment。` : '回答問題後送出申請，免費會員需由管理員審核。'}
+        {isPaidPlan ? `${plan.price} ${plan.cadence}，送出後會以本機預覽狀態加入。` : '回答問題後送出申請，免費會員需由管理員審核。'}
       </SectionHeading>
       <form className="settings-form" onSubmit={(event) => {
         event.preventDefault()
@@ -1998,7 +1953,7 @@ function AccountView({
   const [passwordMessage, setPasswordMessage] = useState('')
   const paidPlans = state.plans.filter((plan) => plan.id !== 'free')
   const changePlan = paidPlans.find((plan) => plan.id !== currentPlan.id) ?? (currentPlan.id === 'free' ? paidPlans[0] : undefined)
-  const billingMethod = currentPlan.id === 'free' ? '無扣款' : 'Portaly checkout'
+  const billingMethod = currentPlan.id === 'free' ? '無扣款' : '外部付款服務'
   const billingCycle = currentPlan.id === 'free' ? '不扣款' : currentPlan.id === 'monthly' ? '每月循環扣款' : currentPlan.cadence
   const updateNotifications = (patch: Partial<AppState['notificationSettings']>) => updateState({
     notificationSettings: { ...state.notificationSettings, ...patch },
@@ -2025,9 +1980,7 @@ function AccountView({
       setPasswordMessage('管理員密碼已更新。')
       return
     }
-    setPasswordMessage(hasInsForgeConfig()
-      ? '會員密碼請先使用「忘記密碼」信件流程更新。'
-      : '本機 demo 不保存會員密碼；正式站 fork 後請串接 Auth provider 的變更密碼流程。')
+    setPasswordMessage('本機 demo 不保存會員密碼；正式站請串接你選擇的 Auth provider 變更密碼流程。')
   }
   const uploadAvatar = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -2127,7 +2080,7 @@ function AccountView({
             <p className="plan-summary">
               目前方案是 <strong>{currentPlan.name}</strong>，費用 <span className="mono">{currentPlan.price}</span> / {currentPlan.cadence}；扣款方式為 {billingMethod}，續訂狀態為 {billingCycle}。
             </p>
-            <p className="form-helper">方案按鈕目前只更新本機預覽；正式扣款與退訂需串接 Portaly Payment callback。</p>
+            <p className="form-helper">方案按鈕目前只更新本機預覽；正式扣款與退訂需串接你選擇的付款服務。</p>
             <div className="subscription-action-row">
               {changePlan && (
                 <Button className="primary-button" type="button" onClick={() => updateState({ selectedPlanId: changePlan.id }, `方案已切換為 ${changePlan.name}。`)}>Change plan</Button>
@@ -2162,8 +2115,6 @@ function LoginView({
   const [pending, setPending] = useState<{ email: string; role: Role } | null>(null)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
-  const insForgeEnabled = hasInsForgeConfig()
-
   const run = async (action: () => Promise<AuthResult>) => {
     setError('')
     setMessage('')
@@ -2194,7 +2145,7 @@ function LoginView({
     <section className="login-stack">
       <article className="login-card">
         <SectionHeading eyebrow="Account" title="登入社群">
-          {insForgeEnabled ? '使用 Email 與密碼登入社群。' : '本機 demo 可使用預設管理員帳號登入。'}
+          本機 demo 可使用預設管理員帳號登入。
         </SectionHeading>
         <form className="settings-form" onSubmit={(event) => { event.preventDefault(); void run(() => onCredentialsLogin(email, password, 'member')) }}>
           <label>Email<Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
@@ -2605,7 +2556,7 @@ function AdminAccess({ state, updateState }: { state: AppState; updateState: (pa
           <div className="settings-modal wide-modal" role="dialog" aria-modal="true" aria-label="加入申請審核">
             <button className="modal-close" type="button" onClick={() => setReviewOpen(false)} aria-label="關閉加入申請審核">×</button>
             <SectionHeading eyebrow="Join review" title="加入申請審核">
-              免費會員需要管理員核准；付費會員可先確認回答，再導到 Portaly checkout。
+              免費會員需要管理員核准；付費會員可先確認回答，再接上外部付款流程。
             </SectionHeading>
             <div className="application-list modal-list">
               {state.membershipApplications.length === 0 && <p className="empty-note">目前沒有待審核申請。</p>}
@@ -3317,7 +3268,7 @@ function AdminMembers({ state, updateState }: { state: AppState; updateState: (p
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null)
   const [importMessage, setImportMessage] = useState('')
-  const [memberConfirm, setMemberConfirm] = useState<{ action: 'remove' | 'ban' | 'refund'; memberId: string } | null>(null)
+  const [memberConfirm, setMemberConfirm] = useState<{ action: 'remove' | 'ban'; memberId: string } | null>(null)
   const [memberDraft, setMemberDraft] = useState<{ name: string; email: string; role: Member['role']; planId: Plan['id'] }>({ name: '', email: '', role: 'member', planId: 'free' })
   const importInputRef = useRef<HTMLInputElement>(null)
   const selectedMember = state.members.find((member) => member.id === selectedMemberId)
@@ -3354,23 +3305,6 @@ function AdminMembers({ state, updateState }: { state: AppState; updateState: (p
     }, '會員已新增。')
     setMemberDraft({ name: '', email: '', role: 'member', planId: 'free' })
     setAddMemberOpen(false)
-  }
-  const refundMember = (member: Member) => {
-    updateState({
-      payments: [
-        {
-          id: `payment-${Date.now()}`,
-          planId: member.planId,
-          memberEmail: member.email,
-          amountLabel: state.plans.find((plan) => plan.id === member.planId)?.price ?? 'NT$0',
-          provider: 'portaly',
-          status: 'refunded',
-          invoiceStatus: 'pending',
-          createdAt: '剛剛',
-        },
-        ...state.payments,
-      ],
-    }, '退款記錄已建立。')
   }
   const parseCsvLine = (line: string) => line.split(',').map((cell) => cell.trim().replace(/^"|"$/g, ''))
   const importCsv = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -3424,7 +3358,6 @@ function AdminMembers({ state, updateState }: { state: AppState; updateState: (p
     if (!memberConfirm || !confirmMember) return
     if (memberConfirm.action === 'remove') updateMember(confirmMember.id, { status: 'removed' }, '會員已移除。')
     if (memberConfirm.action === 'ban') updateMember(confirmMember.id, { status: 'banned', chatBlocked: true }, '會員已封鎖。')
-    if (memberConfirm.action === 'refund') refundMember(confirmMember)
     setMemberConfirm(null)
   }
   useEscapeKey(addMemberOpen, () => setAddMemberOpen(false))
@@ -3553,7 +3486,6 @@ function AdminMembers({ state, updateState }: { state: AppState; updateState: (p
               <div className="member-editor-actions">
                 <Button variant="outline" className="secondary-button" type="button" onClick={() => setMemberConfirm({ action: 'remove', memberId: editingMember.id })}>Remove</Button>
                 <Button variant="outline" className="secondary-button danger-button" type="button" onClick={() => setMemberConfirm({ action: 'ban', memberId: editingMember.id })}>Ban</Button>
-                <Button variant="outline" className="secondary-button" type="button" disabled={editingMember.planId === 'free'} onClick={() => setMemberConfirm({ action: 'refund', memberId: editingMember.id })}>Refund</Button>
                 <Button className="primary-button" type="button" onClick={() => setEditingMemberId(null)}>Done</Button>
               </div>
             </div>
@@ -3596,8 +3528,8 @@ function AdminMembers({ state, updateState }: { state: AppState; updateState: (p
         >
           <div className="settings-modal" role="dialog" aria-modal="true" aria-label="確認會員操作">
             <button className="modal-close" type="button" onClick={() => setMemberConfirm(null)} aria-label="關閉會員操作確認">×</button>
-            <SectionHeading eyebrow="Confirm member action" title={`確認${memberConfirm.action === 'remove' ? '移除' : memberConfirm.action === 'ban' ? '封鎖' : '退款'} ${confirmMember.name}`}>
-              {memberConfirm.action === 'refund' ? '這會新增一筆 Portaly refund 預覽記錄，不會真的退款。' : '這會更新會員狀態與可用權限。'}
+            <SectionHeading eyebrow="Confirm member action" title={`確認${memberConfirm.action === 'remove' ? '移除' : '封鎖'} ${confirmMember.name}`}>
+              這會更新會員狀態與可用權限。
             </SectionHeading>
             <div className="button-stack">
               <Button variant="outline" className="secondary-button" type="button" onClick={() => setMemberConfirm(null)}>Cancel</Button>
@@ -3611,34 +3543,19 @@ function AdminMembers({ state, updateState }: { state: AppState; updateState: (p
 }
 
 function AdminPricing({ state }: { state: AppState }) {
-  const [copied, setCopied] = useState(false)
-  const portalyPrompt = `請協助我用 Portaly Payment 建立 MemberHub 的付費方案與付款流程。
-
-目前方案：
-${state.plans.map((plan) => `- ${plan.name}：${plan.price} / ${plan.cadence}`).join('\n')}
-
-請完成：
-1. 在 Portaly 建立對應商品與 checkout。
-2. 建立付款成功 callback，付款成功後把會員方案同步回 MemberHub。
-3. 使用環境變數：PORTALY_CHECKOUT_API_KEY、PORTALY_CALLBACK_SECRET、PORTALY_CALLBACK_URL。
-4. 回傳需要新增或修改的檔案、env 設定與測試步驟。
-
-我可以依照自己的方案需求修改上面的方案名稱、金額、週期與同步規則。`
-
   return (
     <div className="admin-grid">
       <article className="span-3">
-        <div className="section-heading-row">
-          <SectionHeading eyebrow="Portaly Payment" title="AI 串接提示詞">
-            複製下方提示詞給 AI，協助串 Portaly Payment 建立方案；你可以依照自己的方案需求修改提示詞內容。
-          </SectionHeading>
-          <Button variant="outline" className="secondary-button" type="button" onClick={() => { void navigator.clipboard?.writeText(portalyPrompt); setCopied(true) }}>
-            <ClipboardCheck data-icon="inline-start" />
-            {copied ? 'Copied' : 'Copy prompt'}
-          </Button>
-        </div>
-        <div className="portaly-guide">
-          <pre>{portalyPrompt}</pre>
+        <SectionHeading eyebrow="Pricing" title="方案設定">
+          目前只顯示本機預覽方案；正式收款可在 fork 後接上你選擇的付款服務。
+        </SectionHeading>
+        <div className="compact-list">
+          {state.plans.map((plan) => (
+            <p key={plan.id}>
+              <strong>{plan.name}</strong>
+              <span>{plan.price} / {plan.cadence}</span>
+            </p>
+          ))}
         </div>
       </article>
     </div>

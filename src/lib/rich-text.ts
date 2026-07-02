@@ -1,8 +1,9 @@
 import DOMPurify from 'dompurify'
 
-const blockTagPattern = /<\/?(p|h2|h3|ul|ol|li|blockquote|strong|em|s|code|pre|br)\b/i
+const blockTagPattern = /<\/?(p|h2|h3|ul|ol|li|blockquote|strong|em|s|code|pre|br|img|video|iframe)\b/i
 
-const allowedTags = ['p', 'br', 'strong', 'em', 's', 'ul', 'ol', 'li', 'blockquote', 'h2', 'h3', 'code', 'pre']
+const allowedTags = ['p', 'br', 'strong', 'em', 's', 'ul', 'ol', 'li', 'blockquote', 'h2', 'h3', 'code', 'pre', 'img', 'video', 'iframe']
+const allowedAttrs = ['src', 'alt', 'title', 'controls', 'loading', 'allow', 'allowfullscreen', 'class']
 
 export function hasRichTextMarkup(value: string) {
   return blockTagPattern.test(value)
@@ -36,7 +37,7 @@ export function sanitizeRichTextHtml(value: string) {
   const html = normalizeEditorHtml(value)
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: allowedTags,
-    ALLOWED_ATTR: [],
+    ALLOWED_ATTR: allowedAttrs,
   })
 }
 

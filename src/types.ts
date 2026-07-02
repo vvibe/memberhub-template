@@ -25,17 +25,6 @@ export type Plan = {
   highlighted?: boolean
 }
 
-export type PaymentEvent = {
-  id: string
-  planId: PlanId
-  memberEmail?: string
-  amountLabel: string
-  provider: 'portaly'
-  status: 'paid' | 'refunded'
-  invoiceStatus: 'issued' | 'pending' | 'not_required'
-  createdAt: string
-}
-
 export type CommunityCategory = {
   id: string
   name: string
@@ -227,7 +216,6 @@ export type AppState = {
   events: CalendarEvent[]
   members: Member[]
   plugins: PluginState[]
-  payments: PaymentEvent[]
   currentMemberPoints: number
   membershipAnswers: Record<string, string>
   inviteRecords: string[]

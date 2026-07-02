@@ -70,7 +70,6 @@ export function createDefaultState(): AppState {
     events: preset.events,
     members: preset.members,
     plugins: preset.plugins,
-    payments: [],
     currentMemberPoints: 0,
     membershipAnswers: {},
     inviteRecords: [],
@@ -105,7 +104,6 @@ export function loadState(): AppState {
       members: mergeById(defaultState.members, saved.members),
       plugins: mergeById(defaultState.plugins, saved.plugins, false),
       externalLinks: mergeById(defaultState.externalLinks, saved.externalLinks),
-      payments: Array.isArray(saved.payments) ? saved.payments : defaultState.payments,
     }
     const online = Number(state.group.onlineLabel.match(/^(\d+)\s+online$/)?.[1])
     if (Number.isFinite(online) && online >= state.members.length) {

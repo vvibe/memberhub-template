@@ -8,15 +8,21 @@ MemberHub 現在只保留一個預設版本：全功能會員社群。使用者 
 
 - 本機免 key 跑完整體驗：登入、內容、付費牆、課程進度、社群、會員目錄、活動、會員自助與後台。
 - 先用 localStorage 驗證產品流程，再把資料層換成 InsForge 或自己的後端。
-- 已包含 InsForge SDK/CLI、InsForge migration、Portaly V Vibe MCP example、選配金流 function 範例、Playwright QA。
-- 正式登入推薦使用 InsForge Google OAuth；也可以走 Bring Your Own Stack 接既有 auth。
+- 已包含 Tiptap、DOMPurify、shadcn/ui primitives、Playwright QA 與本機 preview auth。
+- 正式後端推薦可評估 InsForge；若已有既有服務，也可以走 Bring Your Own Stack。
+
+### Repo 邊界
+
+- 不安裝 InsForge SDK/CLI。
+- 不附 provider-specific migration、edge function、checkout、MCP、webhook 或 env。
+- 不放任何個人姓名、個人品牌、個人網址或私有 owner 資訊。
+- 不包含任何已移除的付款/營運 provider 敘述或程式碼。
 
 ### Fork 後需要先準備什麼
 
 - Node `^22.13.0 || ^20.12.0`。
-- 推薦部署需要 InsForge 專案與 Portaly V Vibe MCP token。
-- 真實 API key、callback secret、MCP token 不可 commit 到 GitHub。
-- 如果要正式收款、開立發票或寄送通知，等前台、登入、內容、會員流程完成後再啟用。
+- 真實 API key、callback secret、token 不可 commit 到 GitHub。
+- 如果要正式收款、開立發票或寄送通知，等前台、登入、內容、會員流程完成後再選擇自己的 provider。
 
 ### 最小流程
 
@@ -31,12 +37,9 @@ npm run test:qa
 
 Production 前再做：
 
-- 建立 InsForge project。
-- 啟用 InsForge Google OAuth provider。
-- 套用 `migrations/20260511210000_memberhub.sql`。
-- 補齊並測試 RLS policies。
-- 需要金流、訂閱、會員同步或 Email/邀請流程時，再設定 Portaly V Vibe 或自己的 provider。
-- 把 `.env.local` 的正式值放到部署平台 secret manager。
+- 決定是否使用 InsForge 或自己的 auth/database。
+- 在外部專案或部署環境設定正式後端、RLS、storage、search、notification、payment provider。
+- 把正式值放到部署平台 secret manager。
 
 ## English
 
@@ -46,8 +49,15 @@ MemberHub now keeps one default version: a full membership community. Users star
 
 - Local preview without keys: login, content, paywalls, course progress, community, member directory, events, member self-service, and admin operations.
 - Validate product flows with localStorage first, then replace the data layer with InsForge or your own backend.
-- Includes the InsForge SDK/CLI, an InsForge migration, Portaly V Vibe MCP example config, optional payment function examples, and Playwright QA.
-- Production login recommends InsForge Google OAuth, or your own auth when using Bring Your Own Stack.
+- Includes Tiptap, DOMPurify, shadcn/ui primitives, Playwright QA, and local preview auth.
+- Production backend planning may evaluate InsForge, or use Bring Your Own Stack.
+
+### Repository Boundary
+
+- No InsForge SDK/CLI is installed.
+- No provider-specific migration, edge function, checkout, MCP, webhook, or env is included.
+- No personal names, personal brands, personal URLs, or private owner information should be added.
+- No removed payment/product-ops provider copy should be added.
 
 ### Minimum fork flow
 
@@ -60,4 +70,4 @@ npm run build
 npm run test:qa
 ```
 
-Before production, configure InsForge, RLS, deployment secrets, and any optional payment, subscription, member sync, or notification provider.
+Before production, choose InsForge or your own auth/database provider, then configure production secrets and provider code outside this template.

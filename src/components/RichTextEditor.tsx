@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
+import { Node as TiptapNode } from '@tiptap/core'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
-import { Bold, Heading2, Italic, List, ListOrdered, Quote, Redo2, Undo2 } from 'lucide-react'
+import { Bold, Code2, Heading2, Image as ImageIcon, Italic, List, ListOrdered, Quote, Redo2, Undo2, Video } from 'lucide-react'
 import { normalizeEditorHtml } from '@/lib/rich-text'
 
 type RichTextEditorProps = {
@@ -21,6 +22,45 @@ type EditorAction = {
   disabled?: boolean
 }
 
+const MediaBlock = TiptapNode.create({
+  name: 'mediaBlock',
+  group: 'block',
+  atom: true,
+  draggable: true,
+
+  addAttributes() {
+    return {
+      src: { default: '' },
+      mediaType: { default: 'image' },
+      alt: { default: '' },
+    }
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'img[src]',
+        getAttrs: (node) => ({ src: (node as HTMLElement).getAttribute('src'), alt: (node as HTMLElement).getAttribute('alt'), mediaType: 'image' }),
+      },
+      {
+        tag: 'video[src]',
+        getAttrs: (node) => ({ src: (node as HTMLElement).getAttribute('src'), mediaType: 'video' }),
+      },
+      {
+        tag: 'iframe[src]',
+        getAttrs: (node) => ({ src: (node as HTMLElement).getAttribute('src'), mediaType: 'embed' }),
+      },
+    ]
+  },
+
+  renderHTML({ node }) {
+    const { src, mediaType, alt } = node.attrs
+    if (mediaType === 'video') return ['video', { src, controls: 'true', class: 'rich-media rich-media-video' }]
+    if (mediaType === 'embed') return ['iframe', { src, loading: 'lazy', allowfullscreen: 'true', class: 'rich-media rich-media-embed' }]
+    return ['img', { src, alt: alt ?? '', loading: 'lazy', class: 'rich-media rich-media-image' }]
+  },
+})
+
 function RichTextEditor({ value, onChange, placeholder = '開始撰寫內容', ariaLabel, compact = false }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -30,6 +70,7 @@ function RichTextEditor({ value, onChange, placeholder = '開始撰寫內容', a
       Placeholder.configure({
         placeholder,
       }),
+      MediaBlock,
     ],
     content: normalizeEditorHtml(value),
     immediatelyRender: false,
@@ -50,6 +91,14 @@ function RichTextEditor({ value, onChange, placeholder = '開始撰寫內容', a
     if (editor.getHTML() === nextContent) return
     editor.commands.setContent(nextContent, { emitUpdate: false })
   }, [editor, value])
+
+  const insertMedia = (mediaType: 'image' | 'video' | 'embed') => {
+    if (!editor) return
+    const label = mediaType === 'image' ? '圖片' : mediaType === 'video' ? '影片' : '嵌入內容'
+    const src = window.prompt(`貼上${label} URL`)
+    if (!src?.trim()) return
+    editor.chain().focus().insertContent({ type: 'mediaBlock', attrs: { src: src.trim(), mediaType } }).run()
+  }
 
   const actions: EditorAction[] = editor
     ? [
@@ -88,6 +137,21 @@ function RichTextEditor({ value, onChange, placeholder = '開始撰寫內容', a
           icon: Quote,
           isActive: () => editor.isActive('blockquote'),
           run: () => editor.chain().focus().toggleBlockquote().run(),
+        },
+        {
+          label: '圖片',
+          icon: ImageIcon,
+          run: () => insertMedia('image'),
+        },
+        {
+          label: '影片',
+          icon: Video,
+          run: () => insertMedia('video'),
+        },
+        {
+          label: '嵌入',
+          icon: Code2,
+          run: () => insertMedia('embed'),
         },
         {
           label: '復原',

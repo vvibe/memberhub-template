@@ -35,10 +35,10 @@ http://127.0.0.1:5176/
 ## Integration Path
 
 - **Local Preview**: no keys; run the full demo in the browser.
-- **Recommended InsForge + V Vibe**: use InsForge for Auth / DB / RLS and Portaly V Vibe for product operations and optional checkout.
+- **Recommended Backend**: evaluate InsForge for production auth, database, RLS, and storage if it fits the project.
 - **Bring Your Own Stack**: keep the UI and data model, then replace auth, database, payment, CMS, or notifications.
 
-Payments, invoices, official email sending, and production member sync stay optional until you explicitly enable them.
+This repository intentionally does not install or include provider-specific SDKs, CLIs, migrations, edge functions, env variables, payment code, or checkout code. Payments, invoices, official email sending, and production member sync stay optional until a future owner wires their own providers outside this template.
 
 ## Project Structure
 
@@ -47,15 +47,12 @@ src/
   App.tsx                 # Complete public/member/admin UI
   data/presets.ts         # Default MemberHub community preset
   lib/store.ts            # localStorage preview state
-  lib/insforge.ts         # InsForge browser SDK client factory
-  lib/portaly.ts          # Portaly payment status helper
+  lib/open-source-integrations.ts
   styles.css              # Product UI styles
 docs/
   ai-install-intake.md
   fork-readiness.md
   launch-checklist.md
-  mcp-setup.md
-  rls-policies.md
   security-review.md
 ```
 
@@ -67,4 +64,4 @@ npm run build
 npm run test:qa
 ```
 
-The local experience does not require API keys. Do not commit real API keys, MCP tokens, callback secrets, or test login passwords.
+The local experience does not require API keys. Do not commit real API keys, tokens, callback secrets, or test login passwords.

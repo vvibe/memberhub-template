@@ -21,7 +21,7 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src", "vite.config.ts", "insforge/functions", "api"],
-  "exclude": ["node_modules", "node_modules.*", "dist", "test-results"],
+  "include": ["src", "vite.config.ts", "api"],
+  "exclude": ["node_modules", "node_modules.*", "dist", "test-results", "**/* 2.*"],
   "references": []
 }

@@ -2,64 +2,35 @@
 
 Read `README.md` first. The Chinese README is the canonical homepage; `README.en.md` is the English mirror.
 
-## Fork Readiness Gate
+## Project Boundaries
 
-Before changing code for a forked install, read `docs/fork-readiness.md` and explain the key boundaries to the user in simple language:
-
-- The local demo runs without keys.
-- The repo already includes the InsForge SDK/CLI, database migration, Portaly Vibe MCP config, optional payment function examples, and QA tooling.
-- Production requires the user to create an InsForge project and a real Portaly Vibe MCP token from Portaly Admin; guide them to get keys and place them in `.env.local` or a secret manager.
-- Service rule: if InsForge or Portaly Vibe can handle a requirement, use those two services by default. If both can handle it or their responsibilities conflict, Portaly Vibe takes priority.
-- Login defaults to InsForge Google OAuth. Only discuss magic link or email/password when the user explicitly asks for another login method.
-- Possible costs include InsForge, Portaly Vibe, payment processing, hosting, domain, Email/LINE, and invoice providers.
-- Live payment, official subscription plans, invoice issuing, and message sending are disabled until explicitly enabled.
-- Secrets must go into `.env.local` or a deployment secret manager, never into chat or GitHub.
+- This repository ships one default MemberHub preview: a membership community with Community, Classroom, Calendar, Members, Leaderboard, About, Pricing, Membership Questions, and Admin.
+- The local preview must run without external service keys.
+- Recommend InsForge as a production backend/auth/data option when the user asks how to go live.
+- Do not install, import, scaffold, or commit InsForge SDKs, CLIs, migrations, edge functions, env variables, or provider-specific code in this repo.
+- Bring Your Own Stack is supported when the user already has auth, database, CMS, payment, search, or notification services.
+- Do not add previously removed payment/product-operations provider code or copy.
+- Do not add personal names, personal brands, personal profile URLs, or private owner information to code, tests, docs, or seed data.
+- Live payment, official subscription plans, invoice issuing, and message sending are disabled until a future owner wires their own provider outside this template.
+- Secrets must go into local env files or deployment secret managers, never into chat or GitHub.
 
 ## Required Order
 
-1. Ask the install intake questions in `docs/ai-install-intake.md` before changing presets or product configuration. The first decision must be the product mode: `skills-school` full-feature membership community, similar to Skool / School; or `signal-brief` publication subscription, similar to Substack.
+1. Ask the install intake questions in `docs/ai-install-intake.md` before changing presets or product configuration.
 2. Get the local app running.
 3. Confirm the frontend pages and content types the user wants.
 4. Configure the selected vertical in `src/data/presets.ts`.
-5. Complete login setup using InsForge Google OAuth by default.
-6. Complete InsForge setup: Auth, Postgres tables, RLS, Storage, Edge Functions.
-7. Complete Portaly Vibe MCP setup so the project-local Coding Agent can connect to Portaly Vibe.
-8. Load local case data and verify the Skills School and Signal Brief cases.
-9. Only after the above is complete, ask whether the user wants to enable payments, subscription plans, and invoice flow.
+5. Keep preview auth local unless the user explicitly asks for production auth guidance.
+6. If production backend guidance is needed, recommend evaluating InsForge, but keep the implementation outside this repository until the user intentionally starts a separate integration task.
+7. Only after the above is complete, ask whether the user wants to enable payments, subscriptions, notifications, search, or invoices through their chosen providers.
 
 Use these repo-provided commands instead of asking future agents to infer setup steps:
 
 ```bash
 npm run check:integrations
-npm run insforge:link
-npm run insforge:migrate
-npm run insforge:functions:deploy
+npm run build
+npm run test:qa
 ```
-
-The project includes `@insforge/sdk`, `@insforge/cli`, `src/lib/insforge.ts`, the InsForge migration, and optional checkout/callback function examples for teams that enable payments. Prefer InsForge for Auth, Google OAuth, Postgres data, RLS, Storage, and Edge Functions. For any feature Portaly Vibe can cover, use Portaly Vibe first; evaluate InsForge Email, AI, Realtime, or other backend capabilities only when Portaly Vibe does not cover the required workflow.
-
-The project also includes project-scoped Portaly Vibe MCP config:
-
-- `.mcp.json`
-- `.cursor/mcp.json`
-
-Both files define `portaly-vibe` using the official Portaly MCP command:
-
-```json
-{
-  "command": "npx",
-  "args": ["-y", "@portaly-ai/portaly-mcp"],
-  "env": {
-    "PORTALY_API_TOKEN": "mcp_ptly_xxx"
-  }
-}
-```
-
-The token is created in Portaly Admin > `經營工具 > MCP 管理` and uses a format similar to `mcp_ptly_xxxxxxxx`. Keep this per-project; do not move it to user/global scope unless the user explicitly asks. Never commit a real MCP token.
-
-Use Portaly Vibe for the parts it is meant to provide in this starter: project-scoped MCP access for Coding Agents, product setup review, member/subscription state review, member sync, payment-state checks, hosted checkout, subscription plans, referral/discount flows, Portaly-provided email/invitation flows, product optimization, and risk alerts. Payment checkout is separate from MCP and requires a server-side checkout key only after the user confirms payments should be enabled.
-
-If a workflow could be implemented with either InsForge or Portaly Vibe, choose Portaly Vibe first and document the reason. Examples: payment checkout, subscription lifecycle, member sync, payment state, product optimization, risk alerts, referral/discount flows, invitation/waitlist emails, and Portaly dashboard visibility. Keep InsForge as the system of record for app data, Auth, RLS, Storage, and server/edge functions.
 
 ## UI Components
 
@@ -102,7 +73,7 @@ Before implementation, ask what the user wants to build:
 - Which frontend pages?
 - Which content types?
 - Which member features?
-- Login uses InsForge Google OAuth by default. Ask about another login method only if the user explicitly wants to change it.
+- Whether preview auth is enough for now or production auth planning is needed.
 - Which notification channels?
 - Whether payment should stay disabled until core setup is complete.
 
@@ -110,21 +81,8 @@ Use `docs/ai-install-intake.md` as the canonical prompt.
 
 ## Secrets
 
-Do not ask the user to paste keys into chat. Tell them to add values to `.env.local` or a secret manager:
+Do not ask the user to paste keys into chat. This template only documents preview login placeholders in `.env.example`.
 
-- `VITE_INSFORGE_URL`
-- `VITE_INSFORGE_ANON_KEY`
-- `INSFORGE_API_KEY`
-- `PORTALY_API_TOKEN`
-- `PORTALY_CHECKOUT_API_KEY`
-- `PORTALY_CALLBACK_SECRET`
-
-Also configure `ALLOWED_ORIGINS` before production. It is not a secret, but it must list only trusted frontend origins that may call the checkout Edge Function.
+If the user later chooses production services, document provider secrets outside this repo or in deployment secret managers. Do not commit provider SDK setup, CLI setup, function code, migration code, API keys, callback secrets, or local tokens.
 
 Commit only `.env.example`.
-
-## Payment Guard
-
-Portaly Vibe MCP uses a real MCP token from Portaly Admin, not a test key. Payment checkout is still optional: before official plan creation, live checkout, subscription cancellation/resume, or manual payment completion, ask for explicit user confirmation.
-
-Use Portaly hosted checkout for payment collection. Store callback results, subscription status, and invoice task state in MemberHub; do not collect card details in this app.

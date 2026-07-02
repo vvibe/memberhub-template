@@ -138,13 +138,13 @@ test('paid join asks questions and approves directly', async ({ page }) => {
   await page.getByRole('button', { name: '加入 NT$890/月' }).click()
   const dialog = page.getByRole('dialog', { name: '加入社群申請' })
   await expect(dialog).toBeVisible()
-  await dialog.getByText('付款流程建議用 AI 串 Portaly Payment。').waitFor()
+  await dialog.getByText('送出後會以本機預覽狀態加入。').waitFor()
   await dialog.getByLabel("What's your best email?").fill('paid-member@example.test')
   await dialog.getByLabel('Password', { exact: true }).fill('paid-member-password')
   await dialog.getByLabel('Confirm password', { exact: true }).fill('paid-member-password')
   await dialog.getByLabel('你現在最想把哪一個工作流程做成 AI Skill？').fill('付費會員 onboarding')
   await dialog.getByLabel('你的主要身份是創作者、顧問、老師、PM、工程師，還是其他？').fill('PM')
-  await dialog.getByLabel('你從哪裡知道這個社群？').fill('Portaly')
+  await dialog.getByLabel('你從哪裡知道這個社群？').fill('朋友推薦')
   await dialog.getByRole('button', { name: '送出訂閱申請' }).click()
 
   await expect(dialog).toBeHidden()
@@ -299,8 +299,8 @@ test('member can join, post, like, and gain leaderboard points', async ({ page }
     buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=', 'base64'),
   })
   await expect(page.locator('.account-avatar-preview img')).toBeVisible()
-  await page.getByLabel('Display name').fill('Kevin Test')
-  await page.getByLabel('Account email').fill('kevin@test.local')
+  await page.getByLabel('Display name').fill('Demo Member')
+  await page.getByLabel('Account email').fill('demo-member@test.local')
   const identityFieldWidths = await page.locator('.account-identity-row').evaluate((row) => {
     const fields = row.querySelectorAll('label')
     return {
@@ -333,8 +333,8 @@ test('member can join, post, like, and gain leaderboard points', async ({ page }
   expect(accountState.notificationSettings).toMatchObject({ scope: 'selected', adminPosts: true, courses: false, events: true })
   const mainNavigation = page.getByRole('navigation', { name: 'Main navigation' })
   await mainNavigation.getByRole('button', { name: 'Members', exact: true }).click()
-  await expect(page.locator('.member-list')).toContainText('Kevin Test')
-  await expect(page.locator('.member-list')).toContainText('kevin@test.local')
+  await expect(page.locator('.member-list')).toContainText('Demo Member')
+  await expect(page.locator('.member-list')).toContainText('demo-member@test.local')
   await mainNavigation.getByRole('button', { name: 'Community', exact: true }).click()
 
   await page.getByLabel('Create community post').fill('今天把研究摘要 Skill 改成可檢查的三段式輸出。')
@@ -366,7 +366,7 @@ test('member can join, post, like, and gain leaderboard points', async ({ page }
   await page.getByLabel('關閉貼文').click()
   await expect(newPost.getByRole('button', { name: '1 comments' })).toBeVisible()
   await page.getByRole('button', { name: 'Leaderboard' }).click()
-  await expect(page.getByText('Kevin Test', { exact: true })).toBeVisible()
+  await expect(page.getByText('Demo Member', { exact: true })).toBeVisible()
   await expect(page.getByText('4 pts')).toBeVisible()
   const leaderboardRows = await page.evaluate(() => Array.from(document.querySelectorAll('.leaderboard-grid .leaderboard-list > div:first-child')).map((row) => {
     const rank = row.querySelector('.rank-medal')?.getBoundingClientRect()
@@ -845,10 +845,8 @@ test('admin can edit community, classroom, calendar, pricing, and plugins', asyn
   await expect(page.getByRole('heading', { name: '訂閱金額設定' })).toHaveCount(0)
   await expect(page.getByLabel('Pro 社群 price')).toHaveCount(0)
   await expect(page.getByText('AI 串接提示詞')).toBeVisible()
-  await expect(page.locator('.portaly-guide')).toContainText('請協助我用 Portaly Payment 建立 MemberHub 的付費方案與付款流程。')
-  await expect(page.locator('.portaly-guide')).toContainText('我可以依照自己的方案需求修改上面的方案名稱、金額、週期與同步規則。')
-  await page.getByRole('button', { name: 'Copy prompt' }).click()
-  await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '方案設定' })).toBeVisible()
+  await expect(page.locator('.compact-list')).toContainText('Pro 社群')
 
   await adminTabs.getByRole('button', { name: 'Members' }).click()
   const memberOperationsPanel = page.locator('article').filter({ hasText: 'Member operations' })
@@ -882,12 +880,7 @@ test('admin can edit community, classroom, calendar, pricing, and plugins', asyn
   await expect(yunaRow).toContainText('Private Beta')
   await editYunaDialog.getByLabel('Yuna Private Beta access').uncheck()
   await expect(yunaRow).not.toContainText('Private Beta')
-  await editYunaDialog.getByRole('button', { name: 'Refund' }).click()
-  const refundDialog = page.getByRole('dialog', { name: '確認會員操作' })
-  await expect(refundDialog).toBeVisible()
-  await refundDialog.getByRole('button', { name: 'Confirm' }).click()
   await editYunaDialog.getByRole('button', { name: 'Done' }).click()
-  await expect(page.getByText('Refund records')).toHaveCount(0)
 
   await adminTabs.getByRole('button', { name: 'Plugins' }).click()
   await expect(page.getByText('AutoDM')).toBeVisible()

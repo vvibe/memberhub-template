@@ -1,9 +1,9 @@
 {
-  "name": "memberhub-insforge-portaly",
+  "name": "memberhub-template",
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "A forkable membership, course, and community platform powered by InsForge and Portaly Vibe.",
+  "description": "Open membership and community template for local-first previews.",
   "engines": {
     "node": "^22.13.0 || ^20.12.0"
   },
@@ -13,15 +13,11 @@
     "preview": "vite preview",
     "seed": "node scripts/seed-preview.mjs",
     "check:integrations": "node scripts/check-integrations.mjs",
-    "insforge:link": "insforge link",
-    "insforge:migrate": "insforge db migrations up",
-    "insforge:functions:deploy": "insforge functions deploy portaly-checkout && insforge functions deploy portaly-webhook",
     "test:qa": "npm run check:integrations && playwright test",
     "test:visual": "playwright test"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",
-    "@insforge/sdk": "^1.2.7",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
@@ -44,7 +40,6 @@
     "vite": "^6.4.2"
   },
   "devDependencies": {
-    "@insforge/cli": "^0.1.78",
     "@playwright/test": "^1.60.0",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2"
