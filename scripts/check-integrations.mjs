@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 
 const requiredFiles = [
   '.env.example',
@@ -46,7 +46,22 @@ const forbiddenEnv = [
   'MCP_' + 'PTLY',
 ]
 
-const bannedRepoTerms = [
+// Private owner identity — never allowed anywhere in the repo, docs included.
+const bannedEverywhereTerms = [
+  'Ke' + 'vin',
+  'ke' + 'vin',
+  '郭' + '政佑',
+  'ke' + 'vinlearn',
+  'lotus' + 'hj1',
+]
+
+// Provider names. The recommended go-live tools (see README and the go-live guide in
+// docs/) ship as mandatory agent skills under .claude/.agents, so naming them as
+// recommendations in docs is allowed. They must NOT appear as committed product code,
+// config, SDK imports, or env keys in the app itself — that would lock this neutral
+// template to a specific provider. Banned in product-code files only (the scan loop
+// below applies these only when isProductCode is true).
+const bannedInProductCodeTerms = [
   'Port' + 'aly',
   'port' + 'aly',
   'P' + 'ORTALY',
@@ -55,11 +70,6 @@ const bannedRepoTerms = [
   'VV' + 'ibe',
   'mcp_' + 'ptly',
   '@port' + 'aly-ai',
-  'Ke' + 'vin',
-  'ke' + 'vin',
-  '郭' + '政佑',
-  'ke' + 'vinlearn',
-  'lotus' + 'hj1',
 ]
 
 const bannedPositioningTerms = [
@@ -90,7 +100,10 @@ const forbiddenProviderCodePatterns = [
   new RegExp(`${providerWord}/functions`, 'i'),
 ]
 
-const skipDirs = new Set(['.git', '.vercel', 'node_modules', 'dist', 'test-results', 'playwright-report'])
+// .claude / .agents hold the vendored provider skill catalogs (mandatory agent
+// tooling, not product code). They are intentionally full of provider names, so they
+// are not scanned for product-neutrality terms.
+const skipDirs = new Set(['.git', '.vercel', 'node_modules', 'dist', 'test-results', 'playwright-report', '.claude', '.agents'])
 const textExtensions = new Set([
   '.css',
   '.html',
@@ -204,15 +217,22 @@ for (const provider of ['Tiptap OSS Editor', 'PocketBase', 'Keycloak', 'Strapi',
 }
 assert(securityReview.includes('localStorage 只適合本機預覽'), 'security review warns localStorage is preview-only')
 
+// Files where provider names are allowed as recommendation text (not product code).
+const recommendationDocs = new Set(['README.md', 'README.en.md', 'AGENTS.md', 'CLAUDE.md', 'CONTRIBUTING.md', 'SECURITY.md', 'skills-lock.json'])
 for (const file of collectTextFiles()) {
   const content = readFileSync(file, 'utf8')
-  for (const term of bannedRepoTerms) {
+  const rel = file.split(sep).join('/')
+  const isProductCode = !rel.startsWith('docs/') && !recommendationDocs.has(rel)
+  for (const term of bannedEverywhereTerms) {
     assert(!content.includes(term), `${file} excludes removed/private term "${term}"`)
   }
   for (const term of bannedPositioningTerms) {
     assert(!content.includes(term), `${file} avoids copy/clone positioning "${term}"`)
   }
-  if (!file.startsWith('docs/') && !['README.md', 'README.en.md', 'AGENTS.md', 'CONTRIBUTING.md', 'SECURITY.md'].includes(file)) {
+  if (isProductCode) {
+    for (const term of bannedInProductCodeTerms) {
+      assert(!content.includes(term), `${file} keeps provider names out of product code "${term}"`)
+    }
     for (const pattern of forbiddenProviderCodePatterns) {
       assert(!pattern.test(content), `${file} excludes provider code pattern ${pattern}`)
     }

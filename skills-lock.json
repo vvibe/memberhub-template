@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "skills": {
+    "portaly-payment": {
+      "source": "portaly-ai/portaly-skills",
+      "sourceType": "github",
+      "skillPath": "skills/portaly-payment/SKILL.md",
+      "computedHash": "0a2ad6b9e75890c742a8a23a029396b1283c55540d521585a1be06e3803fb6a7"
+    },
+    "portaly-product": {
+      "source": "portaly-ai/portaly-skills",
+      "sourceType": "github",
+      "skillPath": "skills/portaly-product/SKILL.md",
+      "computedHash": "b49afd90f20774dd6b317fb24dd3f248b1121a6047477426a23ea42b5f3a1d18"
+    },
+    "vvibe-analytics": {
+      "source": "vvibe/vvibe-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vvibe-analytics/SKILL.md",
+      "computedHash": "768082ae9745fc2b5abc7c4384dcf1ac4fdb3ee7824bad540fbd356005bb31a2"
+    },
+    "vvibe-blog-render": {
+      "source": "vvibe/vvibe-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vvibe-blog-render/SKILL.md",
+      "computedHash": "56ae79fd304c97b56c7200d644b9a2e550e417833988dd9a0888476e47611353"
+    },
+    "vvibe-blog-writer": {
+      "source": "vvibe/vvibe-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vvibe-blog-writer/SKILL.md",
+      "computedHash": "1254ef430c2b6e051928d4448432af94286327b380525841c33cc914a428cf39"
+    },
+    "vvibe-email": {
+      "source": "vvibe/vvibe-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vvibe-email/SKILL.md",
+      "computedHash": "ed9509c335c14c02d1771b8cf1d7b641a85369b3fba11ca83fe88657fd2b09cf"
+    },
+    "vvibe-member": {
+      "source": "vvibe/vvibe-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vvibe-member/SKILL.md",
+      "computedHash": "9eca66bbd8da179d6acd0c63c41cc1628a91cb669ad14d11a442479d3e3a477f"
+    },
+    "vvibe-product-brain": {
+      "source": "vvibe/vvibe-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vvibe-product-brain/SKILL.md",
+      "computedHash": "c12bd93f432bceb9e8dd446d4e09fd9d464225fd90938b3ba8f9630e180841ad"
+    },
+    "vvibe-sentry": {
+      "source": "vvibe/vvibe-skills",
+      "sourceType": "github",
+      "skillPath": "skills/vvibe-sentry/SKILL.md",
+      "computedHash": "5099478621091a693cee78843411eccd415a463ea804d7b03973ad63339b40c7"
+    }
+  }
+}

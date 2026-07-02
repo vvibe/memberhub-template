@@ -16,9 +16,11 @@ playwright-report
 
 # Local agent files
 .agent
-.agents
+.agents/*
+!.agents/skills/
 .augment
-.claude
+.claude/*
+!.claude/skills/
 .cline
 .github/copilot*
 .kilocode
