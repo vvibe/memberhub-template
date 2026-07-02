@@ -1,7 +1,19 @@
-export type PresetId = 'skills-school' | 'signal-brief'
 export type Role = 'visitor' | 'member' | 'admin'
-export type ViewId = 'home' | 'blog' | 'join' | 'content' | 'newsletter' | 'courses' | 'community' | 'members' | 'search' | 'challenges' | 'events' | 'login' | 'member' | 'admin' | 'setup'
-export type PlanId = 'free' | 'monthly' | 'lifetime'
+export type ViewId = 'community' | 'classroom' | 'calendar' | 'members' | 'leaderboard' | 'about' | 'login' | 'account' | 'admin'
+export type PlanId = 'free' | 'monthly' | 'annual' | 'lifetime'
+export type PricingMode = 'free' | 'subscription' | 'freemium' | 'tiered' | 'one-time'
+
+export type GroupProfile = {
+  name: string
+  creatorName: string
+  slug: string
+  tagline: string
+  description: string
+  coverLabel: string
+  coverImageUrl?: string
+  logoImageUrl?: string
+  onlineLabel: string
+}
 
 export type Plan = {
   id: PlanId
@@ -9,226 +21,14 @@ export type Plan = {
   price: string
   cadence: string
   description: string
-  features: string[]
+  benefits: string[]
   highlighted?: boolean
-  unlockLevel?: number
 }
-
-export type ContentItem = {
-  id: string
-  title: string
-  type: 'article' | 'video' | 'podcast' | 'resource' | 'newsletter'
-  category: string
-  excerpt: string
-  body: string
-  isPaid: boolean
-  paywallAfterParagraph?: number
-  limitedFreeUntil?: string
-  minutes: number
-  source: string
-  requiredLevel?: number
-}
-
-export type NewsletterIssue = {
-  id: string
-  subject: string
-  segment: 'all' | 'free' | 'paid' | 'founding'
-  status: 'draft' | 'scheduled' | 'sent'
-  sendAt: string
-  openRate: string
-  clickRate: string
-  paidConversions: number
-}
-
-export type Lesson = {
-  id: string
-  title: string
-  minutes: number
-  complete: boolean
-  lockedLevel?: number
-  transcript?: string
-  resources?: CourseResource[]
-  pinnedThreadId?: string
-}
-
-export type CourseResource = {
-  id: string
-  title: string
-  kind: 'file' | 'link' | 'transcript' | 'template'
-  access: 'free' | 'member' | 'level-gated'
-}
-
-export type CourseAccessMode = 'open' | 'level-unlock' | 'buy-now' | 'time-unlock' | 'private'
-
-export type Course = {
-  id: string
-  title: string
-  description: string
-  progress: number
-  lessons: Lesson[]
-  accessMode?: CourseAccessMode
-  published?: boolean
-  coverLabel?: string
-  requiredLevel?: number
-}
-
-export type LevelPointRule = {
-  id: string
-  label: string
-  action: 'post' | 'comment' | 'lesson-complete' | 'challenge-checkin' | 'live-attend' | 'resource-submit'
-  points: number
-  enabled: boolean
-}
-
-export type LevelDefinition = {
-  level: number
-  name: string
-  pointsRequired: number
-  memberPercent: number
-  unlocks: string[]
-  permissions: string[]
-}
-
-export type LevelAccessBinding = {
-  id: string
-  feature: 'article' | 'course' | 'community' | 'event' | 'resource'
-  title: string
-  requiredLevel: number
-  benefit: string
-}
-
-export type LevelSystem = {
-  rules: LevelPointRule[]
-  levels: LevelDefinition[]
-  bindings: LevelAccessBinding[]
-}
-
-export type Thread = {
-  id: string
-  category: string
-  title: string
-  author: string
-  replies: number
-  reactions: number
-  pinned?: boolean
-  adminOnly?: boolean
-  canStart?: 'all' | 'paid' | 'admin'
-  reportCount?: number
-}
-
-export type Challenge = {
-  id: string
-  title: string
-  cadence: string
-  streak: number
-  participants: number
-  points: number
-}
-
-export type EventItem = {
-  id: string
-  title: string
-  kind: 'live' | 'webinar' | 'office-hour'
-  date: string
-  status: 'upcoming' | 'replay'
-  description: string
-  audience: 'everyone' | 'subscribers' | 'paid'
-  replayAccess: 'free' | 'paid'
-}
-
-export type Member = {
-  id: string
-  name: string
-  email: string
-  role: Role
-  groupRole: 'owner' | 'billing' | 'admin' | 'moderator' | 'member'
-  planId: PlanId
-  status: 'active' | 'free' | 'paused'
-  level: number
-  points: number
-  source: string
-  bio: string
-  joinedAt: string
-  contributions: {
-    posts: number
-    comments: number
-    likesReceived: number
-  }
-  risk: 'low' | 'medium' | 'high'
-}
-
-export type ReferralCampaign = {
-  id: string
-  code: string
-  label: string
-  source: string
-  reward: string
-  freeTrials: number
-  paidConversions: number
-  revenueLabel: string
-}
-
-export type ModerationItem = {
-  id: string
-  kind: 'membership-question' | 'reported-post' | 'automod-risk' | 'billing-dispute'
-  title: string
-  subject: string
-  status: 'open' | 'reviewing' | 'resolved'
-  priority: 'low' | 'medium' | 'high'
-  action: string
-}
-
-export type NotificationItem = {
-  id: string
-  channel: 'email' | 'line' | 'in-app'
-  trigger: 'new-post' | 'live-start' | 'course-reminder' | 'payment-failed' | 'welcome'
-  audience: 'all' | 'free' | 'paid' | 'at-risk'
-  status: 'ready' | 'scheduled' | 'sent'
-}
-
-export type VerticalPreset = {
-  id: PresetId
-  name: string
-  tagline: string
-  audience: string
-  brand: {
-    productName: string
-    creatorName: string
-    primary: string
-    accent: string
-  }
-  copy: {
-    heroTitle: string
-    heroBody: string
-    ctaPrimary: string
-    ctaSecondary: string
-  }
-  plans: Plan[]
-  content: ContentItem[]
-  newsletter: NewsletterIssue[]
-  courses: Course[]
-  threads: Thread[]
-  challenges: Challenge[]
-  events: EventItem[]
-  members: Member[]
-  referrals: ReferralCampaign[]
-  moderation: ModerationItem[]
-  notifications: NotificationItem[]
-  levelSystem?: LevelSystem
-  metrics: {
-    mrr: string
-    activeMembers: number
-    conversion: string
-    churnRisk: number
-    topSource: string
-  }
-}
-
-export type PresetOverrides = Record<string, Partial<VerticalPreset>>
 
 export type PaymentEvent = {
   id: string
   planId: PlanId
+  memberEmail?: string
   amountLabel: string
   provider: 'portaly'
   status: 'paid' | 'refunded'
@@ -236,17 +36,199 @@ export type PaymentEvent = {
   createdAt: string
 }
 
+export type CommunityCategory = {
+  id: string
+  name: string
+  permission: 'members' | 'admins'
+  sort: 'default' | 'new' | 'top-week' | 'top-month'
+}
+
+export type CommunityLink = {
+  id: string
+  label: string
+  url: string
+  visibility: 'public' | 'members'
+}
+
+export type CommunityPost = {
+  id: string
+  categoryId: string
+  authorId: string
+  authorName: string
+  body: string
+  createdAt: string
+  likes: number
+  comments: CommunityComment[]
+  pinned?: boolean
+}
+
+export type CommunityComment = {
+  id: string
+  authorId: string
+  authorName: string
+  body: string
+  createdAt: string
+  likes: number
+  replies: CommunityComment[]
+}
+
+export type CourseAccessMode = 'open' | 'level-unlock' | 'buy-now' | 'time-unlock' | 'private'
+
+export type ClassroomPage = {
+  id: string
+  title: string
+  minutes: number
+  body: string
+  resources: string[]
+  transcript?: string
+  pinnedPostId?: string
+}
+
+export type ClassroomCourse = {
+  id: string
+  title: string
+  description: string
+  accessMode: CourseAccessMode
+  requiredLevel?: number
+  price?: string
+  unlockAfterDays?: number
+  published: boolean
+  pages: ClassroomPage[]
+}
+
+export type CalendarEvent = {
+  id: string
+  title: string
+  date: string
+  time: string
+  duration: string
+  timezone: string
+  location: 'MemberHub Call' | 'Zoom' | 'Meet' | 'Address'
+  recurrence: 'none' | 'weekly' | 'monthly'
+  accessMode?: 'all' | 'level' | 'plan' | 'course'
+  requiredLevel?: number
+  requiredPlanId?: PlanId
+  courseId?: string
+  description: string
+}
+
+export type Member = {
+  id: string
+  name: string
+  email: string
+  role: 'owner' | 'billing' | 'admin' | 'moderator' | 'member'
+  planId: PlanId
+  level: number
+  points: number
+  joinedAt: string
+  posts: number
+  comments: number
+  status?: 'active' | 'removed' | 'banned'
+  chatBlocked?: boolean
+  courseAccessIds?: string[]
+}
+
+export type MembershipApplication = {
+  id: string
+  email: string
+  planId: PlanId
+  answers: Record<string, string>
+  status: 'pending' | 'approved' | 'rejected'
+  createdAt: string
+}
+
+export type PluginState = {
+  id:
+    | 'membership-questions'
+    | 'instant-approval'
+    | 'unlock-posting'
+    | 'unlock-chat'
+    | 'auto-dm'
+    | 'onboarding-video'
+  name: string
+  enabled: boolean
+  description: string
+}
+
+export type AccessSettings = {
+  instantMembershipApproval: boolean
+  postingLevel: number
+  chatLevel: number
+}
+
+export type PointRuleId = 'post' | 'comment' | 'like'
+
+export type PointRule = {
+  id: PointRuleId
+  label: string
+  points: number
+  enabled: boolean
+}
+
+export type LevelBenefit = {
+  level: number
+  benefits: string[]
+}
+
+export type NotificationSettings = {
+  emailEnabled: boolean
+  scope: 'all' | 'selected'
+  adminPosts: boolean
+  courses: boolean
+  events: boolean
+}
+
+export type CommunityPreset = {
+  id: 'memberhub'
+  group: GroupProfile
+  pricingMode: PricingMode
+  plans: Plan[]
+  accessSettings: AccessSettings
+  levelThresholds: number[]
+  levelBenefits: LevelBenefit[]
+  pointRules: PointRule[]
+  externalLinks: CommunityLink[]
+  categories: CommunityCategory[]
+  rules: string[]
+  membershipQuestions: string[]
+  posts: CommunityPost[]
+  courses: ClassroomCourse[]
+  events: CalendarEvent[]
+  members: Member[]
+  plugins: PluginState[]
+}
+
 export type AppState = {
-  presetId: PresetId
   role: Role
   selectedPlanId: PlanId
-  presetOverrides: PresetOverrides
-  completedLessons: string[]
-  checkedInChallenges: string[]
-  paymentEvents: PaymentEvent[]
-  localContentItems: ContentItem[]
-  localNewsletterIssues: NewsletterIssue[]
-  localReferralCampaigns: ReferralCampaign[]
-  localMembers: Member[]
-  localModeration: ModerationItem[]
+  profileName: string
+  profileEmail: string
+  profileAvatarUrl: string
+  notificationSettings: NotificationSettings
+  adminEmail: string
+  adminPassword: string
+  group: GroupProfile
+  pricingMode: PricingMode
+  plans: Plan[]
+  accessSettings: AccessSettings
+  levelThresholds: number[]
+  levelBenefits: LevelBenefit[]
+  pointRules: PointRule[]
+  externalLinks: CommunityLink[]
+  categories: CommunityCategory[]
+  rules: string[]
+  membershipQuestions: string[]
+  membershipApplications: MembershipApplication[]
+  posts: CommunityPost[]
+  likedPostIds: string[]
+  likedCommentIds: string[]
+  courses: ClassroomCourse[]
+  completedPageIds: string[]
+  events: CalendarEvent[]
+  members: Member[]
+  plugins: PluginState[]
+  payments: PaymentEvent[]
+  currentMemberPoints: number
+  membershipAnswers: Record<string, string>
+  inviteRecords: string[]
 }

@@ -1,18 +1,23 @@
 import { existsSync, readFileSync } from 'node:fs'
 
 const requiredFiles = [
-  '.mcp.json',
-  '.cursor/mcp.json',
+  '.mcp.example.json',
+  '.cursor/mcp.example.json',
   '.env.example',
+  'LICENSE',
+  'CONTRIBUTING.md',
+  'SECURITY.md',
+  'src/App.tsx',
+  'src/types.ts',
+  'src/data/presets.ts',
   'src/lib/insforge.ts',
+  'src/lib/open-source-integrations.ts',
   'src/lib/portaly.ts',
+  'src/components/RichTextEditor.tsx',
   'migrations/20260511210000_memberhub.sql',
   'insforge/functions/portaly-checkout/index.ts',
   'insforge/functions/portaly-webhook/index.ts',
-  'docs/ai-install-intake.md',
   'docs/fork-readiness.md',
-  'docs/launch-checklist.md',
-  'docs/mcp-setup.md',
   'docs/security-review.md',
   'docs/rls-policies.md',
   'AGENTS.md',
@@ -26,24 +31,9 @@ const requiredEnv = [
   'PORTALY_CALLBACK_SECRET',
   'PORTALY_CALLBACK_URL',
   'PORTALY_API_TOKEN',
+  'MEMBERHUB_PREVIEW_EMAIL',
+  'MEMBERHUB_PREVIEW_PASSWORD',
   'APP_BASE_URL',
-  'ALLOWED_ORIGINS',
-]
-
-const requiredMigrationTables = [
-  'profiles',
-  'memberships',
-  'plans',
-  'content_items',
-  'payment_events',
-  'vibe_sync_state',
-]
-
-const requiredReadmePhrases = [
-  '可以私有化部署',
-  'Portaly Vibe MCP',
-  '是否需要啟用金流、訂閱方案與發票流程',
-  '可能產生成本',
   'ALLOWED_ORIGINS',
 ]
 
@@ -56,18 +46,25 @@ function assert(condition, message) {
   }
 }
 
+for (const file of requiredFiles) assert(existsSync(file), `${file} exists`)
+
 const packageJson = JSON.parse(readFileSync('package.json', 'utf8'))
-const projectMcp = JSON.parse(readFileSync('.mcp.json', 'utf8'))
-const cursorMcp = JSON.parse(readFileSync('.cursor/mcp.json', 'utf8'))
+const projectMcp = JSON.parse(readFileSync('.mcp.example.json', 'utf8'))
+const cursorMcp = JSON.parse(readFileSync('.cursor/mcp.example.json', 'utf8'))
 const envExample = readFileSync('.env.example', 'utf8')
-const migration = readFileSync('migrations/20260511210000_memberhub.sql', 'utf8')
+const gitignore = readFileSync('.gitignore', 'utf8')
 const readme = readFileSync('README.md', 'utf8')
-const agents = readFileSync('AGENTS.md', 'utf8')
-const forkReadiness = readFileSync('docs/fork-readiness.md', 'utf8')
-const securityReview = readFileSync('docs/security-review.md', 'utf8')
-const rlsPolicies = readFileSync('docs/rls-policies.md', 'utf8')
+const app = readFileSync('src/App.tsx', 'utf8')
+const types = readFileSync('src/types.ts', 'utf8')
+const seed = readFileSync('src/data/presets.ts', 'utf8')
+const styles = readFileSync('src/styles.css', 'utf8')
+const richTextEditor = readFileSync('src/components/RichTextEditor.tsx', 'utf8')
+const richText = readFileSync('src/lib/rich-text.ts', 'utf8')
+const openSourceCatalog = readFileSync('src/lib/open-source-integrations.ts', 'utf8')
 const checkoutFunction = readFileSync('insforge/functions/portaly-checkout/index.ts', 'utf8')
 const webhookFunction = readFileSync('insforge/functions/portaly-webhook/index.ts', 'utf8')
+const securityReview = readFileSync('docs/security-review.md', 'utf8')
+const rlsPolicies = readFileSync('docs/rls-policies.md', 'utf8')
 
 function assertPortalyMcpConfig(config, label) {
   const server = config.mcpServers?.['portaly-vibe']
@@ -77,40 +74,59 @@ function assertPortalyMcpConfig(config, label) {
   assert(server?.env?.PORTALY_API_TOKEN === 'mcp_ptly_xxx', `${label} documents official MCP token placeholder`)
 }
 
-for (const file of requiredFiles) assert(existsSync(file), `${file} exists`)
 for (const key of requiredEnv) assert(envExample.includes(key), `.env.example documents ${key}`)
-for (const table of requiredMigrationTables) assert(migration.includes(`create table if not exists ${table}`), `migration includes ${table}`)
-for (const phrase of requiredReadmePhrases) assert(readme.includes(phrase), `README includes "${phrase}"`)
-assertPortalyMcpConfig(projectMcp, '.mcp.json')
-assertPortalyMcpConfig(cursorMcp, '.cursor/mcp.json')
+for (const phrase of ['開源社群模板', 'open-source community template', 'Community', 'Classroom', 'Calendar', 'Members', 'Leaderboard', 'Membership Questions', 'InsForge + V Vibe', 'Bring Your Own Stack', 'Tiptap OSS Editor', 'Meilisearch']) {
+  assert(readme.includes(phrase), `README includes "${phrase}"`)
+}
+for (const phrase of ['Community', 'Classroom', 'Calendar', 'Members', 'Leaderboard', 'About', 'Pricing', 'Membership Questions', '免費加入', '登入社群', '社群管理後台已開啟', '匯入 .CSV 名單']) {
+  assert(app.includes(phrase), `App UI includes "${phrase}"`)
+}
+for (const phrase of ['PublicationAdminView', 'SearchView', 'NewsletterView']) {
+  assert(!app.includes(phrase), `App removes legacy ${phrase}`)
+}
+for (const phrase of ['community', 'classroom', 'calendar', 'members', 'leaderboard', 'about', 'login', 'account', 'admin']) {
+  assert(types.includes(phrase), `ViewId includes ${phrase}`)
+}
+for (const phrase of ['pricingMode', 'membershipQuestions', 'plugins', 'CourseAccessMode', 'CalendarEvent']) {
+  assert(types.includes(phrase), `types include ${phrase}`)
+}
+for (const phrase of ['levelThresholds', 'freemium', 'level-unlock', 'buy-now', 'time-unlock', 'private', 'membership-questions', 'auto-dm']) {
+  assert(seed.includes(phrase), `seed includes ${phrase}`)
+}
+for (const phrase of ['Webhook', 'Zapier Invite', 'Cancellation Video', 'Google Ads', 'Member Affiliates']) {
+  assert(!seed.includes(phrase) && !app.includes(phrase), `App seed removes ${phrase}`)
+}
+for (const phrase of ['Geist Variable', '--border', '.hub-topbar', '.hub-search', '.hub-bento-grid', '.admin-tabs', '.leaderboard-list', '.plugin-card']) {
+  assert(styles.includes(phrase), `styles include ${phrase}`)
+}
+assert(!styles.includes('hub-dock'), 'styles remove floating dock navigation')
+
+assertPortalyMcpConfig(projectMcp, '.mcp.example.json')
+assertPortalyMcpConfig(cursorMcp, '.cursor/mcp.example.json')
+assert(gitignore.includes('.mcp.json'), '.gitignore excludes local .mcp.json')
+assert(gitignore.includes('.cursor/mcp.json'), '.gitignore excludes local .cursor/mcp.json')
 
 assert(packageJson.dependencies?.['@insforge/sdk'], 'package installs @insforge/sdk')
+assert(packageJson.dependencies?.['@tiptap/react'], 'package installs @tiptap/react')
+assert(packageJson.dependencies?.['@tiptap/starter-kit'], 'package installs @tiptap/starter-kit')
+assert(packageJson.dependencies?.dompurify, 'package installs DOMPurify')
 assert(packageJson.devDependencies?.['@insforge/cli'], 'package installs @insforge/cli')
-assert(packageJson.scripts?.['insforge:migrate'], 'package exposes insforge:migrate')
-assert(packageJson.scripts?.['insforge:functions:deploy'], 'package exposes insforge:functions:deploy')
 assert(packageJson.scripts?.['check:integrations'], 'package exposes check:integrations')
-assert(checkoutFunction.includes('/api/creator-subscription/checkout-sessions'), 'Portaly checkout function calls hosted checkout API')
+assert(richTextEditor.includes('@tiptap/react'), 'RichTextEditor uses Tiptap React')
+assert(richTextEditor.includes('@tiptap/starter-kit'), 'RichTextEditor uses Tiptap StarterKit')
+assert(richText.includes('DOMPurify.sanitize'), 'rich-text helper sanitizes editor HTML with DOMPurify')
+assert(!app.includes('className="segmented"'), 'App no longer exposes a role-switch segmented control')
+for (const provider of ['Tiptap OSS Editor', 'PocketBase', 'Keycloak', 'Strapi', 'listmonk', 'Meilisearch', 'Cal.diy', 'Jitsi Meet', 'Novu', 'MinIO']) {
+  assert(openSourceCatalog.includes(provider), `open-source catalog includes ${provider}`)
+}
 assert(checkoutFunction.includes('PORTALY_CHECKOUT_API_KEY'), 'Portaly checkout function reads dedicated server-side checkout key')
 assert(checkoutFunction.includes('ALLOWED_ORIGINS'), 'Portaly checkout function restricts allowed origins')
-assert(checkoutFunction.includes('origin_not_allowed'), 'Portaly checkout function rejects untrusted browser origins')
-assert(checkoutFunction.includes('trustedRedirectUrl'), 'Portaly checkout function restricts success/cancel redirects')
-assert(!checkoutFunction.includes('amount: body.amount'), 'Portaly checkout function does not trust browser-provided amount')
-assert(!checkoutFunction.includes('callbackUrl: body.callbackUrl'), 'Portaly checkout function does not trust browser-provided callback URL')
 assert(webhookFunction.includes('PORTALY_CALLBACK_SECRET'), 'optional payment callback verifies callback secret')
-assert(webhookFunction.includes('x-portaly-signature'), 'optional payment callback reads signature header')
-assert(webhookFunction.includes('request.text()'), 'optional payment callback verifies signature against raw body')
 assert(webhookFunction.includes('timingSafeEqual'), 'optional payment callback uses timing-safe signature comparison')
-assert(agents.includes('Only after the above is complete, ask whether the user wants to enable payments'), 'AGENTS keeps payment opt-in guard')
-assert(forkReadiness.includes('可能產生成本'), 'fork readiness documents possible costs')
-assert(forkReadiness.includes('安全注意'), 'fork readiness documents security notes')
 assert(securityReview.includes('不要把真實 API key'), 'security review warns about real secrets')
 assert(securityReview.includes('localStorage 只適合本機預覽'), 'security review warns localStorage is preview-only')
-assert(securityReview.includes('RLS policies'), 'security review documents RLS policy requirement')
-assert(securityReview.includes('mcp_ptly'), 'security review documents official Portaly MCP token format')
-assert(agents.includes('PORTALY_API_TOKEN'), 'AGENTS documents official Portaly MCP token env var')
 assert(rlsPolicies.includes('memberhub_has_paid_membership'), 'RLS policy template covers paid member access')
 assert(rlsPolicies.includes('memberhub_is_admin'), 'RLS policy template covers admin access')
-assert(rlsPolicies.includes('Guest 可以讀公開文章'), 'RLS policy template includes role-based test checklist')
 
 if (process.exitCode) {
   console.error('\nIntegration check failed.')

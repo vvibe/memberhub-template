@@ -1,59 +1,60 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import {
-  AlertCircle,
   BarChart3,
-  Bell,
-  BookOpen,
   CalendarDays,
   CheckCircle2,
   ChevronRight,
   CircleDollarSign,
   ClipboardCheck,
-  Copy,
   Download,
   ExternalLink,
   FileText,
-  Flame,
-  Gift,
-  Globe2,
-  Hash,
-  KeyRound,
+  Heart,
   LayoutDashboard,
   Link2,
-  LogIn,
   Lock,
-  Mail,
-  Megaphone,
+  LogIn,
+  LogOut,
+  MessageCircle,
+  MessageSquareX,
   MessageSquareText,
+  Pencil,
+  Pin,
+  PinOff,
   PlayCircle,
-  Send,
+  Plus,
   Search,
   Settings2,
   ShieldCheck,
-  SlidersHorizontal,
-  Tag,
+  Trash2,
   Trophy,
+  Upload,
   UserRound,
   UserPlus,
   UsersRound,
 } from 'lucide-react'
-import { getPreset, presets } from './data/presets'
-import { createCheckoutSessionPreview, portalyIntegrationNotes } from './lib/portaly'
-import { richTextBlocks, richTextPlainText } from './lib/rich-text'
-import { createPaymentEvent, loadState, presetLabel, resetState, roleLabel, saveState } from './lib/store'
-import type { AppState, ContentItem, Course, CourseAccessMode, LevelAccessBinding, LevelDefinition, LevelPointRule, LevelSystem, Member, ModerationItem, NewsletterIssue, Plan, PresetId, ReferralCampaign, Role, VerticalPreset, ViewId } from './types'
+import { getInsForgeClient, hasInsForgeConfig } from './lib/insforge'
+import { sanitizeRichTextHtml } from './lib/rich-text'
+import { loadState, planLabel, roleLabel, saveState } from './lib/store'
+import type {
+  AppState,
+  CalendarEvent,
+  ClassroomCourse,
+  CommunityComment,
+  CommunityCategory,
+  CommunityPost,
+  CourseAccessMode,
+  Member,
+  MembershipApplication,
+  Plan,
+  PointRuleId,
+  Role,
+  ViewId,
+} from './types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 
 const RichTextEditor = lazy(() => import('@/components/RichTextEditor').then((module) => ({ default: module.RichTextEditor })))
 
@@ -73,4433 +74,3603 @@ function DeferredRichTextEditor(props: DeferredRichTextEditorProps) {
   )
 }
 
+type AuthResult = {
+  ok: boolean
+  role?: Role
+  email?: string
+  requiresVerification?: boolean
+  message?: string
+  error?: string
+}
+
+function useEscapeKey(active: boolean, onClose: () => void) {
+  useEffect(() => {
+    if (!active) return undefined
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', close)
+    return () => document.removeEventListener('keydown', close)
+  }, [active, onClose])
+}
+
+function matchesQuery(query: string, ...values: Array<string | undefined>) {
+  const normalized = query.trim().toLowerCase()
+  if (!normalized) return true
+  return values.some((value) => value?.toLowerCase().includes(normalized))
+}
+
 const navItems: Array<{ id: ViewId; label: string; icon: typeof LayoutDashboard }> = [
-  { id: 'home', label: '預覽', icon: Globe2 },
-  { id: 'blog', label: '部落格', icon: FileText },
-  { id: 'join', label: '加入會員', icon: CircleDollarSign },
-  { id: 'content', label: '內容庫', icon: BookOpen },
-  { id: 'newsletter', label: '通訊', icon: Megaphone },
-  { id: 'courses', label: '課程', icon: PlayCircle },
-  { id: 'community', label: '社群', icon: MessageSquareText },
-  { id: 'members', label: '成員', icon: UsersRound },
-  { id: 'search', label: '搜尋', icon: Search },
-  { id: 'challenges', label: '打卡', icon: Trophy },
-  { id: 'events', label: '活動', icon: CalendarDays },
-  { id: 'login', label: '登入', icon: LogIn },
-  { id: 'member', label: '會員', icon: UserRound },
-  { id: 'admin', label: '後台', icon: LayoutDashboard },
-  { id: 'setup', label: '設定', icon: Settings2 },
+  { id: 'community', label: 'Community', icon: MessageSquareText },
+  { id: 'classroom', label: 'Classroom', icon: PlayCircle },
+  { id: 'calendar', label: 'Calendar', icon: CalendarDays },
+  { id: 'members', label: 'Members', icon: UsersRound },
+  { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
+  { id: 'about', label: 'About', icon: FileText },
 ]
 
-const validPresetIds = new Set(presets.map((preset) => preset.id))
-const validViewIds = new Set(navItems.map((item) => item.id))
-const publicationHiddenViews: ViewId[] = ['courses', 'community', 'members', 'challenges', 'events']
+const adminTabs = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'general', label: 'General', icon: UserRound },
+  { id: 'access', label: 'Access', icon: ShieldCheck },
+  { id: 'community', label: 'Community', icon: MessageSquareText },
+  { id: 'classroom', label: 'Classroom', icon: PlayCircle },
+  { id: 'calendar', label: 'Calendar', icon: CalendarDays },
+  { id: 'members', label: 'Members', icon: UsersRound },
+  { id: 'pricing', label: 'Pricing', icon: CircleDollarSign },
+  { id: 'plugins', label: 'Plugins', icon: Settings2 },
+] as const
 
-function isPresetId(value: string): value is PresetId {
-  return validPresetIds.has(value as PresetId)
-}
+type AdminTab = (typeof adminTabs)[number]['id']
 
-function normalizePresetId(value: string | null): PresetId | undefined {
-  if (!value) return undefined
-  if (value === 'superstake') return 'signal-brief'
-  return isPresetId(value) ? value : undefined
-}
+const viewIds = new Set<ViewId>([...navItems.map((item) => item.id), 'login', 'account', 'admin'])
+const publicViews = new Set<ViewId>(['about'])
+const fallbackCoverImage = 'https://picsum.photos/seed/memberhub-cover/1200/630'
+const fallbackGalleryImages = [
+  'https://picsum.photos/seed/memberhub-workshop-a/1200/630',
+  'https://picsum.photos/seed/memberhub-workshop-b/1200/630',
+]
+const courseCoverImages = [
+  'https://picsum.photos/seed/memberhub-course-a/900/540',
+  'https://picsum.photos/seed/memberhub-course-b/900/540',
+  'https://picsum.photos/seed/memberhub-course-c/900/540',
+  'https://picsum.photos/seed/memberhub-course-d/900/540',
+  'https://picsum.photos/seed/memberhub-course-e/900/540',
+]
 
-function isViewId(value: string): value is ViewId {
-  return validViewIds.has(value as ViewId)
-}
-
-function presetIdFromHost(hostname: string): PresetId | undefined {
-  const host = hostname.toLowerCase()
-  if (host.includes('signal-brief')) return 'signal-brief'
-  if (host.includes('skills-school')) return 'skills-school'
-  return undefined
-}
-
-function isPublicationPreset(preset: { id: string }) {
-  return preset.id === 'signal-brief'
-}
-
-function navLabel(item: { id: ViewId; label: string }, preset: { id: string }) {
-  if (!isPublicationPreset(preset)) return item.label
-  const labels: Partial<Record<ViewId, string>> = {
-    home: '首頁',
-    blog: '文章',
-    join: '訂閱',
-    content: '文章庫',
-    newsletter: '電子報',
-    member: '我的訂閱',
-  }
-  return labels[item.id] ?? item.label
-}
-
-function formalSkillsNavLabel(item: { id: ViewId; label: string }) {
-  const labels: Partial<Record<ViewId, string>> = {
-    home: '首頁',
-    blog: '文章',
-    join: '訂閱',
-    content: '資源',
-    courses: '課程',
-    community: '社群',
-    events: '活動',
-    members: '會員',
-    admin: '設定',
-    member: '我的帳號',
-  }
-  return labels[item.id] ?? item.label
-}
-
-function getInitialRoute() {
-  if (typeof window === 'undefined') return { presetId: undefined, view: undefined, formalPresetId: undefined }
-  const params = new URLSearchParams(window.location.search)
-  const caseParam = params.get('case') ?? params.get('preset')
-  const viewParam = params.get('view')
-  const formalParam = params.get('formal')
-  const presetId = normalizePresetId(caseParam) ?? presetIdFromHost(window.location.hostname)
-  const formalPresetId = normalizePresetId(formalParam) ?? (formalParam === '1' || formalParam === 'true' ? presetId : undefined)
-
-  return {
-    presetId,
-    view: viewParam && isViewId(viewParam) ? viewParam : undefined,
-    formalPresetId,
-  }
-}
-
-function siteEyebrow(preset: ReturnType<typeof getPreset>) {
-  return isPublicationPreset(preset) ? '獨立策略通訊' : 'AI Skill 實作社群'
-}
-
-function brandMark(preset: ReturnType<typeof getPreset>) {
-  return preset.id === 'signal-brief' ? 'S' : 'S'
-}
-
-function homeMetrics(preset: ReturnType<typeof getPreset>, selectedPlan: Plan) {
-  if (isPublicationPreset(preset)) {
-    return [
-      { label: '本月研究', value: '8 篇', icon: BarChart3 },
-      { label: '讀者', value: String(preset.metrics.activeMembers), icon: UsersRound },
-      { label: '資料庫更新', value: '每週', icon: ChevronRight },
-      { label: '目前方案', value: selectedPlan.name, icon: ShieldCheck },
-    ]
-  }
-
-  return [
-    { label: '本月回饋', value: '36 份', icon: BarChart3 },
-    { label: '學員', value: String(preset.metrics.activeMembers), icon: UsersRound },
-    { label: '課程進度', value: `${preset.courses[0]?.progress ?? 0}%`, icon: ChevronRight },
-    { label: '目前方案', value: selectedPlan.name, icon: ShieldCheck },
-  ]
-}
-
-function beforeJoinEyebrow(preset: ReturnType<typeof getPreset>) {
-  return isPublicationPreset(preset) ? '訂閱前先閱讀' : '加入前先看看'
-}
-
-function beforeJoinHeading(preset: ReturnType<typeof getPreset>) {
-  return isPublicationPreset(preset) ? '訂閱前可以先閱讀的公開文章與研究節奏' : '加入前可以先看見的內容與社群節奏'
+function stockCoverStyle(url: string) {
+  return { backgroundImage: `linear-gradient(135deg, rgba(17, 24, 39, 0.42), rgba(17, 24, 39, 0.08)), url("${url}")` }
 }
 
 function defaultViewForRole(role: Role): ViewId {
   if (role === 'admin') return 'admin'
-  if (role === 'member') return 'member'
-  return 'home'
+  return role === 'visitor' ? 'about' : 'community'
 }
 
-type AuthResult = {
-  ok: boolean
-  role?: Role
-  error?: string
+function isAdminCredentials(state: AppState, email: string, password: string) {
+  return email.trim().toLowerCase() === state.adminEmail.trim().toLowerCase() && password === state.adminPassword
 }
 
-function roleProfile(preset: ReturnType<typeof getPreset>, role: Role) {
-  const publication = isPublicationPreset(preset)
-  if (publication) {
-    if (role === 'admin') {
-      return {
-        label: '管理員視角',
-        title: '出版者後台開啟',
-        description: '可以管理文章、設定付費牆段落、排程 Newsletter、查看讀者與訂閱狀態。',
-        points: ['後台與設定可見', '可編輯付費牆', '可查看讀者資料'],
-      }
-    }
-    if (role === 'member') {
-      return {
-        label: '付費讀者視角',
-        title: '已解鎖完整文章',
-        description: '可以閱讀付費牆後的完整內容，並在我的訂閱中查看方案、收據與贈閱狀態。',
-        points: ['付費文章完整可讀', '可管理訂閱', '不顯示後台'],
-      }
-    }
-    return {
-      label: '訪客視角',
-      title: '先閱讀公開文章',
-      description: '可以直接閱讀免費文章；付費文章會停在創作者設定的付費牆位置。',
-      points: ['免費文章可讀', '付費文章被鎖定', '不顯示後台'],
-    }
-  }
+function getInitialView(): ViewId | undefined {
+  if (typeof window === 'undefined') return undefined
+  const value = new URLSearchParams(window.location.search).get('view')
+  return value && viewIds.has(value as ViewId) ? (value as ViewId) : undefined
+}
 
-  if (role === 'admin') {
-    return {
-      label: '管理員視角',
-      title: '管理員編輯權限開啟',
-      description: '看到的是同一個私密社團，只是多了編輯、邀請、設定與審核能力。',
-      points: ['社團內編輯可見', '可邀請會員', '可管理課程與社群'],
-    }
-  }
-  if (role === 'member') {
-    return {
-      label: '會員視角',
-      title: '課程與社群已解鎖',
-      description: '可以接續課程進度、進入會員討論、完成打卡，並查看自己的會員方案。',
-      points: ['會員內容可讀', '可更新課程進度', '可打卡與參與討論'],
-    }
-  }
+function levelForPoints(points: number, thresholds: number[]) {
+  const index = thresholds.reduce((levelIndex, threshold, currentIndex) => (points >= threshold ? currentIndex : levelIndex), 0)
+  return index + 1
+}
+
+function maxLevelPoints(thresholds: number[]) {
+  return thresholds[thresholds.length - 1] ?? 0
+}
+
+function effectivePointsForRole(role: Role, points: number, thresholds: number[]) {
+  return role === 'admin' ? maxLevelPoints(thresholds) : points
+}
+
+function nextLevelPoints(points: number, thresholds: number[]) {
+  return thresholds.find((threshold) => threshold > points)
+}
+
+function pointValue(state: AppState, id: PointRuleId) {
+  const rule = state.pointRules.find((item) => item.id === id)
+  return rule?.enabled ? Math.max(0, rule.points) : 0
+}
+
+function authorName(state: AppState, authEmail: string | null) {
+  return state.profileName.trim() || authEmail?.split('@')[0] || 'You'
+}
+
+function mentionLabel(name: string) {
+  return `@${name.replace(/\s+/g, '')}`
+}
+
+function renderMentionText(text: string) {
+  return text.split(/(@[^\s@]+)/g).map((part, index) => (
+    part.startsWith('@') ? <span className="mention-token" key={`${part}-${index}`}>{part}</span> : part
+  ))
+}
+
+function commentCount(comments: CommunityComment[]): number {
+  return comments.reduce((total, comment) => total + 1 + commentCount(comment.replies), 0)
+}
+
+function commentIds(comments: CommunityComment[]): string[] {
+  return comments.flatMap((comment) => [comment.id, ...commentIds(comment.replies)])
+}
+
+function mapComments(comments: CommunityComment[], id: string, update: (comment: CommunityComment) => CommunityComment): CommunityComment[] {
+  return comments.map((comment) => (comment.id === id ? update(comment) : { ...comment, replies: mapComments(comment.replies, id, update) }))
+}
+
+function newComment(body: string, state: AppState, authEmail: string | null): CommunityComment {
   return {
-    label: '訪客視角',
-    title: '只看到公開預覽',
-    description: '可以瀏覽公開內容與方案；課程進度、會員討論、打卡與管理功能會保留給會員或管理員。',
-    points: ['公開內容可讀', '會員功能鎖定', '不顯示管理工具'],
+    id: `comment-${Date.now()}`,
+    authorId: 'current',
+    authorName: authorName(state, authEmail),
+    body,
+    createdAt: new Intl.DateTimeFormat('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()),
+    likes: 0,
+    replies: [],
   }
 }
 
-function contentTypeLabel(type: ContentItem['type'] | string) {
-  const labels: Record<string, string> = {
-    article: '文章',
-    video: '影片',
-    podcast: '音訊',
-    resource: '資源',
-    newsletter: '通訊',
-    course: '課程',
-    lesson: '單元',
-    thread: '討論',
-    member: '成員',
-    event: '活動',
+function benefitsForLevel(state: AppState, level: number) {
+  return state.levelBenefits.find((item) => item.level === level)?.benefits.filter(Boolean) ?? []
+}
+
+function profileInitial(name: string) {
+  return (name.trim().charAt(0) || 'M').toUpperCase()
+}
+
+function ProfileAvatar({ name, url, className = '' }: { name: string; url?: string; className?: string }) {
+  const src = url?.trim()
+  return (
+    <span className={`avatar${className ? ` ${className}` : ''}`}>
+      {src ? <img src={src} alt="" /> : profileInitial(name)}
+    </span>
+  )
+}
+
+function attachmentDownloadName(resource: string) {
+  const filename = resource.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'attachment'
+  return /\.[A-Za-z0-9]{1,8}$/.test(filename) ? filename : `${filename}.txt`
+}
+
+function attachmentDownloadHref(resource: string) {
+  return `data:text/plain;charset=utf-8,${encodeURIComponent(resource.trim() || 'Attachment')}`
+}
+
+function accessLabel(access: CourseAccessMode) {
+  const labels: Record<CourseAccessMode, string> = {
+    open: 'Open',
+    'level-unlock': 'Level unlock',
+    'buy-now': 'Buy now',
+    'time-unlock': 'Time unlock',
+    private: 'Private',
   }
-  return labels[type] ?? type
+  return labels[access]
 }
 
-function contentParagraphs(item: Pick<ContentItem, 'body'>) {
-  return richTextBlocks(item.body)
+function applicationStatusLabel(status: MembershipApplication['status']) {
+  return status === 'approved' ? '已同意' : status === 'rejected' ? '已拒絕' : '待審核'
 }
 
-function RichTextBlock({ html, id }: { html: string; id: string }) {
-  return <div className="rich-text-output-block" dangerouslySetInnerHTML={{ __html: html }} data-block-id={id} />
+function eventDurationMinutes(duration: string) {
+  return Number(duration.match(/\d+/)?.[0] ?? 60)
 }
 
-function paywallParagraph(item: ContentItem) {
-  const paragraphCount = Math.max(1, contentParagraphs(item).length)
-  return Math.min(Math.max(1, item.paywallAfterParagraph ?? 1), paragraphCount)
+function calendarEventDates(event: CalendarEvent) {
+  const [year, month, day] = event.date.split('-').map(Number)
+  const [hour, minute] = event.time.split(':').map(Number)
+  const start = new Date(Date.UTC(year, month - 1, day, hour, minute || 0, 0))
+  const end = new Date(start.getTime() + eventDurationMinutes(event.duration) * 60_000)
+  const compact = (date: Date) => `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}T${String(date.getUTCHours()).padStart(2, '0')}${String(date.getUTCMinutes()).padStart(2, '0')}00`
+  const isoLocal = (date: Date) => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}T${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}:00`
+  return { compactStart: compact(start), compactEnd: compact(end), isoStart: isoLocal(start), isoEnd: isoLocal(end) }
 }
 
-function limitedFreeDate(item: ContentItem) {
-  if (!item.limitedFreeUntil) return null
-  const date = new Date(item.limitedFreeUntil)
-  return Number.isNaN(date.getTime()) ? null : date
+function eventEndsAt(event: CalendarEvent) {
+  const suffix = event.timezone === 'Asia/Taipei' ? '+08:00' : ''
+  const start = new Date(`${event.date}T${event.time}:00${suffix}`)
+  return new Date(start.getTime() + eventDurationMinutes(event.duration) * 60_000)
 }
 
-function isLimitedFreeActive(item: ContentItem, now = new Date()) {
-  const date = limitedFreeDate(item)
-  return Boolean(item.isPaid && date && date.getTime() > now.getTime())
+function isEventExpired(event: CalendarEvent) {
+  return eventEndsAt(event).getTime() < Date.now()
 }
 
-function requiresPaidAccess(item: ContentItem) {
-  return item.isPaid && !isLimitedFreeActive(item)
+function escapeIcs(value: string) {
+  return value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
 }
 
-function isContentLocked(item: ContentItem, hasPaidAccess: boolean) {
-  return requiresPaidAccess(item) && !hasPaidAccess
+function buildCalendarOptions(event: CalendarEvent) {
+  const dates = calendarEventDates(event)
+  const recurrenceRule = event.recurrence === 'none' ? '' : `RRULE:FREQ=${event.recurrence.toUpperCase()}`
+  const details = [event.description, `Timezone: ${event.timezone}`, recurrenceRule && `Recurrence: ${event.recurrence}`].filter(Boolean).join('\n\n')
+  const googleParams = new URLSearchParams({ action: 'TEMPLATE', text: event.title, dates: `${dates.compactStart}/${dates.compactEnd}`, ctz: event.timezone, details, location: event.location })
+  if (recurrenceRule) googleParams.set('recur', recurrenceRule)
+  const outlookParams = new URLSearchParams({ rru: 'addevent', subject: event.title, startdt: dates.isoStart, enddt: dates.isoEnd, body: details, location: event.location })
+  const yahooParams = new URLSearchParams({ v: '60', title: event.title, st: dates.compactStart, et: dates.compactEnd, desc: details, in_loc: event.location })
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//MemberHub//Calendar//EN',
+    'BEGIN:VEVENT',
+    `UID:${event.id}@memberhub`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')}`,
+    `DTSTART;TZID=${event.timezone}:${dates.compactStart}`,
+    `DTEND;TZID=${event.timezone}:${dates.compactEnd}`,
+    `SUMMARY:${escapeIcs(event.title)}`,
+    `DESCRIPTION:${escapeIcs(details)}`,
+    `LOCATION:${escapeIcs(event.location)}`,
+    recurrenceRule,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].filter(Boolean).join('\r\n')
+  const filename = `${event.date}-${event.title.replace(/[\\/:*?"<>|]+/g, '-')}.ics`
+
+  return [
+    { label: 'Google', href: `https://calendar.google.com/calendar/render?${googleParams.toString()}` },
+    { label: 'Apple', href: `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`, download: filename },
+    { label: 'Outlook', href: `https://outlook.office.com/calendar/0/deeplink/compose?${outlookParams.toString()}` },
+    { label: 'Outlook.com', href: `https://outlook.live.com/calendar/0/deeplink/compose?${outlookParams.toString()}` },
+    { label: 'Yahoo', href: `https://calendar.yahoo.com/?${yahooParams.toString()}` },
+  ]
 }
 
-function limitedFreeLabel(item: ContentItem) {
-  const date = limitedFreeDate(item)
-  if (!date) return ''
-  return `限時免費至 ${date.toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+function eventAccessLabel(event: CalendarEvent, state: AppState) {
+  if (event.accessMode === 'level') return `Level ${event.requiredLevel ?? 1}+`
+  if (event.accessMode === 'plan') return `${state.plans.find((plan) => plan.id === event.requiredPlanId)?.name ?? 'Plan'}+`
+  if (event.accessMode === 'course') return state.courses.find((course) => course.id === event.courseId)?.title ?? 'Course members'
+  return 'All members'
 }
 
-function datetimeLocalValue(value?: string) {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  const offset = date.getTimezoneOffset() * 60000
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+function CalendarProviderLinks({ event, onSelect }: { event: CalendarEvent; onSelect?: () => void }) {
+  return (
+    <div className="calendar-provider-list">
+      {buildCalendarOptions(event).map((option) => (
+        <a key={option.label} href={option.href} target={option.download ? undefined : '_blank'} rel={option.download ? undefined : 'noreferrer'} download={option.download} onClick={onSelect}>
+          <span>{option.label}</span>
+          <Plus size={18} aria-hidden="true" />
+        </a>
+      ))}
+    </div>
+  )
 }
 
-function sourceLabel(source: string) {
-  const labels: Record<string, string> = {
-    blog: '公開網站',
-    course: '課程教室',
-    classroom: '課程教室',
-    resource: '資源庫',
-    email: '電子報',
-    'member research': '會員研究',
-    database: '資料庫',
-    podcast: '音訊',
-    newsletter: '電子報',
-    referral: '會員推薦',
-    line: 'LINE',
-    organic: '自然搜尋',
-    'community preview': '公開文章',
-    'public blog': '公開部落格',
-    'subscriber gift': '會員贈閱',
-    'referral link': '推薦連結',
-    'live campaign': '直播活動',
-  }
-  return labels[source] ?? source
+function EventCalendarAction({ event, onOpen }: { event: CalendarEvent; onOpen: (event: CalendarEvent) => void }) {
+  if (isEventExpired(event)) return <button className="event-calendar-disabled" type="button" disabled>Event ended</button>
+
+  return (
+    <button className="event-calendar-button" type="button" onClick={() => onOpen(event)}>
+      Add to calendar
+    </button>
+  )
 }
 
-function channelLabel(channel: string) {
-  const labels: Record<string, string> = {
-    email: 'Email',
-    line: 'LINE',
-    'in-app': '站內通知',
-  }
-  return labels[channel] ?? channel
-}
-
-function segmentLabel(segment: string) {
-  const labels: Record<string, string> = {
-    all: '全部訂閱者',
-    paid: '付費會員',
-    free: '免費讀者',
-  }
-  return labels[segment] ?? segment
-}
-
-function statusLabel(status: string) {
-  const labels: Record<string, string> = {
-    scheduled: '已排程',
-    draft: '草稿',
-    sent: '已發送',
-    ready: '已準備',
-    active: '有效',
-    free: '免費',
-    reviewing: '審核中',
-    open: '待處理',
-    resolved: '已完成',
-    upcoming: '即將開始',
-    replay: '可回看',
-  }
-  return labels[status] ?? status
-}
-
-function notificationTriggerLabel(trigger: string) {
-  const labels: Record<string, string> = {
-    'new-post': '新內容發布',
-    'live-start': '直播開始提醒',
-    'course-reminder': '課程進度提醒',
-    'payment-failed': '付款未完成提醒',
-  }
-  return labels[trigger] ?? trigger
-}
-
-function notificationAudienceLabel(audience: string, publication = false) {
-  const labels: Record<string, string> = publication ? {
-    all: '全部讀者',
-    free: '免費讀者',
-    paid: '付費讀者',
-    'at-risk': '需關懷讀者',
-  } : {
-    all: '全部會員',
-    free: '免費會員',
-    paid: '付費會員',
-    'at-risk': '需關懷會員',
-    subscribers: '訂閱讀者',
-  }
-  return labels[audience] ?? audience
-}
-
-function moderationKindLabel(kind: string, publication = false) {
-  const labels: Record<string, string> = publication ? {
-    'membership-question': '訂閱問題',
-    'reported-post': '留言檢舉',
-    'automod-risk': '存取風險',
-    'billing-dispute': '退款爭議',
-  } : {
-    'membership-question': '入會問題',
-    'reported-post': '檢舉內容',
-    'automod-risk': '風險行為',
-    'billing-dispute': '付款爭議',
-  }
-  return labels[kind] ?? kind
-}
-
-function priorityLabel(priority: string) {
-  const labels: Record<string, string> = {
-    low: '低',
-    medium: '中',
-    high: '高',
-  }
-  return labels[priority] ?? priority
-}
-
-function resourceKindLabel(kind: string) {
-  const labels: Record<string, string> = {
-    template: '模板',
-    link: '連結',
-    file: '檔案',
-    transcript: '逐字稿',
-  }
-  return labels[kind] ?? kind
-}
-
-function accessLabel(access: string) {
-  const labels: Record<string, string> = {
-    free: '公開',
-    member: '會員',
-    'level-gated': '進階會員',
-    paid: '付費會員',
-    subscribers: '訂閱者',
-    all: '全部會員',
-  }
-  return labels[access] ?? access
-}
-
-const courseAccessOptions: Array<{ id: CourseAccessMode; label: string; description: string }> = [
-  { id: 'open', label: '公開', description: '所有會員都能進入課程。' },
-  { id: 'level-unlock', label: '等級解鎖', description: '學員達到指定等級後解鎖。' },
-  { id: 'buy-now', label: '單次購買', description: '學員付一次性費用解鎖。' },
-  { id: 'time-unlock', label: '時間解鎖', description: '加入後第 N 天自動開放。' },
-  { id: 'private', label: '私人', description: '只開放給指定方案或指定會員。' },
-]
-
-function courseAccessLabel(access: CourseAccessMode = 'open') {
-  return courseAccessOptions.find((option) => option.id === access)?.label ?? '公開'
-}
-
-const fallbackLevelSystem: LevelSystem = {
-  rules: [
-    { id: 'fallback-rule-post', label: '發表內容', action: 'post', points: 10, enabled: true },
-    { id: 'fallback-rule-comment', label: '回覆討論', action: 'comment', points: 3, enabled: true },
-    { id: 'fallback-rule-lesson', label: '完成課程', action: 'lesson-complete', points: 15, enabled: true },
-  ],
-  levels: [
-    { level: 1, name: '入門會員', pointsRequired: 0, memberPercent: 100, unlocks: ['公開內容'], permissions: ['public-content'] },
-    { level: 2, name: '進階會員', pointsRequired: 300, memberPercent: 0, unlocks: ['會員內容'], permissions: ['member-content'] },
-  ],
-  bindings: [],
-}
-
-function getLevelSystem(preset: Pick<VerticalPreset, 'levelSystem'>) {
-  return preset.levelSystem ?? fallbackLevelSystem
-}
-
-function levelForPoints(levelSystem: LevelSystem, points: number) {
-  return levelSystem.levels
-    .slice()
-    .sort((a, b) => b.pointsRequired - a.pointsRequired)
-    .find((level) => points >= level.pointsRequired) ?? levelSystem.levels[0]
-}
-
-function nextLevelForPoints(levelSystem: LevelSystem, points: number) {
-  return levelSystem.levels
-    .slice()
-    .sort((a, b) => a.pointsRequired - b.pointsRequired)
-    .find((level) => level.pointsRequired > points)
-}
-
-function pointRuleLabel(action: LevelPointRule['action']) {
-  const labels: Record<LevelPointRule['action'], string> = {
-    post: '發文',
-    comment: '回文',
-    'lesson-complete': '上課',
-    'challenge-checkin': '打卡',
-    'live-attend': '直播',
-    'resource-submit': '交作業',
-  }
-  return labels[action]
-}
-
-function featureBindingLabel(feature: LevelAccessBinding['feature']) {
-  const labels: Record<LevelAccessBinding['feature'], string> = {
-    article: '文章',
-    course: '課程',
-    community: '社群',
-    event: '活動',
-    resource: '資源',
-  }
-  return labels[feature]
-}
-
-function roleDisplayLabel(role: string) {
-  const labels: Record<string, string> = {
-    member: '會員',
-    moderator: '版主',
-    admin: '管理員',
-  }
-  return labels[role] ?? role
-}
-
-function riskLabel(risk: string) {
-  const labels: Record<string, string> = {
-    low: '穩定',
-    medium: '需關注',
-    high: '高風險',
-  }
-  return labels[risk] ?? risk
-}
-
-function eventKindLabel(kind: string) {
-  const labels: Record<string, string> = {
-    live: '直播',
-    webinar: 'Webinar',
-    'office-hour': '問答時段',
-  }
-  return labels[kind] ?? kind
-}
-
-function paymentValueLabel(value?: string) {
-  const labels: Record<string, string> = {
-    not_required: '尚未產生',
-    pending: '待處理',
-    issued: '已開立',
-    active: '有效',
-    ready: '可使用',
-  }
-  return value ? labels[value] ?? value : '尚未產生'
-}
-
-function mergePresetOverrides(preset: VerticalPreset, override?: Partial<VerticalPreset>): VerticalPreset {
-  if (!override) return preset
-  return {
-    ...preset,
-    ...override,
-    brand: { ...preset.brand, ...override.brand },
-    copy: { ...preset.copy, ...override.copy },
-    metrics: { ...preset.metrics, ...override.metrics },
-    plans: override.plans ?? preset.plans,
-    content: override.content ?? preset.content,
-    newsletter: override.newsletter ?? preset.newsletter,
-    courses: override.courses ?? preset.courses,
-    threads: override.threads ?? preset.threads,
-    challenges: override.challenges ?? preset.challenges,
-    events: override.events ?? preset.events,
-    members: override.members ?? preset.members,
-    referrals: override.referrals ?? preset.referrals,
-    moderation: override.moderation ?? preset.moderation,
-    notifications: override.notifications ?? preset.notifications,
-  }
-}
-
-function updateById<T extends { id: string }>(items: T[], id: string, patch: Partial<T>) {
-  return items.map((item) => (item.id === id ? { ...item, ...patch } : item))
+function authError(error: { statusCode?: number; message?: string } | null | undefined) {
+  if (!error) return '登入失敗，請稍後再試。'
+  if (error.statusCode === 401) return '帳號或密碼不正確。'
+  if (error.statusCode === 403) return '請先完成 Email 驗證後再登入。'
+  if (error.statusCode === 409) return '這個 Email 已註冊，請直接登入。'
+  return error.message || '登入失敗，請稍後再試。'
 }
 
 function App() {
-  const initialRoute = useMemo(() => getInitialRoute(), [])
-  const standalonePresetId = useMemo(() => {
-    if (typeof window === 'undefined') return undefined
-    return presetIdFromHost(window.location.hostname)
-  }, [])
-  const formalAuthPresetId = standalonePresetId === 'skills-school' || standalonePresetId === 'signal-brief'
-    ? standalonePresetId
-    : initialRoute.formalPresetId
-  const formalAuth = Boolean(formalAuthPresetId)
-  const formalSkillsAuth = formalAuthPresetId === 'skills-school'
-  const [state, setState] = useState<AppState>(() => {
-    const storedState = loadState()
-    if (formalAuthPresetId) {
-      return {
-        ...storedState,
-        presetId: formalAuthPresetId,
-        role: 'visitor',
-        selectedPlanId: 'free',
-      }
-    }
-    if (!initialRoute.presetId) return storedState
-    return {
-      ...storedState,
-      presetId: initialRoute.presetId,
-      selectedPlanId: 'free',
-      localContentItems: [],
-      localNewsletterIssues: [],
-      localReferralCampaigns: [],
-      localMembers: [],
-      localModeration: [],
-    }
+  const [state, setState] = useState<AppState>(() => loadState())
+  const [view, setView] = useState<ViewId>(() => {
+    const initialView = getInitialView()
+    const role = loadState().role
+    return initialView === 'login' ? defaultViewForRole(role) : initialView ?? defaultViewForRole(role)
   })
-  const [view, setView] = useState<ViewId>(initialRoute.view ?? 'home')
-  const [query, setQuery] = useState('')
-  const [globalQuery, setGlobalQuery] = useState('')
+  const [loginOpen, setLoginOpen] = useState(() => getInitialView() === 'login')
+  const [joinPlan, setJoinPlan] = useState<Plan | null>(null)
   const [authEmail, setAuthEmail] = useState<string | null>(null)
-  const [authChecking, setAuthChecking] = useState(formalAuth)
-  const authRequestIdRef = useRef(0)
+  const [adminTab, setAdminTab] = useState<AdminTab>('dashboard')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [saveNotice, setSaveNotice] = useState('')
+  const initialInviteRef = useRef(typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('invite') ?? '')
 
   useEffect(() => {
     saveState(state)
   }, [state])
 
   useEffect(() => {
-    if (!formalAuthPresetId) return
+    const params = new URLSearchParams()
+    params.set('view', view)
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`)
+  }, [view])
+
+  useEffect(() => {
+    if (!hasInsForgeConfig()) return
     let active = true
-    const requestId = authRequestIdRef.current + 1
-    authRequestIdRef.current = requestId
-    const isStale = () => !active || requestId !== authRequestIdRef.current
-
-    fetch('/api/auth/me')
-      .then((response) => response.json())
-      .then((payload) => {
-        if (isStale()) return
-        if (payload?.authenticated && payload?.user?.email) {
-          const role: Role = payload.user.role === 'member' ? 'member' : 'admin'
-          const authenticatedPreset = getPreset(formalAuthPresetId)
-          const memberPlan = authenticatedPreset.plans.find((plan) => plan.highlighted) ?? authenticatedPreset.plans[1] ?? authenticatedPreset.plans[0]
-          setState((prev) => ({
-            ...prev,
-            presetId: formalAuthPresetId,
-            role,
-            selectedPlanId: memberPlan.id,
-          }))
-          setAuthEmail(payload.user.email)
-          setView(role === 'admin' && formalAuthPresetId === 'skills-school' ? 'community' : role === 'admin' ? 'admin' : 'member')
-          return
-        }
-        setAuthEmail(null)
-        setState((prev) => ({ ...prev, presetId: formalAuthPresetId, role: 'visitor', selectedPlanId: 'free' }))
+    getInsForgeClient()
+      .then((client) => client?.auth.getCurrentUser())
+      .then((result) => {
+        if (!active) return
+        const email = result?.data?.user?.email
+        if (!email) return
+        setAuthEmail(email)
+        setState((current) => ({ ...current, role: current.role === 'admin' ? 'admin' : 'member' }))
       })
-      .catch(() => {
-        if (isStale()) return
-        setAuthEmail(null)
-        setState((prev) => ({ ...prev, presetId: formalAuthPresetId, role: 'visitor', selectedPlanId: 'free' }))
-      })
-      .finally(() => {
-        if (!isStale()) setAuthChecking(false)
-      })
-
+      .catch(() => undefined)
     return () => {
       active = false
     }
-  }, [formalAuthPresetId])
+  }, [])
+
+  useEscapeKey(loginOpen, () => setLoginOpen(false))
+  useEscapeKey(Boolean(joinPlan), () => setJoinPlan(null))
 
   useEffect(() => {
-    const params = new URLSearchParams()
-    params.set('case', state.presetId)
-    params.set('view', view)
-    if (formalAuth && !standalonePresetId) params.set('formal', state.presetId)
-    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`)
-  }, [formalAuth, standalonePresetId, state.presetId, view])
+    if (!saveNotice) return undefined
+    const timeout = window.setTimeout(() => setSaveNotice(''), 2200)
+    return () => window.clearTimeout(timeout)
+  }, [saveNotice])
 
-  const preset = useMemo(() => getPreset(state.presetId), [state.presetId])
-  const runtimePreset = useMemo(
-    () => {
-      const configuredPreset = mergePresetOverrides(preset, state.presetOverrides[preset.id])
-      return {
-        ...configuredPreset,
-        content: [...state.localContentItems, ...configuredPreset.content],
-        newsletter: [...state.localNewsletterIssues, ...configuredPreset.newsletter],
-        referrals: [...state.localReferralCampaigns, ...configuredPreset.referrals],
-        members: [...state.localMembers, ...configuredPreset.members],
-        moderation: [...state.localModeration, ...configuredPreset.moderation],
-      }
-    },
-    [preset, state.localContentItems, state.localMembers, state.localModeration, state.localNewsletterIssues, state.localReferralCampaigns, state.presetOverrides],
-  )
-  const selectedPlan = runtimePreset.plans.find((plan) => plan.id === state.selectedPlanId) ?? runtimePreset.plans[0]
-  const currentMember = runtimePreset.members[0]
-  const levelSystem = getLevelSystem(runtimePreset)
-  const checkedInPoints = runtimePreset.challenges
-    .filter((challenge) => state.checkedInChallenges.includes(challenge.id))
-    .reduce((total, challenge) => total + challenge.points, 0)
-  const activePoints = state.role === 'visitor' ? 0 : currentMember.points + checkedInPoints
-  const activeLevel = state.role === 'visitor' ? 0 : levelForPoints(levelSystem, activePoints).level
-  const hasPaidAccess = state.role === 'admin' || state.selectedPlanId !== 'free'
-  const visibleNavItems = useMemo(
-    () => {
-      let items = isPublicationPreset(runtimePreset)
-        ? navItems.filter((item) => !publicationHiddenViews.includes(item.id))
-        : navItems
-
-      if (formalSkillsAuth) {
-        const formalViews: ViewId[] = state.role === 'admin'
-          ? ['community', 'courses', 'challenges', 'events', 'members', 'content', 'admin']
-          : state.role === 'member'
-            ? ['home', 'blog', 'courses', 'community', 'challenges', 'content', 'join', 'member']
-            : ['home', 'blog', 'courses', 'community', 'content', 'join', 'login']
-        return formalViews
-          .map((id) => navItems.find((item) => item.id === id))
-          .filter((item): item is { id: ViewId; label: string; icon: typeof LayoutDashboard } => Boolean(item))
-      }
-
-      if (state.role !== 'admin') items = items.filter((item) => !['admin', 'setup', 'newsletter'].includes(item.id))
-      if (state.role === 'visitor') items = items.filter((item) => !['member', 'members'].includes(item.id))
-      if (state.role !== 'visitor') items = items.filter((item) => item.id !== 'login')
-      return items
-    },
-    [formalSkillsAuth, runtimePreset, state.role],
-  )
-
-  useEffect(() => {
-    if (isPublicationPreset(runtimePreset) && publicationHiddenViews.includes(view)) {
-      setView('blog')
-    }
-  }, [runtimePreset.id, view])
-
-  useEffect(() => {
-    if (!visibleNavItems.some((item) => item.id === view)) {
-      setView(defaultViewForRole(state.role))
-    }
-  }, [state.role, view, visibleNavItems])
-
-  const updateState = (patch: Partial<AppState>) => setState((prev) => ({ ...prev, ...patch }))
-
-  const handlePresetChange = (presetId: PresetId) => {
-    const nextPreset = getPreset(presetId)
-    updateState({
-      presetId,
-      selectedPlanId: 'free',
-      completedLessons: [],
-      checkedInChallenges: [],
-      paymentEvents: [],
-      presetOverrides: state.presetOverrides,
-      localContentItems: [],
-      localNewsletterIssues: [],
-      localReferralCampaigns: [],
-      localMembers: [],
-      localModeration: [],
-    })
-    document.documentElement.style.setProperty('--brand-primary', nextPreset.brand.primary)
-    document.documentElement.style.setProperty('--brand-accent', nextPreset.brand.accent)
+  const updateState = (patch: Partial<AppState>, notice?: string) => {
+    setState((current) => ({ ...current, ...patch }))
+    if (notice) setSaveNotice(notice)
   }
 
-  const handleUpdatePreset = (patch: Partial<VerticalPreset>) => {
-    updateState({
-      presetOverrides: {
-        ...state.presetOverrides,
-        [runtimePreset.id]: {
-          ...state.presetOverrides[runtimePreset.id],
-          ...patch,
-          brand: patch.brand ? { ...(state.presetOverrides[runtimePreset.id]?.brand ?? {}), ...patch.brand } : state.presetOverrides[runtimePreset.id]?.brand,
-          copy: patch.copy ? { ...(state.presetOverrides[runtimePreset.id]?.copy ?? {}), ...patch.copy } : state.presetOverrides[runtimePreset.id]?.copy,
-        },
-      },
-    })
-  }
+  useEffect(() => {
+    const invite = initialInviteRef.current.trim()
+    if (!invite || state.inviteRecords.includes(invite)) return
+    updateState({ inviteRecords: [invite, ...state.inviteRecords] }, '邀請來源已記錄在本機預覽。')
+    initialInviteRef.current = ''
+  }, [state.inviteRecords])
+  const activePoints = effectivePointsForRole(state.role, state.currentMemberPoints, state.levelThresholds)
+  const activeLevel = levelForPoints(activePoints, state.levelThresholds)
+  const currentPlan = state.plans.find((plan) => plan.id === state.selectedPlanId) ?? state.plans[0]
+  const isVisitor = state.role === 'visitor'
+  const routedView = view === 'login' ? defaultViewForRole(state.role) : view
+  const effectiveView = isVisitor && !publicViews.has(routedView) ? 'about' : state.role !== 'admin' && routedView === 'admin' ? defaultViewForRole(state.role) : routedView
 
-  const handleRoleChange = (role: Role) => {
-    const memberPlan = runtimePreset.plans.find((plan) => plan.highlighted) ?? runtimePreset.plans[1] ?? runtimePreset.plans[0]
+  useEffect(() => {
+    if (effectiveView !== view) setView(effectiveView)
+  }, [effectiveView, view])
+
+  const completeSession = (role: Role, email?: string) => {
+    const nextEmail = email ?? authEmail ?? state.profileEmail
+    const shouldUseEmailName = email && (!state.profileName.trim() || state.profileName === 'You')
+    setAuthEmail(email ?? authEmail)
     updateState({
       role,
-      selectedPlanId: role === 'visitor' ? 'free' : memberPlan.id,
+      selectedPlanId: role === 'visitor' ? 'free' : state.selectedPlanId,
+      currentMemberPoints: role === 'admin' ? maxLevelPoints(state.levelThresholds) : role === 'visitor' ? 0 : state.currentMemberPoints,
+      profileEmail: nextEmail,
+      profileName: shouldUseEmailName ? email.split('@')[0] : state.profileName,
     })
     setView(defaultViewForRole(role))
   }
 
-  const handleCheckout = (plan: Plan) => {
-    const session = createCheckoutSessionPreview(plan)
-    const event = createPaymentEvent(plan.id, session.amountLabel)
+  const handleVerifyEmail = async (email: string, otp: string, role: Role): Promise<AuthResult> => {
+    const client = await getInsForgeClient()
+    if (!client) return { ok: false, error: 'InsForge 尚未設定。' }
+    const { data, error } = await client.auth.verifyEmail({ email, otp })
+    if (error) return { ok: false, error: authError(error) }
+    completeSession(role, data?.user?.email ?? email)
+    return { ok: true, role, email: data?.user?.email ?? email }
+  }
+
+  const handleForgotPassword = async (email: string): Promise<AuthResult> => {
+    const resetEmail = email.trim().toLowerCase()
+    if (!resetEmail.includes('@')) return { ok: false, error: '請先輸入 Email。' }
+    if (!hasInsForgeConfig()) return { ok: true, message: '本機 demo 不會寄信；fork 後請由 AI 引導你串接正式重設密碼流程。' }
+    const client = await getInsForgeClient()
+    if (!client) return { ok: false, error: 'InsForge 尚未設定。' }
+    const { error } = await client.auth.sendResetPasswordEmail({ email: resetEmail, redirectTo: window.location.href })
+    if (error) return { ok: false, error: authError(error) }
+    return { ok: true, message: '已寄出密碼重設信，請檢查信箱。' }
+  }
+
+  const handleCredentialsLogin = async (email: string, password: string, role: Role): Promise<AuthResult> => {
+    const loginEmail = email.trim().toLowerCase()
+    if (isAdminCredentials(state, loginEmail, password)) {
+      completeSession('admin', loginEmail)
+      return { ok: true, role: 'admin', email: loginEmail }
+    }
+    if (role === 'admin') return { ok: false, role, email, error: '請使用測試管理員帳號登入。' }
+    if (!hasInsForgeConfig()) {
+      completeSession(role, email)
+      return { ok: true, role, email }
+    }
+    const client = await getInsForgeClient()
+    if (!client) return { ok: false, error: 'InsForge 尚未設定。' }
+    const { data, error } = await client.auth.signInWithPassword({ email, password })
+    if (error) return { ok: false, error: authError(error) }
+    completeSession(role, data?.user?.email ?? email)
+    return { ok: true, role, email: data?.user?.email ?? email }
+  }
+
+  const handleLogout = async () => {
+    if (hasInsForgeConfig()) await (await getInsForgeClient())?.auth.signOut().catch(() => undefined)
+    setAuthEmail(null)
+    updateState({ role: 'visitor', selectedPlanId: 'free', currentMemberPoints: 0 }, '已登出社群。')
+    setView('about')
+  }
+
+  const handlePlanSelect = (plan: Plan) => {
+    if (state.role === 'visitor') {
+      setJoinPlan(plan)
+      return
+    }
     updateState({
       role: 'member',
       selectedPlanId: plan.id,
-      paymentEvents: [event, ...state.paymentEvents],
+      currentMemberPoints: Math.max(state.currentMemberPoints, 1),
     })
-    setView('member')
+    setView('community')
   }
 
-  const handleLogin = (role: Role = 'member') => {
-    const memberPlan = runtimePreset.plans.find((plan) => plan.highlighted) ?? runtimePreset.plans[1] ?? runtimePreset.plans[0]
-    updateState({
-      role,
-      selectedPlanId: role === 'visitor' ? 'free' : memberPlan.id,
-    })
-    setView(role === 'admin' && formalSkillsAuth ? 'community' : role === 'admin' ? 'admin' : 'member')
-  }
-
-  const handleCredentialsLogin = async (email: string, password: string): Promise<AuthResult> => {
-    try {
-      authRequestIdRef.current += 1
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
-      const payload = await response.json().catch(() => null)
-
-      if (!response.ok || !payload?.ok) {
-        setAuthChecking(false)
-        if (payload?.error === 'auth_not_configured') return { ok: false, error: '登入服務尚未完成環境變數設定。' }
-        return { ok: false, error: '帳號或密碼不正確。' }
-      }
-
-      const role: Role = payload.user?.role === 'member' ? 'member' : 'admin'
-      const memberPlan = runtimePreset.plans.find((plan) => plan.highlighted) ?? runtimePreset.plans[1] ?? runtimePreset.plans[0]
-      setAuthEmail(payload.user.email)
-      setAuthChecking(false)
-      updateState({
-        role,
-        selectedPlanId: memberPlan.id,
-      })
-      setView(role === 'admin' && formalSkillsAuth ? 'community' : role === 'admin' ? 'admin' : 'member')
-      return { ok: true, role }
-    } catch {
-      setAuthChecking(false)
-      return { ok: false, error: '暫時無法連線到登入服務，請稍後再試。' }
+  const handleJoinRequest = (email: string, answers: Record<string, string>, plan: Plan) => {
+    const approved = plan.id !== 'free' || state.accessSettings.instantMembershipApproval
+    const application: MembershipApplication = {
+      id: `application-${Date.now()}`,
+      email,
+      planId: plan.id,
+      answers,
+      status: approved ? 'approved' : 'pending',
+      createdAt: '剛剛',
     }
-  }
-
-  const handleLogout = async () => {
-    if (formalAuth) {
-      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined)
-      setAuthEmail(null)
-    }
-    updateState({ role: 'visitor', selectedPlanId: 'free' })
-    setView('home')
-  }
-
-  const handleCreateContent = (item: Omit<ContentItem, 'id' | 'source' | 'minutes'>) => {
-    const nextItem: ContentItem = {
-      ...item,
-      id: `local_content_${Date.now()}`,
-      source: 'editor',
-      minutes: Math.max(3, Math.ceil(richTextPlainText(item.body).length / 220)),
-    }
-    updateState({ localContentItems: [nextItem, ...state.localContentItems] })
-    setQuery('')
-  }
-
-  const handleAddNewsletterIssue = () => {
-    const issueNumber = state.localNewsletterIssues.length + 1
-    const nextIssue: NewsletterIssue = {
-      id: `local_issue_${Date.now()}`,
-      subject: `新增快訊 ${issueNumber}：${runtimePreset.name} 本週內容預告`,
-      segment: 'paid',
-      status: 'draft',
-      sendAt: 'draft',
-      openRate: '-',
-      clickRate: '-',
-      paidConversions: 0,
-    }
-    updateState({ localNewsletterIssues: [nextIssue, ...state.localNewsletterIssues] })
-  }
-
-  const handleCreateReferralCampaign = () => {
-    const serial = state.localReferralCampaigns.length + 1
-    const campaign: ReferralCampaign = {
-      id: `local_ref_${Date.now()}`,
-      code: `GIFT${serial + 7}`,
-      label: `會員贈閱活動 ${serial}`,
-      source: 'manual gift link',
-      reward: '新會員 7 天試用，推薦人獲得續訂提醒',
-      freeTrials: 0,
-      paidConversions: 0,
-      revenueLabel: 'NT$0',
-    }
-    updateState({ localReferralCampaigns: [campaign, ...state.localReferralCampaigns] })
-  }
-
-  const handleInviteMember = () => {
-    const serial = state.localMembers.length + 1
-    const member: Member = {
-      id: `local_member_${Date.now()}`,
-      name: `新會員 ${serial}`,
-      email: `new.member${serial}@${runtimePreset.id === 'signal-brief' ? 'signalbrief.tw' : 'skillsschool.tw'}`,
-      role: 'member',
-      groupRole: 'member',
-      planId: 'free',
-      status: 'free',
-      level: 1,
-      points: 0,
-      source: 'manual invite',
-      bio: '由後台邀請加入的會員，等待完成入會問題。',
-      joinedAt: new Date().toISOString().slice(0, 10),
-      contributions: { posts: 0, comments: 0, likesReceived: 0 },
-      risk: 'low',
-    }
-    const review: ModerationItem = {
-      id: `local_review_${Date.now()}`,
-      kind: 'membership-question',
-      title: '邀請會員待完成入會問題',
-      subject: member.name,
-      status: 'open',
-      priority: 'medium',
-      action: '寄送邀請信後，等待回答入會問題並由管理員批准。',
+    if (approved) {
+      setAuthEmail(email)
+      setJoinPlan(null)
+      setView('community')
     }
     updateState({
-      localMembers: [member, ...state.localMembers],
-      localModeration: [review, ...state.localModeration],
+      role: approved ? 'member' : state.role,
+      selectedPlanId: approved ? plan.id : state.selectedPlanId,
+      currentMemberPoints: approved ? Math.max(state.currentMemberPoints, 1) : state.currentMemberPoints,
+      profileEmail: approved ? email : state.profileEmail,
+      profileName: approved && (!state.profileName.trim() || state.profileName === 'You') ? email.split('@')[0] : state.profileName,
+      membershipAnswers: answers,
+      membershipApplications: [application, ...state.membershipApplications],
+    })
+    return approved
+  }
+
+  const handleAddPost = (body: string, categoryId: string) => {
+    const nextPost: CommunityPost = {
+      id: `post-${Date.now()}`,
+      categoryId,
+      authorId: 'current',
+      authorName: authorName(state, authEmail),
+      body,
+      createdAt: '剛剛',
+      likes: 0,
+      comments: [],
+    }
+    updateState({ posts: [nextPost, ...state.posts], currentMemberPoints: state.currentMemberPoints + pointValue(state, 'post') }, '貼文已發布。')
+  }
+
+  const handleLikePost = (postId: string) => {
+    if (state.likedPostIds.includes(postId)) return
+    updateState({
+      likedPostIds: [...state.likedPostIds, postId],
+      posts: state.posts.map((post) => (post.id === postId ? { ...post, likes: post.likes + 1 } : post)),
+      currentMemberPoints: state.currentMemberPoints + pointValue(state, 'like'),
+    }, '已按讚。')
+  }
+
+  const handleLikeComment = (commentId: string) => {
+    if (state.likedCommentIds.includes(commentId)) return
+    updateState({
+      likedCommentIds: [...state.likedCommentIds, commentId],
+      posts: state.posts.map((post) => ({ ...post, comments: mapComments(post.comments, commentId, (comment) => ({ ...comment, likes: comment.likes + 1 })) })),
+      currentMemberPoints: state.currentMemberPoints + pointValue(state, 'like'),
+    }, '已按讚。')
+  }
+
+  const handleAddComment = (postId: string, comment: string, parentCommentId?: string) => {
+    const nextComment = newComment(comment, state, authEmail)
+    updateState({
+      posts: state.posts.map((post) => {
+        if (post.id !== postId) return post
+        if (!parentCommentId) return { ...post, comments: [...post.comments, nextComment] }
+        return { ...post, comments: mapComments(post.comments, parentCommentId, (item) => ({ ...item, replies: [...item.replies, nextComment] })) }
+      }),
+      currentMemberPoints: state.currentMemberPoints + pointValue(state, 'comment'),
+    }, parentCommentId ? '回覆已新增。' : '留言已新增。')
+  }
+
+  const handleTogglePostPinned = (postId: string) => {
+    updateState({ posts: state.posts.map((post) => post.id === postId ? { ...post, pinned: !post.pinned } : post) }, '貼文置頂狀態已更新。')
+  }
+
+  const handleClearPostComments = (postId: string) => {
+    const post = state.posts.find((item) => item.id === postId)
+    const removedIds = new Set(post ? commentIds(post.comments) : [])
+    updateState({
+      posts: state.posts.map((item) => item.id === postId ? { ...item, comments: [] } : item),
+      likedCommentIds: state.likedCommentIds.filter((id) => !removedIds.has(id)),
+    }, '留言已清除。')
+  }
+
+  const handleDeletePost = (postId: string) => {
+    const post = state.posts.find((item) => item.id === postId)
+    const removedIds = new Set(post ? commentIds(post.comments) : [])
+    updateState({
+      posts: state.posts.filter((item) => item.id !== postId),
+      likedPostIds: state.likedPostIds.filter((id) => id !== postId),
+      likedCommentIds: state.likedCommentIds.filter((id) => !removedIds.has(id)),
+    }, '貼文已刪除。')
+  }
+
+  const handleTogglePage = (pageId: string) => {
+    updateState({
+      completedPageIds: state.completedPageIds.includes(pageId)
+        ? state.completedPageIds.filter((id) => id !== pageId)
+        : [...state.completedPageIds, pageId],
     })
   }
 
-  const visibleContent = runtimePreset.content.filter((item) => {
-    if (!query.trim()) return true
-    const haystack = `${item.title} ${item.category} ${item.excerpt} ${item.type}`.toLowerCase()
-    return haystack.includes(query.toLowerCase())
-  })
+  const handleAddEvent = (event: Omit<CalendarEvent, 'id'>) => {
+    updateState({ events: [{ ...event, id: `event-${Date.now()}` }, ...state.events] }, '活動已新增。')
+  }
 
-  if (standalonePresetId === 'signal-brief' || formalAuthPresetId === 'signal-brief') {
-    return (
-      <SignalBriefStandalone
-        preset={runtimePreset}
-        state={state}
-        role={state.role}
-        selectedPlan={selectedPlan}
-        hasPaidAccess={hasPaidAccess}
-        authEmail={authEmail}
-        authChecking={authChecking}
-        query={query}
-        visibleContent={visibleContent}
-        onQuery={setQuery}
-        onCredentialsLogin={handleCredentialsLogin}
-        onLogout={handleLogout}
-        onCheckout={handleCheckout}
-        onUpdatePreset={handleUpdatePreset}
-        onCreateContent={handleCreateContent}
-      />
-    )
+  const openAdminTab = (tab: AdminTab) => {
+    setAdminTab(tab)
+    setView('admin')
   }
 
   return (
-    <main className={formalSkillsAuth ? 'app-shell formal-editorial-shell' : 'app-shell'} style={{ ['--brand-primary' as string]: runtimePreset.brand.primary, ['--brand-accent' as string]: runtimePreset.brand.accent }}>
-      <aside className="sidebar">
-        <button className="brand-button" onClick={() => setView('home')} aria-label="Open home">
-          <span className="brand-mark">{brandMark(runtimePreset)}</span>
-          <span>
-            <strong>{runtimePreset.brand.creatorName}</strong>
-            <small>{siteEyebrow(runtimePreset)}</small>
-          </span>
-        </button>
+    <main className={`app-shell${isVisitor ? ' public-shell' : ' member-shell'}`}>
+      {!isVisitor && (
+        <header className="hub-topbar">
+          <div className="hub-topbar-main">
+            <button className="hub-brand" type="button" onClick={() => setView(defaultViewForRole(state.role))} aria-label="Open community home">
+              <span className="brand-mark">MH</span>
+              <span>
+                <strong>{state.group.name}</strong>
+                <small>{state.group.slug}.community</small>
+              </span>
+            </button>
 
-        <nav className="nav-list" aria-label="Main navigation">
-          {visibleNavItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <button key={item.id} className={view === item.id ? 'active' : ''} onClick={() => setView(item.id)}>
-                <Icon size={18} />
-                <span>{formalSkillsAuth ? formalSkillsNavLabel(item) : navLabel(item, runtimePreset)}</span>
+            <label className="hub-search">
+              <Search size={17} aria-hidden="true" />
+              <input
+                aria-label="Search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder={effectiveView === 'members' ? 'Search members' : 'Search community'}
+              />
+            </label>
+
+            <div className="hub-topbar-actions">
+              <Button variant="outline" className="icon-button ghost-button" type="button" onClick={handleLogout} aria-label="登出"><LogOut size={16} aria-hidden="true" /></Button>
+              <button className="avatar-button" type="button" onClick={() => setView('account')} aria-label="Account">
+                <ProfileAvatar name={state.profileName} url={state.profileAvatarUrl} />
               </button>
-            )
-          })}
-        </nav>
-
-        {formalSkillsAuth ? (
-          <div className="sidebar-panel account-panel">
-            <span className="eyebrow">我的帳號</span>
-            <strong>{authEmail ?? '尚未登入'}</strong>
-            <small>{authChecking ? '正在確認登入狀態' : authEmail ? (state.role === 'admin' ? '管理權限已啟用' : '會員內容已啟用') : '登入後查看課程與社群'}</small>
-          </div>
-        ) : (
-          <div className="sidebar-panel">
-            <span className="eyebrow">目前身份</span>
-            <div className="segmented">
-              {(['visitor', 'member', 'admin'] as Role[]).map((role) => (
-                <button key={role} className={state.role === role ? 'selected' : ''} onClick={() => handleRoleChange(role)}>
-                  {roleLabel(role)}
-                </button>
-              ))}
             </div>
           </div>
-        )}
-      </aside>
+
+          <nav className="nav-list hub-nav-row" aria-label="Main navigation">
+            {navItems.map((item) => (
+              <button key={item.id} type="button" className={view === item.id ? 'active' : ''} onClick={() => setView(item.id)}>
+                <item.icon size={17} aria-hidden="true" />
+                <span>{item.label}</span>
+              </button>
+            ))}
+            {state.role === 'admin' && (
+              <button type="button" className={view === 'admin' ? 'active' : ''} onClick={() => openAdminTab('dashboard')}>
+                <LayoutDashboard size={17} aria-hidden="true" />
+                <span>Admin</span>
+              </button>
+            )}
+          </nav>
+        </header>
+      )}
 
       <section className="workspace">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">{siteEyebrow(runtimePreset)}</p>
-            <h1>{runtimePreset.brand.productName}</h1>
-          </div>
-          <div className="topbar-actions">
-            {!standalonePresetId && !formalAuth && (
-              <>
-                <label className="select-label">
-                  類型
-                  <Select value={state.presetId} onValueChange={(value) => handlePresetChange(value as PresetId)}>
-                    <SelectTrigger className="preset-select-trigger">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {presets.map((item) => (
-                          <SelectItem key={item.id} value={item.id}>
-                            {presetLabel(item.id)}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </label>
-                <Button variant="outline" className="ghost-button" onClick={() => updateState(resetState())}>重置狀態</Button>
-              </>
-            )}
-            {state.role === 'visitor' ? (
-              <Button className="primary-button" onClick={() => setView('login')}><LogIn data-icon="inline-start" />登入</Button>
-            ) : (
-              <Button variant="outline" className="ghost-button" onClick={handleLogout}>登出</Button>
-            )}
-          </div>
-        </header>
+        {isVisitor && (
+          <header className="topbar">
+            <div>
+              <p>{state.group.tagline}</p>
+              <h1>{state.group.name}</h1>
+            </div>
+            <div className="topbar-actions">
+              <Button className="primary-button topbar-login-button" type="button" onClick={() => setLoginOpen(true)}><LogIn data-icon="inline-start" />登入社群</Button>
+            </div>
+          </header>
+        )}
 
-        {!formalSkillsAuth && <RoleStateBanner preset={runtimePreset} role={state.role} selectedPlan={selectedPlan} />}
-
-        {view === 'home' && (
-          isPublicationPreset(runtimePreset) ? (
-            <BlogView
-              preset={runtimePreset}
-              hasPaidAccess={hasPaidAccess}
-              onJoin={() => setView('join')}
-              publicationHome
-            />
-          ) : (
-            <HomeView
-              preset={runtimePreset}
-              role={state.role}
-              selectedPlan={selectedPlan}
-              onOpenBlog={() => setView('blog')}
-              onOpenJoin={() => setView('join')}
-            />
-          )
-        )}
-        {view === 'blog' && (
-          <BlogView
-            preset={runtimePreset}
-            hasPaidAccess={hasPaidAccess}
-            onJoin={() => setView('join')}
+        {effectiveView === 'about' && (
+          <AboutView
+            state={state}
+            updateState={updateState}
+            onSelectPlan={handlePlanSelect}
+            onLeaveGroup={() => { void handleLogout() }}
+            onOpenAdmin={openAdminTab}
           />
         )}
-        {view === 'join' && (
-          <JoinView
-            preset={runtimePreset}
-            role={state.role}
-            selectedPlan={selectedPlan}
-            onCheckout={handleCheckout}
+        {effectiveView === 'community' && (
+          <CommunityView
+            state={state}
+            searchQuery={searchQuery}
+            onAddPost={handleAddPost}
+            onLikePost={handleLikePost}
+            onLikeComment={handleLikeComment}
+            onAddComment={handleAddComment}
+            onTogglePostPinned={handleTogglePostPinned}
+            onClearPostComments={handleClearPostComments}
+            onDeletePost={handleDeletePost}
+            onJoin={() => handlePlanSelect(state.plans[0])}
+            onOpenAdmin={openAdminTab}
           />
         )}
-        {view === 'content' && (
-          <ContentView
-            preset={runtimePreset}
-            items={visibleContent}
-            level={activeLevel}
-            query={query}
-            onQuery={setQuery}
-            hasPaidAccess={hasPaidAccess}
-            canCreateContent={state.role === 'admin'}
-            onCreateContent={handleCreateContent}
-            onCheckout={() => handleCheckout(runtimePreset.plans.find((plan) => plan.highlighted) ?? runtimePreset.plans[1])}
+        {effectiveView === 'classroom' && <ClassroomView state={state} activeLevel={activeLevel} searchQuery={searchQuery} onTogglePage={handleTogglePage} onJoin={() => handlePlanSelect(state.plans[0])} onOpenAdmin={openAdminTab} />}
+        {effectiveView === 'calendar' && <CalendarView state={state} activeLevel={activeLevel} searchQuery={searchQuery} onAddEvent={handleAddEvent} onOpenAdmin={openAdminTab} />}
+        {effectiveView === 'members' && <MembersView state={state} activePoints={activePoints} activeLevel={activeLevel} searchQuery={searchQuery} onOpenAdmin={openAdminTab} />}
+        {effectiveView === 'leaderboard' && <LeaderboardView state={state} activePoints={activePoints} activeLevel={activeLevel} onOpenAdmin={openAdminTab} />}
+        {effectiveView === 'account' && <AccountView state={state} updateState={updateState} currentPlan={currentPlan} activeLevel={activeLevel} activePoints={activePoints} />}
+        {effectiveView === 'admin' && state.role === 'admin' && (
+          <AdminView
+            state={state}
+            updateState={updateState}
+            onAddEvent={handleAddEvent}
+            tab={adminTab}
+            setTab={setAdminTab}
           />
         )}
-        {view === 'newsletter' && <NewsletterView preset={runtimePreset} onAddIssue={handleAddNewsletterIssue} onCreateReferral={handleCreateReferralCampaign} />}
-        {view === 'courses' && (
-          <CoursesView
-            preset={runtimePreset}
-            level={activeLevel}
-            role={state.role}
-            completedLessons={state.completedLessons}
-            onUpdatePreset={handleUpdatePreset}
-            onToggleLesson={(lessonId) =>
-              updateState({
-                completedLessons: state.completedLessons.includes(lessonId)
-                  ? state.completedLessons.filter((id) => id !== lessonId)
-                  : [...state.completedLessons, lessonId],
-              })
-            }
-          />
-        )}
-        {view === 'community' && <CommunityView preset={runtimePreset} role={state.role} />}
-        {view === 'members' && <MembersView preset={runtimePreset} role={state.role} onInviteMember={handleInviteMember} onOpenMembershipQuestions={() => setView('admin')} />}
-        {view === 'search' && <SearchView preset={runtimePreset} query={globalQuery} onQuery={setGlobalQuery} />}
-        {view === 'challenges' && (
-          <ChallengesView
-            preset={runtimePreset}
-            role={state.role}
-            currentMember={currentMember}
-            activePoints={activePoints}
-            checkedInChallenges={state.checkedInChallenges}
-            onCheckIn={(challengeId) =>
-              updateState({
-                checkedInChallenges: state.checkedInChallenges.includes(challengeId)
-                  ? state.checkedInChallenges
-                  : [...state.checkedInChallenges, challengeId],
-              })
-            }
-          />
-        )}
-        {view === 'events' && <EventsView preset={runtimePreset} />}
-        {view === 'login' && (
-          <LoginView
-            preset={runtimePreset}
-            onLogin={handleLogin}
-            formalAuth={formalSkillsAuth}
-            onCredentialsLogin={handleCredentialsLogin}
-          />
-        )}
-        {view === 'member' && <MemberView preset={runtimePreset} state={state} selectedPlan={selectedPlan} />}
-        {view === 'admin' && <AdminView preset={runtimePreset} state={state} onUpdatePreset={handleUpdatePreset} />}
-        {view === 'setup' && <SetupView presetId={state.presetId} onSelectPreset={handlePresetChange} />}
       </section>
+      {loginOpen && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setLoginOpen(false)
+          }}
+        >
+          <div className="login-modal" role="dialog" aria-modal="true" aria-label="登入社群">
+            <button className="modal-close" type="button" onClick={() => setLoginOpen(false)} aria-label="關閉登入視窗">×</button>
+            <LoginView
+              onCredentialsLogin={handleCredentialsLogin}
+              onForgotPassword={handleForgotPassword}
+              onJoin={() => {
+                setLoginOpen(false)
+                handlePlanSelect(state.plans[0])
+              }}
+              onVerifyEmail={handleVerifyEmail}
+              onSuccess={() => setLoginOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+      {joinPlan && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setJoinPlan(null)
+          }}
+        >
+          <div className="join-modal" role="dialog" aria-modal="true" aria-label="加入社群申請">
+            <button className="modal-close" type="button" onClick={() => setJoinPlan(null)} aria-label="關閉加入申請">×</button>
+            <JoinRequestView
+              plan={joinPlan}
+              questions={state.membershipQuestions}
+              onSubmit={(email, answers) => handleJoinRequest(email, answers, joinPlan)}
+            />
+          </div>
+        </div>
+      )}
+      {saveNotice && <div className="save-toast" role="status">{saveNotice}</div>}
     </main>
   )
 }
 
-type SignalScreen = 'home' | 'post' | 'subscribe' | 'login' | 'account' | 'admin'
-
-function SignalBriefStandalone({
-  preset,
-  state,
-  role,
-  selectedPlan,
-  hasPaidAccess,
-  authEmail,
-  authChecking,
-  query,
-  visibleContent,
-  onQuery,
-  onCredentialsLogin,
-  onLogout,
-  onCheckout,
-  onUpdatePreset,
-  onCreateContent,
-}: {
-  preset: VerticalPreset
-  state: AppState
-  role: Role
-  selectedPlan: Plan
-  hasPaidAccess: boolean
-  authEmail: string | null
-  authChecking: boolean
-  query: string
-  visibleContent: ContentItem[]
-  onQuery: (value: string) => void
-  onCredentialsLogin: (email: string, password: string) => Promise<AuthResult>
-  onLogout: () => Promise<void>
-  onCheckout: (plan: Plan) => void
-  onUpdatePreset: (patch: Partial<VerticalPreset>) => void
-  onCreateContent: (item: Omit<ContentItem, 'id' | 'source' | 'minutes'>) => void
-}) {
-  const [screen, setScreen] = useState<SignalScreen>('home')
-  const [selectedPostId, setSelectedPostId] = useState<string>(preset.content[0]?.id ?? '')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loginError, setLoginError] = useState('')
-  const [subscribedEmail, setSubscribedEmail] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [openAdminAfterLogin, setOpenAdminAfterLogin] = useState(false)
-  const publicPosts = preset.content.filter((item) => !item.isPaid)
-  const paidPosts = preset.content.filter((item) => item.isPaid)
-  const featurePost = publicPosts[0] ?? preset.content[0]
-  const selectedPost = preset.content.find((item) => item.id === selectedPostId) ?? featurePost
-  const paidPlan = preset.plans.find((plan) => plan.highlighted) ?? preset.plans[1] ?? preset.plans[0]
-  const paidReaderCount = Math.max(0, Math.round((preset.metrics.activeMembers * Number.parseFloat(preset.metrics.conversion)) / 100))
-  const freeReaderCount = Math.max(0, preset.metrics.activeMembers - paidReaderCount)
-
-  const openPost = (postId: string) => {
-    setSelectedPostId(postId)
-    setScreen('post')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const submitLogin = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setLoginError('')
-    setIsSubmitting(true)
-    const result = await onCredentialsLogin(email, password)
-    setIsSubmitting(false)
-    if (!result.ok) {
-      setLoginError(result.error ?? '登入失敗，請稍後再試。')
-      return
-    }
-    if (result.role === 'admin') {
-      setOpenAdminAfterLogin(true)
-      return
-    }
-    setScreen('account')
-  }
-
-  const submitSubscribe = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const form = new FormData(event.currentTarget)
-    const nextEmail = String(form.get('email') ?? '').trim()
-    if (nextEmail) setSubscribedEmail(nextEmail)
-  }
-
-  const handleLogout = async () => {
-    await onLogout()
-    setScreen('home')
-  }
-
-  useEffect(() => {
-    if (!openAdminAfterLogin || role !== 'admin') return
-    setScreen('admin')
-    setOpenAdminAfterLogin(false)
-  }, [openAdminAfterLogin, role])
-
+function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <main className="signal-site">
-      <header className="signal-header">
-        <button className="signal-brand" type="button" onClick={() => setScreen('home')} aria-label="Signal Brief home">
-          <span>SB</span>
-          <strong>Signal Brief</strong>
-        </button>
-        <nav aria-label="Signal Brief navigation">
-          <button type="button" className={screen === 'home' ? 'active' : ''} onClick={() => setScreen('home')}>文章</button>
-          <button type="button" className={screen === 'subscribe' ? 'active' : ''} onClick={() => setScreen('subscribe')}>訂閱</button>
-          {role === 'admin' && <button type="button" className={screen === 'admin' ? 'active' : ''} onClick={() => setScreen('admin')}>出版後台</button>}
-          {role === 'visitor' ? (
-            <button type="button" className="signal-login-link" onClick={() => setScreen('login')}>登入</button>
-          ) : (
-            <button type="button" className="signal-login-link" onClick={() => setScreen('account')}>{authEmail ?? roleLabel(role)}</button>
-          )}
-        </nav>
-      </header>
-
-      {screen === 'home' && (
-        <div className="signal-page">
-          <section className="signal-hero">
-            <div className="signal-hero-copy">
-              <span className="signal-kicker">Independent brief on AI products</span>
-              <h1>{preset.copy.heroTitle}</h1>
-              <p>{preset.copy.heroBody}</p>
-              <form className="signal-subscribe-form" onSubmit={submitSubscribe}>
-                <Input name="email" type="email" placeholder="輸入 Email，收到每週摘要" required />
-                <Button className="primary-button" type="submit"><Mail data-icon="inline-start" />訂閱免費信</Button>
-              </form>
-              {subscribedEmail && <small className="signal-form-note">已記錄 {subscribedEmail}，正式串接後會加入 Newsletter 名單。</small>}
-            </div>
-            <aside className="signal-author-card" aria-label="關於創作者">
-              <div className="signal-author-profile">
-                <div className="signal-author-mark signal-author-avatar">SB</div>
-                <div>
-                  <span className="signal-author-label">關於創作者</span>
-                  <strong>{preset.brand.creatorName}</strong>
-                </div>
-              </div>
-              <p>每週整理 AI 工具、內容產品與創作者商業模式的變化，保留公開文章，也提供付費深度分析。</p>
-              <div className="signal-author-stats">
-                <span><strong>{freeReaderCount}</strong><small>免費讀者</small></span>
-                <span><strong>{paidReaderCount}</strong><small>付費讀者</small></span>
-              </div>
-            </aside>
-          </section>
-
-          <section className="signal-feature">
-            <button type="button" className="signal-feature-post" onClick={() => featurePost && openPost(featurePost.id)}>
-              <span className="signal-kicker">Featured</span>
-              <h2>{featurePost ? cleanPostTitle(featurePost.title) : '最新公開文章'}</h2>
-              <p>{featurePost?.excerpt}</p>
-              <small>{featurePost && postMeta(featurePost, preset)}</small>
-            </button>
-            <div className="signal-paid-panel">
-              <span className="signal-kicker">For subscribers</span>
-              <h3>付費牆不是整篇鎖住，而是由作者指定段落位置。</h3>
-              <p>你可以先讀公開段落；到了付費牆後，再決定是否訂閱完整研究與資料補充。</p>
-              <Button className="primary-button" onClick={() => setScreen('subscribe')}>查看訂閱方案</Button>
-            </div>
-          </section>
-
-          <section className="signal-feed-layout">
-            <div className="signal-feed-main">
-              <div className="signal-section-head">
-                <div>
-                  <span className="signal-kicker">Latest writing</span>
-                  <h2>最新文章</h2>
-                </div>
-                <label className="signal-search">
-                  <Search size={16} />
-                  <Input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="搜尋文章" />
-                </label>
-              </div>
-              <div className="signal-post-list">
-                {visibleContent.map((item) => (
-                  <button key={item.id} type="button" className="signal-post-row" onClick={() => openPost(item.id)}>
-                    <span>
-                      <small>{isLimitedFreeActive(item) ? '限時免費公開' : item.isPaid ? '付費文章' : item.category} · {item.minutes} 分鐘閱讀</small>
-                      <strong>{cleanPostTitle(item.title)}</strong>
-                      <p>{item.excerpt}</p>
-                    </span>
-                    {requiresPaidAccess(item) ? <Lock size={18} /> : <ChevronRight size={18} />}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <aside className="signal-sidebar">
-              <article>
-                <span className="signal-kicker">Start here</span>
-                <h3>第一次閱讀 Signal Brief</h3>
-                <p>先讀兩篇公開文章，了解這份信的判斷方式；需要完整拆解時再升級付費方案。</p>
-              </article>
-              <article>
-                <span className="signal-kicker">Paid archive</span>
-                <div className="signal-mini-list">
-                  {paidPosts.slice(0, 3).map((item) => (
-                    <button key={item.id} type="button" onClick={() => openPost(item.id)}>
-                      <strong>{cleanPostTitle(item.title)}</strong>
-                      <small>{isLimitedFreeActive(item) ? limitedFreeLabel(item) : `付費牆在第 ${paywallParagraph(item)} 段後`}</small>
-                    </button>
-                  ))}
-                </div>
-              </article>
-            </aside>
-          </section>
-        </div>
-      )}
-
-      {screen === 'post' && selectedPost && (
-        <SignalPostArticle
-          item={selectedPost}
-          preset={preset}
-          hasPaidAccess={hasPaidAccess}
-          onBack={() => setScreen('home')}
-          onJoin={() => setScreen('subscribe')}
-        />
-      )}
-
-      {screen === 'subscribe' && (
-        <section className="signal-page signal-subscribe-page">
-          <div className="signal-section-head wide">
-            <div>
-              <span className="signal-kicker">Subscribe</span>
-              <h1>訂閱後閱讀完整研究與每週 Newsletter</h1>
-              <p>免費讀者可以閱讀公開文章；付費讀者可以解鎖付費牆後內容、資料補充與完整電子報。</p>
-            </div>
-          </div>
-          <div className="signal-plan-grid">
-            {preset.plans.map((plan) => (
-              <article key={plan.id} className={plan.highlighted ? 'signal-plan-card highlighted' : 'signal-plan-card'}>
-                <span>{plan.name}</span>
-                <strong>{plan.price}</strong>
-                <small>{plan.cadence}</small>
-                <p>{plan.description}</p>
-                <ul>
-                  {plan.features.map((feature) => <li key={feature}><CheckCircle2 size={16} />{feature}</li>)}
-                </ul>
-                <Button className={plan.highlighted ? 'primary-button' : 'ghost-button'} onClick={() => onCheckout(plan)}>
-                  {plan.id === selectedPlan.id && role !== 'visitor' ? '目前方案' : plan.id === 'free' ? '加入免費讀者' : '選擇此方案'}
-                </Button>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {screen === 'login' && (
-        <section className="signal-auth-page">
-          <form className="signal-auth-card" onSubmit={submitLogin}>
-            <span className="signal-kicker">Publisher login</span>
-            <h1>登入 Signal Brief</h1>
-            <p>登入後可以閱讀完整付費文章、管理 Newsletter、調整付費牆設定與進入出版者後台。</p>
-            <label>
-              Email
-              <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="輸入你的 Email" required />
-            </label>
-            <label>
-              密碼
-              <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="輸入密碼" required />
-            </label>
-            {loginError && <p className="auth-error" role="alert">{loginError}</p>}
-            <Button className="primary-button" type="submit" disabled={isSubmitting}>
-              <LogIn data-icon="inline-start" />{isSubmitting ? '登入中' : '登入'}
-            </Button>
-          </form>
-        </section>
-      )}
-
-      {screen === 'account' && (
-        <section className="signal-page signal-account-page">
-          <div className="signal-account-card">
-            <span className="signal-kicker">Account</span>
-            <h1>{authChecking ? '確認登入狀態中' : authEmail ?? '尚未登入'}</h1>
-            <p>目前是 {roleLabel(role)} 視角，方案為 {selectedPlan.name}。</p>
-            <div className="button-row">
-              {role === 'admin' && <Button className="primary-button" onClick={() => setScreen('admin')}>進入出版後台</Button>}
-              <Button variant="outline" className="ghost-button" onClick={handleLogout}>登出</Button>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {screen === 'admin' && role === 'admin' && (
-        <section className="signal-admin-page">
-          <div className="signal-section-head wide">
-            <div>
-              <span className="signal-kicker">Publisher studio</span>
-              <h1>Signal Brief 出版後台</h1>
-              <p>管理文章、付費牆、訂閱方案、Newsletter、讀者與付款狀態。</p>
-            </div>
-          </div>
-          <AdminView preset={preset} state={state} onUpdatePreset={onUpdatePreset} />
-          <ContentView
-            preset={preset}
-            items={visibleContent}
-            level={99}
-            query={query}
-            onQuery={onQuery}
-            hasPaidAccess={hasPaidAccess}
-            canCreateContent
-            onCreateContent={onCreateContent}
-            onCheckout={() => onCheckout(paidPlan)}
-          />
-        </section>
-      )}
-      {screen === 'admin' && role !== 'admin' && (
-        <section className="signal-auth-page">
-          <div className="signal-auth-card">
-            <span className="signal-kicker">Publisher studio</span>
-            <h1>正在開啟後台</h1>
-            <p>登入狀態同步中，完成後會直接進入出版後台。</p>
-          </div>
-        </section>
-      )}
-    </main>
-  )
-}
-
-function SignalPostArticle({
-  item,
-  preset,
-  hasPaidAccess,
-  onBack,
-  onJoin,
-}: {
-  item: ContentItem
-  preset: VerticalPreset
-  hasPaidAccess: boolean
-  onBack: () => void
-  onJoin: () => void
-}) {
-  const paragraphs = contentParagraphs(item)
-  const gateAfter = paywallParagraph(item)
-  const locked = isContentLocked(item, hasPaidAccess)
-  const visibleParagraphs = locked ? paragraphs.slice(0, gateAfter) : paragraphs
-
-  return (
-    <article className="signal-article-page">
-      <button type="button" className="signal-back-button" onClick={onBack}>回到文章列表</button>
-      <header className="signal-article-header">
-        <span className="signal-kicker">{isLimitedFreeActive(item) ? 'Limited free' : item.isPaid ? 'Paid essay' : item.category}</span>
-        <h1>{cleanPostTitle(item.title)}</h1>
-        <p>{item.excerpt}</p>
-        <small>
-          {postMeta(item, preset)}
-          {isLimitedFreeActive(item) ? ` · ${limitedFreeLabel(item)}` : requiresPaidAccess(item) ? ` · 付費牆在第 ${gateAfter} 段後` : ''}
-        </small>
-      </header>
-      <div className="signal-article-body">
-        {visibleParagraphs.map((block, index) => (
-          <RichTextBlock key={`${item.id}-signal-paragraph-${index}`} id={`${item.id}-signal-paragraph-${index}`} html={block} />
-        ))}
-      </div>
-      {locked ? (
-        <div className="signal-paywall">
-          <span><Lock size={18} /></span>
-          <div>
-            <strong>付費牆已啟用</strong>
-            <p>作者把這篇文章設定在第 {gateAfter} 段後進入付費牆。訂閱後可繼續閱讀完整分析與資料補充。</p>
-          </div>
-          <Button className="primary-button" onClick={onJoin}>訂閱後繼續閱讀</Button>
-        </div>
-      ) : null}
-    </article>
-  )
-}
-
-function HomeView({
-  preset,
-  role,
-  selectedPlan,
-  onOpenBlog,
-  onOpenJoin,
-}: {
-  preset: ReturnType<typeof getPreset>
-  role: Role
-  selectedPlan: Plan
-  onOpenBlog: () => void
-  onOpenJoin: () => void
-}) {
-  const publicContent = preset.content.filter((item) => !item.isPaid).slice(0, 2)
-  const paidContent = preset.content.filter((item) => item.isPaid).slice(0, 2)
-  const latestContent = preset.content.slice(0, 3)
-  const firstCourse = preset.courses[0]
-  const isSkillsSchool = preset.id === 'skills-school'
-
-  return (
-    <div className="view-stack">
-      <section className="hero-band">
-        <div className="hero-copy">
-          <span className="eyebrow">{preset.tagline}</span>
-          <h2>{preset.copy.heroTitle}</h2>
-          <p>{preset.copy.heroBody}</p>
-          <div className="button-row">
-            <Button className="primary-button" onClick={onOpenJoin}>
-              <CircleDollarSign data-icon="inline-start" />
-              {preset.copy.ctaPrimary}
-            </Button>
-            <Button variant="outline" className="secondary-button" onClick={onOpenBlog}>
-              <BookOpen data-icon="inline-start" />
-              {preset.copy.ctaSecondary}
-            </Button>
-          </div>
-        </div>
-        <div className="hero-product">
-          {isSkillsSchool ? (
-            <div className="creator-card">
-              <div className="creator-mark">SS</div>
-              <span className="eyebrow">關於 Skills School</span>
-              <h3>把每個 AI 操作整理成可複製的 Skill</h3>
-              <p>我們每週發布 AI Skill 拆解、SOP 範本與工具實作，陪你把常做的研究、寫作、整理與交付流程變成穩定工作系統。</p>
-              <div className="creator-stats">
-                <span><strong>{preset.metrics.activeMembers.toLocaleString('zh-TW')}</strong><small>免費讀者</small></span>
-                <span><strong>{preset.members.filter((member) => member.status === 'active').length}</strong><small>AI Skill 會員</small></span>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="mock-header">
-                <span>{preset.brand.creatorName}</span>
-                <strong>{roleLabel(role)}</strong>
-              </div>
-              <div className="mock-grid">
-                {homeMetrics(preset, selectedPlan).map((metric) => (
-                  <MetricTile key={metric.label} label={metric.label} value={metric.value} icon={metric.icon} />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </section>
-
-      <section className={isSkillsSchool ? 'section-block editorial-latest-section' : 'section-block'}>
-        <div className="section-heading">
-          <span className="eyebrow">{isSkillsSchool ? '內容更新' : beforeJoinEyebrow(preset)}</span>
-          <h3>{isSkillsSchool ? '最新 AI Skill 文章' : beforeJoinHeading(preset)}</h3>
-        </div>
-        {isSkillsSchool ? (
-          <div className="editorial-card-grid">
-            {latestContent.map((item) => (
-              <button key={item.id} type="button" className="editorial-card article-card-button" onClick={onOpenBlog}>
-                <Badge variant="outline" className="pill">{item.isPaid ? '會員文章' : '公開文章'}</Badge>
-                <h4>{cleanPostTitle(item.title)}</h4>
-                <p>{item.excerpt}</p>
-                <small>{item.category} · {item.minutes} 分鐘閱讀</small>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="plan-grid">
-            <article className="plan-card">
-              <span className="plan-name">{isPublicationPreset(preset) ? '公開文章' : '公開內容'}</span>
-              <strong>{publicContent.length}</strong>
-              <small>可直接閱讀</small>
-              <p>{publicContent.map((item) => item.title.replace(/^公開文章：/, '')).join('、')}</p>
-              <Button variant="outline" onClick={onOpenBlog}>閱讀公開文章</Button>
-            </article>
-            <article className="plan-card highlighted">
-              <span className="plan-name">{isPublicationPreset(preset) ? '付費文章' : '會員內容'}</span>
-              <strong>{paidContent.length}</strong>
-              <small>加入後解鎖</small>
-              <p>{paidContent.map((item) => item.category).join('、')}，適合想持續深入{isPublicationPreset(preset) ? '閱讀與追蹤的人。' : '學習或追蹤的人。'}</p>
-              <Button onClick={onOpenJoin}>{isPublicationPreset(preset) ? '查看訂閱方案' : '查看會員方案'}</Button>
-            </article>
-            <article className="plan-card">
-              <span className="plan-name">{isPublicationPreset(preset) ? 'Newsletter' : '課程與社群'}</span>
-              <strong>{isPublicationPreset(preset) ? preset.newsletter.length : `${firstCourse?.progress ?? 0}%`}</strong>
-              <small>{isPublicationPreset(preset) ? '封已排程或寄出' : '持續更新'}</small>
-              <p>{isPublicationPreset(preset) ? '訂閱後可收到完整文章、資料補充與每週研究信。' : firstCourse?.description ?? preset.audience}</p>
-              <Button variant="outline" onClick={isPublicationPreset(preset) ? onOpenBlog : onOpenJoin}>{isPublicationPreset(preset) ? '先閱讀文章' : '加入後開始使用'}</Button>
-            </article>
-          </div>
-        )}
-      </section>
+    <div className="metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   )
 }
 
-function RoleStateBanner({
-  preset,
-  role,
-  selectedPlan,
+function AdminFrontActions({
+  state,
+  actions,
+  onOpenAdmin,
 }: {
-  preset: ReturnType<typeof getPreset>
-  role: Role
-  selectedPlan: Plan
+  state: AppState
+  actions: Array<{ label: string; tab: AdminTab }>
+  onOpenAdmin: (tab: AdminTab) => void
 }) {
-  const profile = roleProfile(preset, role)
+  if (state.role !== 'admin') return null
   return (
-    <section className={`role-state-banner role-${role}`}>
-      <div>
-        <span className="eyebrow">{profile.label}</span>
-        <h3>{profile.title}</h3>
-        <p>{profile.description}</p>
+    <div className="admin-front-actions" aria-label="Admin quick actions">
+      {actions.map((action) => (
+        <Button key={`${action.tab}-${action.label}`} variant="outline" className="secondary-button" type="button" onClick={() => onOpenAdmin(action.tab)}>
+          <Settings2 data-icon="inline-start" />
+          {action.label}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
+function JoinRequestView({ plan, questions, onSubmit }: { plan: Plan; questions: string[]; onSubmit: (email: string, answers: Record<string, string>) => boolean }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState('')
+  const isPaidPlan = plan.id !== 'free'
+
+  if (submitted) {
+    return (
+      <article className="join-card">
+        <SectionHeading eyebrow="Join request" title={isPaidPlan ? '訂閱申請已建立' : '申請已送出，等待審核'}>
+          {isPaidPlan
+            ? '管理員可先設定訂閱金額，再請 AI Agent 串 Portaly Payment 建立 checkout。'
+            : '免費會員不會直接進入社群，管理員會在後台審核你的回答後核准。'}
+        </SectionHeading>
+      </article>
+    )
+  }
+
+  return (
+    <article className="join-card">
+      <SectionHeading eyebrow="Join request" title={`加入 ${plan.name}`}>
+        {isPaidPlan ? `${plan.price} ${plan.cadence}，付款流程建議用 AI 串 Portaly Payment。` : '回答問題後送出申請，免費會員需由管理員審核。'}
+      </SectionHeading>
+      <form className="settings-form" onSubmit={(event) => {
+        event.preventDefault()
+        setError('')
+        if (password.length < 8) {
+          setError('密碼至少需要 8 位數。')
+          return
+        }
+        if (password !== confirmPassword) {
+          setError('兩次輸入的密碼不一致。')
+          return
+        }
+        if (!onSubmit(email, answers)) setSubmitted(true)
+      }}>
+        <label>What's your best email?<Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" required /></label>
+        <div className="two-col">
+          <label>Password<Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} placeholder="至少 8 位數" required /></label>
+          <label>Confirm password<Input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} placeholder="再次輸入密碼" required /></label>
+        </div>
+        <p className="form-helper">本機 demo 只檢查格式；正式站 fork 後請用 Auth provider 儲存密碼。</p>
+        {questions.map((question) => (
+          <label key={question}>{question}<Textarea value={answers[question] ?? ''} onChange={(event) => setAnswers({ ...answers, [question]: event.target.value })} placeholder="Your answer" maxLength={200} required /></label>
+        ))}
+        {error && <p className="form-error">{error}</p>}
+        <Button className="primary-button" type="submit">{isPaidPlan ? '送出訂閱申請' : '送出申請'}</Button>
+      </form>
+    </article>
+  )
+}
+
+function SectionHeading({ eyebrow, title, children }: { eyebrow: string; title: string; children?: React.ReactNode }) {
+  return (
+    <div className="section-heading">
+      <span className="eyebrow">{eyebrow}</span>
+      <h2>{title}</h2>
+      {children && <p>{children}</p>}
+    </div>
+  )
+}
+
+function AboutView({
+  state,
+  updateState,
+  onSelectPlan,
+  onLeaveGroup,
+  onOpenAdmin,
+}: {
+  state: AppState
+  updateState: (patch: Partial<AppState>) => void
+  onSelectPlan: (plan: Plan) => void
+  onLeaveGroup: () => void
+  onOpenAdmin: (tab: AdminTab) => void
+}) {
+  const [galleryIndex, setGalleryIndex] = useState(0)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [copyMessage, setCopyMessage] = useState('')
+  const paidPlan = state.plans.find((plan) => plan.id !== 'free' && plan.highlighted) ?? state.plans.find((plan) => plan.id !== 'free')
+  const publicPlan = state.pricingMode === 'free' ? state.plans[0] : paidPlan ?? state.plans[0]
+  const isFreePublicPlan = publicPlan.id === 'free'
+  const PublicJoinIcon = isFreePublicPlan ? UserPlus : CircleDollarSign
+  const publicJoinLabel = isFreePublicPlan ? '免費加入' : `加入 ${publicPlan.price}/月`
+  const galleryImages = [state.group.coverImageUrl?.trim() || fallbackCoverImage, ...fallbackGalleryImages]
+  const visibleLinks = state.externalLinks.filter((link) => !['Support', 'Rules'].includes(link.label) && (state.role !== 'visitor' || link.visibility === 'public'))
+  const inviteName = (state.profileName.trim() || state.group.slug).toLowerCase().replace(/\s+/g, '-')
+  const inviteLink = `${typeof window === 'undefined' ? 'https://memberhub.example' : window.location.origin}/?invite=${encodeURIComponent(inviteName)}`
+  const addInviteRecord = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const next = inviteEmail.trim()
+    if (!next) return
+    updateState({ inviteRecords: [next, ...state.inviteRecords] })
+    setInviteEmail('')
+  }
+  const copyInviteLink = () => {
+    void navigator.clipboard?.writeText(inviteLink)
+    setCopyMessage('Invite link copied.')
+  }
+
+  return (
+    <section className="public-about">
+      <div className="about-cover-shell">
+        <div className="about-cover stock-cover" role="img" aria-label="社群封面圖" style={stockCoverStyle(galleryImages[galleryIndex])} />
+        <div className="public-gallery-controls">
+          <button type="button" aria-label="上一張社群輪播圖" onClick={() => setGalleryIndex((current) => (current + galleryImages.length - 1) % galleryImages.length)}>
+            <ChevronRight className="flip-icon" size={15} aria-hidden="true" />
+          </button>
+          <span className="mono">{galleryIndex + 1}/{galleryImages.length}</span>
+          <button type="button" aria-label="下一張社群輪播圖" onClick={() => setGalleryIndex((current) => (current + 1) % galleryImages.length)}>
+            <ChevronRight size={15} aria-hidden="true" />
+          </button>
+        </div>
       </div>
-      <div className="role-state-details">
-        <StatusPill tone={role === 'admin' ? 'blue' : role === 'member' ? 'green' : 'yellow'}>{roleLabel(role)}</StatusPill>
-        <small>{role === 'visitor' ? '目前方案：免費預覽' : `目前方案：${selectedPlan.name}`}</small>
-        <ul>
-          {profile.points.map((point) => (
-            <li key={point}><CheckCircle2 size={14} />{point}</li>
+
+      <div className="public-intro-grid">
+        <article className="about-panel">
+          <SectionHeading eyebrow="About" title={state.group.tagline}>
+            {state.group.description}
+          </SectionHeading>
+          <AdminFrontActions
+            state={state}
+            onOpenAdmin={onOpenAdmin}
+            actions={[
+              { label: 'Edit about', tab: 'general' },
+              { label: 'Edit pricing', tab: 'pricing' },
+              { label: 'Edit rules', tab: 'community' },
+            ]}
+          />
+
+          <div className="public-meta-grid" aria-label="社群公開資訊">
+            <div><span>模式</span><strong>公開預覽</strong><small>加入後解鎖私密會員區</small></div>
+            <div><span>會員數</span><strong>{state.members.length}</strong><small>{state.group.onlineLabel}</small></div>
+            <div><span>訂閱金額</span><strong>{publicPlan.price}</strong><small>{publicPlan.cadence}</small></div>
+            <div><span>作者</span><strong>{state.group.creatorName}</strong><small>{state.group.slug}.community</small></div>
+          </div>
+        </article>
+
+        <aside className="group-card public-group-card">
+          <div className="public-group-copy">
+            <strong>{state.group.creatorName}</strong>
+            <small className="mono">{state.group.slug}.community</small>
+          </div>
+          <p>{state.group.description}</p>
+          <div className="group-stats">
+            <Metric label="Members" value={`${state.members.length}`} />
+            <Metric label="Online" value={state.group.onlineLabel.replace(' online', '')} />
+          </div>
+          {visibleLinks.length > 0 && (
+            <div className="public-link-list">
+              {visibleLinks.map((link) => (
+                <a key={link.id} href={link.url} target={link.url.startsWith('http') ? '_blank' : undefined} rel={link.url.startsWith('http') ? 'noreferrer' : undefined}>
+                  <ExternalLink size={14} aria-hidden="true" />
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          )}
+          <div className="button-stack">
+            {state.role === 'visitor' ? (
+              <Button className="primary-button public-join-button" type="button" onClick={() => onSelectPlan(publicPlan)}><PublicJoinIcon data-icon="inline-start" />{publicJoinLabel}</Button>
+            ) : (
+              <Button className="primary-button public-join-button" type="button" onClick={() => setSettingsOpen((current) => !current)}><Settings2 data-icon="inline-start" />SETTING</Button>
+            )}
+          </div>
+        </aside>
+      </div>
+
+      {state.role !== 'visitor' && settingsOpen && (
+        <article className="about-settings-panel">
+          <SectionHeading eyebrow="Settings" title="社群設定">
+            管理你的專屬邀請連結、邀請紀錄與社群狀態。
+          </SectionHeading>
+          <div className="settings-form">
+            <label>Invite link<Input aria-label="Invite link" value={inviteLink} readOnly /></label>
+            <div className="button-stack">
+              <Button variant="outline" className="secondary-button" type="button" onClick={copyInviteLink}><Link2 data-icon="inline-start" />Copy link</Button>
+              <Button variant="outline" className="secondary-button danger-button" type="button" onClick={onLeaveGroup}><LogOut data-icon="inline-start" />退出社群</Button>
+            </div>
+            {copyMessage && <p className="form-helper">{copyMessage}</p>}
+            {state.role === 'admin' && (
+              <>
+                <form className="form-row" onSubmit={addInviteRecord}>
+                  <Input aria-label="Invite email" type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="invitee@example.com" />
+                  <Button className="primary-button" type="submit">Add invite record</Button>
+                </form>
+                <div className="compact-list">
+                  {state.inviteRecords.length > 0
+                    ? state.inviteRecords.map((record) => <p key={record}><strong>{record}</strong><span>recorded</span></p>)
+                    : <p><strong>No invite records</strong><span>admin only</span></p>}
+                </div>
+              </>
+            )}
+          </div>
+        </article>
+      )}
+
+      <article className="about-rules-panel">
+        <SectionHeading eyebrow="Rules" title="社群規範">
+          加入前請先確認這些協作規則，讓討論、回饋和合作都維持清楚。
+        </SectionHeading>
+        <div className="rule-grid">
+          {state.rules.map((rule, index) => (
+            <div className="rule-row about-rule-row" key={rule}>
+              <strong>{index + 1}.</strong>
+              <p>{rule}</p>
+            </div>
           ))}
-        </ul>
-      </div>
+        </div>
+      </article>
     </section>
   )
 }
 
-function BlogView({
-  preset,
-  hasPaidAccess,
+function CommunityView({
+  state,
+  searchQuery,
+  onAddPost,
+  onLikePost,
+  onLikeComment,
+  onAddComment,
+  onTogglePostPinned,
+  onClearPostComments,
+  onDeletePost,
   onJoin,
-  publicationHome = false,
+  onOpenAdmin,
 }: {
-  preset: ReturnType<typeof getPreset>
-  hasPaidAccess: boolean
+  state: AppState
+  searchQuery: string
+  onAddPost: (body: string, categoryId: string) => void
+  onLikePost: (postId: string) => void
+  onLikeComment: (commentId: string) => void
+  onAddComment: (postId: string, comment: string, parentCommentId?: string) => void
+  onTogglePostPinned: (postId: string) => void
+  onClearPostComments: (postId: string) => void
+  onDeletePost: (postId: string) => void
   onJoin: () => void
-  publicationHome?: boolean
+  onOpenAdmin: (tab: AdminTab) => void
 }) {
+  const [draft, setDraft] = useState('')
+  const [categoryId, setCategoryId] = useState(state.categories[0]?.id ?? '')
+  const [activeCategory, setActiveCategory] = useState('all')
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
-  const [articleQuery, setArticleQuery] = useState('')
-  const [articleCategory, setArticleCategory] = useState('全部')
-  const selectedPost = preset.content.find((item) => item.id === selectedPostId)
-  const publicPosts = preset.content.filter((item) => !item.isPaid)
-  const memberPosts = preset.content.filter((item) => item.isPaid)
-  const featurePost = publicPosts[0] ?? preset.content[0]
-  const isSkillsSchool = preset.id === 'skills-school'
-  const skillCategories = ['全部', '公開文章', '會員文章', '工作流拆解', '工具教學']
-  const skillPosts = preset.content.filter((item) => {
-    const text = `${item.title} ${item.category} ${item.excerpt}`.toLowerCase()
-    const queryMatched = !articleQuery.trim() || text.includes(articleQuery.trim().toLowerCase())
-    const categoryMatched = articleCategory === '全部'
-      || (articleCategory === '公開文章' && !item.isPaid)
-      || (articleCategory === '會員文章' && item.isPaid)
-      || item.category.includes(articleCategory.replace('文章', ''))
-    return queryMatched && categoryMatched
-  })
-
-  if (selectedPost) {
-    return (
-      <ArticleReader
-        item={selectedPost}
-        preset={preset}
-        hasPaidAccess={hasPaidAccess}
-        onBack={() => setSelectedPostId(null)}
-        onJoin={onJoin}
-      />
-    )
+  const [postConfirm, setPostConfirm] = useState<{ action: 'clear' | 'delete'; postId: string } | null>(null)
+  const [commentDraft, setCommentDraft] = useState('')
+  const [replyTarget, setReplyTarget] = useState<{ id: string; authorName: string } | null>(null)
+  const visiblePosts = (activeCategory === 'all' ? state.posts : state.posts.filter((post) => post.categoryId === activeCategory))
+    .filter((post) => matchesQuery(searchQuery, post.authorName, post.body, post.createdAt, state.categories.find((item) => item.id === post.categoryId)?.name))
+  const selectedPost = state.posts.find((post) => post.id === selectedPostId) ?? null
+  const selectedPostLiked = selectedPost ? state.likedPostIds.includes(selectedPost.id) : false
+  const activeLevel = levelForPoints(state.currentMemberPoints, state.levelThresholds)
+  const canPostByLevel = state.role === 'admin' || activeLevel >= state.accessSettings.postingLevel
+  const canPost = state.role !== 'visitor' && canPostByLevel
+  const writableCategories = state.role === 'admin' ? state.categories : state.categories.filter((category) => category.permission === 'members')
+  const nextEvent = state.events[0]
+  const isAdmin = state.role === 'admin'
+  const closePostModal = () => {
+    setSelectedPostId(null)
+    setCommentDraft('')
+    setReplyTarget(null)
+  }
+  const mentionMembers = state.members.filter((member) => member.status !== 'removed' && member.status !== 'banned')
+  const mentionMatch = commentDraft.match(/(^|\s)[@＠]([^\s@＠]*)$/)
+  const mentionQuery = mentionMatch?.[2].toLowerCase()
+  const mentionOptions = mentionQuery === undefined
+    ? []
+    : mentionMembers.filter((member) => member.name.toLowerCase().includes(mentionQuery) || member.email.toLowerCase().includes(mentionQuery)).slice(0, 8)
+  const insertMention = (name: string) => {
+    setCommentDraft((current) => current.replace(/(^|\s)[@＠]([^\s@＠]*)$/, `$1${mentionLabel(name)} `))
+  }
+  const startReply = (comment: CommunityComment) => {
+    setReplyTarget({ id: comment.id, authorName: comment.authorName })
+    setCommentDraft((current) => current.trim() ? current : `${mentionLabel(comment.authorName)} `)
+  }
+  const confirmPostAction = () => {
+    if (!postConfirm) return
+    if (postConfirm.action === 'clear') onClearPostComments(postConfirm.postId)
+    if (postConfirm.action === 'delete') {
+      if (selectedPostId === postConfirm.postId) closePostModal()
+      onDeletePost(postConfirm.postId)
+    }
+    setPostConfirm(null)
   }
 
-  if (isPublicationPreset(preset)) {
-    const feedPosts = preset.content.filter((item) => item.id !== featurePost?.id)
-    return (
-      <section className="publication-page">
-        <header className="publication-masthead">
-          <div className="publication-logo-mark">SB</div>
-          <h2>Signal Brief</h2>
-          <p>{preset.copy.heroBody}</p>
-          <small>By {preset.brand.creatorName}</small>
-          <div className="publication-subscribe-inline">
-            <Input aria-label="訂閱 Email" type="email" placeholder="輸入你的 Email" />
-            <Button className="primary-button" onClick={onJoin}>訂閱</Button>
-          </div>
-        </header>
+  useEscapeKey(Boolean(selectedPost), closePostModal)
+  useEscapeKey(Boolean(postConfirm), () => setPostConfirm(null))
 
-        <nav className="publication-tabs" aria-label="Signal Brief sections">
-          <button className="active" type="button">首頁</button>
-          <button type="button">公開文章</button>
-          <button type="button">付費文章</button>
-          <button type="button">Archive</button>
-          <button type="button">About</button>
-        </nav>
+  useEffect(() => {
+    if (writableCategories.some((category) => category.id === categoryId)) return
+    setCategoryId(writableCategories[0]?.id ?? '')
+  }, [categoryId, writableCategories])
 
-        {featurePost && (
-          <button className="publication-feature-card article-card-button" type="button" aria-label={featurePost.title} onClick={() => setSelectedPostId(featurePost.id)}>
-            <span className="publication-cover publication-cover-large">
-              <span>AI WORK SIGNALS</span>
-            </span>
-            <span className="publication-feature-copy">
-              <Badge variant="outline" className="pill">{featurePost.category}</Badge>
-              <strong>{cleanPostTitle(featurePost.title)}</strong>
-              <span>{featurePost.excerpt}</span>
-              <small>{postMeta(featurePost, preset)}</small>
-            </span>
-          </button>
-        )}
-
-        <div className="publication-body-grid">
-          <div className="publication-feed">
-            <div className="publication-feed-head">
-              <h3>最新文章</h3>
-              <button type="button">View all</button>
-            </div>
-            <div className="publication-card-grid">
-              {feedPosts.slice(0, 3).map((item, index) => (
-                <button key={item.id} type="button" className="publication-post-card article-card-button" aria-label={item.title} onClick={() => setSelectedPostId(item.id)}>
-                  <span className={`publication-cover publication-cover-${index + 1}`}>
-                    <span>{item.isPaid ? 'PAID BRIEF' : 'OPEN NOTE'}</span>
-                  </span>
-                  <Badge variant="outline" className="pill">{item.isPaid ? '付費文章' : item.category}</Badge>
-                  <strong>{cleanPostTitle(item.title)}</strong>
-                  <span>{item.excerpt}</span>
-                  <small>{postMeta(item, preset)}{item.isPaid ? ` · 付費牆在第 ${paywallParagraph(item)} 段後` : ''}</small>
-                </button>
-              ))}
-            </div>
-
-            <div className="publication-feed-head compact">
-              <h3>付費讀者專欄</h3>
-              <button type="button" onClick={onJoin}>訂閱完整研究</button>
-            </div>
-            <div className="publication-paid-list">
-              {memberPosts.slice(1).map((item) => (
-                <button key={item.id} type="button" className="publication-paid-row article-card-button" aria-label={item.title} onClick={() => setSelectedPostId(item.id)}>
-                  <span>
-                    <Badge variant="outline" className="pill">付費文章</Badge>
-                    <strong>{cleanPostTitle(item.title)}</strong>
-                    <small>{item.minutes} 分鐘閱讀 · 付費牆在第 {paywallParagraph(item)} 段後</small>
-                  </span>
-                  {hasPaidAccess ? <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span> : <span className="lock-button lock-label"><Lock data-icon="inline-start" />訂閱後閱讀</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <aside className="publication-sidebar">
-            <article className="publication-sidebar-card">
-              <div className="publication-logo-mark small">SB</div>
-              <h3>Signal Brief</h3>
-              <p>每週整理 AI 工具、內容產品與創作者商業模式的可追蹤變化。</p>
-              <div className="publication-subscribe-inline stacked">
-                <Input aria-label="側欄訂閱 Email" type="email" placeholder="輸入你的 Email" />
-                <Button className="primary-button" onClick={onJoin}>訂閱</Button>
+  return (
+    <>
+      <section className="hub-bento-grid aside-left">
+        <GroupAside state={state} activePoints={state.currentMemberPoints} activeLevel={levelForPoints(state.currentMemberPoints, state.levelThresholds)} />
+        <div className="feed-column">
+          <SectionHeading eyebrow="Community" title="討論、公告與會員回饋">
+            用分類整理討論，讓會員把問題、成果和回饋集中在一個安靜的工作流裡。
+          </SectionHeading>
+          <AdminFrontActions
+            state={state}
+            onOpenAdmin={onOpenAdmin}
+            actions={[
+              { label: 'Edit categories', tab: 'community' },
+              { label: 'Edit access', tab: 'access' },
+            ]}
+          />
+          {canPost ? (
+            <form
+              className="composer composer-card"
+              onSubmit={(event) => {
+                event.preventDefault()
+                if (!draft.trim()) return
+                onAddPost(draft.trim(), categoryId)
+                setDraft('')
+              }}
+            >
+              <Textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Share a win, question, or working note..." aria-label="Create community post" />
+              <div className="form-row">
+                <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} aria-label="Post category">
+                  {writableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                </select>
+                <Button className="primary-button" type="submit" disabled={!draft.trim()}><Plus data-icon="inline-start" />Post</Button>
               </div>
+            </form>
+          ) : (
+            <article className="locked-panel">
+              <Lock size={18} />
+              <div>
+                <strong>Join to post and comment</strong>
+                <p>{state.role === 'visitor' ? '訪客可以先看公開結構；免費加入後才能發文、留言與累積 points。' : `目前需要 Level ${state.accessSettings.postingLevel} 才能發文。`}</p>
+              </div>
+              <Button className="primary-button" type="button" onClick={onJoin}>免費加入</Button>
             </article>
-            <article className="publication-sidebar-card">
-              <h3>訂閱後可以閱讀</h3>
-              <ul className="check-list">
-                <li><CheckCircle2 size={16} />付費牆後的完整分析</li>
-                <li><CheckCircle2 size={16} />每週研究信與資料補充</li>
-                <li><CheckCircle2 size={16} />文章留言與讀者問答</li>
-              </ul>
-            </article>
+          )}
+
+          {nextEvent && (
+            <a className="event-callout" href="#calendar" onClick={(event) => { event.preventDefault(); }}>
+              <CalendarDays size={16} />
+              <strong>{nextEvent.title}</strong>
+              <span>is happening {nextEvent.date} · {nextEvent.time}</span>
+            </a>
+          )}
+
+          <div className="category-tabs hub-chip-row" aria-label="Community categories">
+            <button type="button" className={activeCategory === 'all' ? 'active' : ''} onClick={() => setActiveCategory('all')}>All</button>
+            {state.categories.map((category) => (
+              <button key={category.id} type="button" className={activeCategory === category.id ? 'active' : ''} onClick={() => setActiveCategory(category.id)}>
+                {category.name}
+              </button>
+            ))}
+          </div>
+
+          <div className="post-list" aria-label="Community feed">
+            {visiblePosts.length === 0 && <p className="empty-note">找不到符合搜尋條件的貼文。</p>}
+            {visiblePosts.map((post) => {
+              const category = state.categories.find((item) => item.id === post.categoryId)
+              const postLiked = state.likedPostIds.includes(post.id)
+              const commentsTotal = commentCount(post.comments)
+              return (
+                <article key={post.id} className="post-card">
+                  <button className="post-open-button" type="button" onClick={() => setSelectedPostId(post.id)} aria-label={`Open post by ${post.authorName}`}>
+                    <div className="post-card-header">
+                      <div className="avatar">{post.authorName.slice(0, 1)}</div>
+                      <div className="post-author-block">
+                        <strong>{post.authorName}</strong>
+                        <span className="mono">{post.createdAt}</span>
+                      </div>
+                      {post.pinned && <Badge variant="outline" className="status-badge">Pinned</Badge>}
+                    </div>
+                    <p className="post-preview-text">{post.body}</p>
+                  </button>
+                  <div className="post-actions">
+                    <Badge variant="outline" className="status-badge">{category?.name ?? 'General'}</Badge>
+                    <button
+                      className={`post-like-button${postLiked ? ' liked' : ''}`}
+                      type="button"
+                      onClick={() => onLikePost(post.id)}
+                      disabled={state.role === 'visitor' || postLiked}
+                      aria-label={`${postLiked ? 'Liked' : 'Like'} post, ${post.likes} likes`}
+                    >
+                      <Heart size={16} aria-hidden="true" />
+                      <span>{post.likes}</span>
+                    </button>
+                    <button className="post-comment-button" type="button" onClick={() => setSelectedPostId(post.id)} aria-label={`${commentsTotal} comments`} title={`${commentsTotal} comments`}>
+                      <MessageSquareText size={16} aria-hidden="true" />
+                      <span>{commentsTotal}</span>
+                    </button>
+                    {isAdmin && (
+                      <span className="post-admin-actions" aria-label="Post admin actions">
+                        <Button variant="outline" className="post-icon-button" type="button" onClick={() => onTogglePostPinned(post.id)} aria-label={post.pinned ? 'Unpin' : 'Pin'} title={post.pinned ? 'Unpin' : 'Pin'}>
+                          {post.pinned ? <PinOff size={16} aria-hidden="true" /> : <Pin size={16} aria-hidden="true" />}
+                        </Button>
+                        <Button variant="outline" className="post-icon-button" type="button" onClick={() => setPostConfirm({ action: 'clear', postId: post.id })} aria-label="Clear comments" title="Clear comments">
+                          <MessageSquareX size={16} aria-hidden="true" />
+                        </Button>
+                        <Button variant="outline" className="post-icon-button danger-button" type="button" onClick={() => setPostConfirm({ action: 'delete', postId: post.id })} aria-label="Delete post" title="Delete post">
+                          <Trash2 size={16} aria-hidden="true" />
+                        </Button>
+                      </span>
+                    )}
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {selectedPost && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closePostModal()
+          }}
+        >
+          <article className="post-modal" role="dialog" aria-modal="true" aria-label="貼文完整內容">
+            <button className="modal-close" type="button" onClick={closePostModal} aria-label="關閉貼文">×</button>
+            <div className="post-card-header">
+              <div className="avatar">{selectedPost.authorName.slice(0, 1)}</div>
+              <div className="post-author-block">
+                <strong>{selectedPost.authorName}</strong>
+                <span className="mono">{selectedPost.createdAt}</span>
+              </div>
+            </div>
+            <p className="post-modal-body">{selectedPost.body}</p>
+            <div className="post-actions post-modal-actions">
+              <button
+                className={`post-like-button${selectedPostLiked ? ' liked' : ''}`}
+                type="button"
+                onClick={() => onLikePost(selectedPost.id)}
+                disabled={state.role === 'visitor' || selectedPostLiked}
+                aria-label={`${selectedPostLiked ? 'Liked' : 'Like'} post, ${selectedPost.likes} likes`}
+              >
+                <Heart size={16} aria-hidden="true" />
+                <span>{selectedPost.likes}</span>
+              </button>
+              <span className="post-comment-button" aria-label={`${commentCount(selectedPost.comments)} comments`} title={`${commentCount(selectedPost.comments)} comments`}>
+                <MessageSquareText size={16} aria-hidden="true" />
+                <span>{commentCount(selectedPost.comments)}</span>
+              </span>
+              {isAdmin && (
+                <span className="post-admin-actions" aria-label="Post admin actions">
+                  <Button variant="outline" className="post-icon-button" type="button" onClick={() => onTogglePostPinned(selectedPost.id)} aria-label={selectedPost.pinned ? 'Unpin' : 'Pin'} title={selectedPost.pinned ? 'Unpin' : 'Pin'}>
+                    {selectedPost.pinned ? <PinOff size={16} aria-hidden="true" /> : <Pin size={16} aria-hidden="true" />}
+                  </Button>
+                  <Button variant="outline" className="post-icon-button" type="button" onClick={() => setPostConfirm({ action: 'clear', postId: selectedPost.id })} aria-label="Clear comments" title="Clear comments">
+                    <MessageSquareX size={16} aria-hidden="true" />
+                  </Button>
+                  <Button variant="outline" className="post-icon-button danger-button" type="button" onClick={() => setPostConfirm({ action: 'delete', postId: selectedPost.id })} aria-label="Delete post" title="Delete post">
+                    <Trash2 size={16} aria-hidden="true" />
+                  </Button>
+                </span>
+              )}
+            </div>
+            <div className="comment-list" aria-label="Comments">
+              {selectedPost.comments.map((comment) => {
+                const renderComment = (item: CommunityComment, depth = 0): React.ReactNode => {
+                  const liked = state.likedCommentIds.includes(item.id)
+                  return (
+                    <div className={`comment-item${depth ? ' comment-reply' : ''}`} key={item.id}>
+                      <div className="comment-body">
+                        <div className="comment-head">
+                          <strong>{item.authorName}</strong>
+                          <span className="mono">{item.createdAt}</span>
+                        </div>
+                        <p>{renderMentionText(item.body)}</p>
+                        <div className="comment-actions">
+                          <button
+                            className={`comment-like-button${liked ? ' liked' : ''}`}
+                            type="button"
+                            onClick={() => onLikeComment(item.id)}
+                            disabled={state.role === 'visitor' || liked}
+                            aria-label={`${liked ? 'Liked' : 'Like'} comment, ${item.likes} likes`}
+                            title={`${item.likes} likes`}
+                          >
+                            <Heart size={15} aria-hidden="true" />
+                            <span>{item.likes}</span>
+                          </button>
+                          {canPost && (
+                            <button className="comment-reply-button" type="button" onClick={() => startReply(item)} aria-label="Reply" title="Reply">
+                              <MessageCircle size={15} aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {item.replies.length > 0 && <div className="comment-replies">{item.replies.map((reply) => renderComment(reply, depth + 1))}</div>}
+                    </div>
+                  )
+                }
+                return renderComment(comment)
+              })}
+            </div>
+            {canPost && (
+              <form className="comment-form" onSubmit={(event) => {
+                event.preventDefault()
+                const nextComment = commentDraft.trim()
+                if (!nextComment) return
+                onAddComment(selectedPost.id, nextComment, replyTarget?.id)
+                setCommentDraft('')
+                setReplyTarget(null)
+              }}>
+                {replyTarget && (
+                  <div className="reply-context">
+                    <span>Replying to {replyTarget.authorName}</span>
+                    <button type="button" onClick={() => { setReplyTarget(null); setCommentDraft('') }}>Cancel</button>
+                  </div>
+                )}
+                <div className="comment-form-row">
+                  <div className="comment-input-wrap">
+                    <Input aria-label="Add comment" value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} placeholder={replyTarget ? `Reply to ${replyTarget.authorName}...` : 'Write a comment...'} />
+                    {mentionOptions.length > 0 && (
+                      <div className="mention-menu" aria-label="Mention suggestions">
+                        {mentionOptions.map((member) => (
+                          <button key={member.id} type="button" onClick={() => insertMention(member.name)}>
+                            <strong>{member.name}</strong>
+                            <span>{member.email}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <Button className="primary-button" type="submit" disabled={!commentDraft.trim()}>{replyTarget ? 'Reply' : 'Comment'}</Button>
+                </div>
+              </form>
+            )}
+          </article>
+        </div>
+      )}
+      {postConfirm && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setPostConfirm(null)
+          }}
+        >
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label={postConfirm.action === 'clear' ? '確認清除留言' : '確認刪除貼文'}>
+            <button className="modal-close" type="button" onClick={() => setPostConfirm(null)} aria-label="關閉確認視窗">×</button>
+            <SectionHeading eyebrow="Confirm" title={postConfirm.action === 'clear' ? '確認清除留言' : '確認刪除貼文'}>
+              {postConfirm.action === 'clear' ? '這會移除這篇貼文目前所有留言。' : '這會移除這篇貼文，且無法在本機預覽中還原。'}
+            </SectionHeading>
+            <div className="button-stack">
+              <Button variant="outline" className="secondary-button" type="button" onClick={() => setPostConfirm(null)}>Cancel</Button>
+              <Button variant="outline" className="secondary-button danger-button" type="button" onClick={confirmPostAction}>{postConfirm.action === 'clear' ? 'Clear comments' : 'Delete post'}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+function GroupAside({ state, activePoints, activeLevel }: { state: AppState; activePoints: number; activeLevel: number }) {
+  const ranked = [
+    ...(state.role !== 'visitor' ? [{ id: 'current', name: 'You', role: 'member' as const, points: activePoints, level: activeLevel }] : []),
+    ...state.members.filter((member) => member.status !== 'removed' && member.status !== 'banned' && !['owner', 'billing', 'admin'].includes(member.role)),
+  ].sort((a, b) => b.points - a.points).slice(0, 3)
+
+  return (
+    <aside className="side-stack hub-rail">
+      <article className="group-card hub-group-card">
+        <div className="cover-box stock-cover" style={stockCoverStyle(state.group.coverImageUrl?.trim() || fallbackCoverImage)} />
+        <strong>{state.group.name}</strong>
+        <small className="mono">{state.group.slug}.community</small>
+        <p>{state.group.description}</p>
+        <div className="group-stats">
+          <Metric label="Members" value={`${state.members.length}`} />
+          <Metric label="Online" value={state.group.onlineLabel.replace(' online', '')} />
+          <Metric label="Admins" value="1" />
+        </div>
+      </article>
+      <article className="span-2">
+        <SectionHeading eyebrow="Leaderboard" title="Leaderboard (30-day)" />
+        <div className="mini-rank-list">
+          {ranked.map((member, index) => (
+            <div key={member.id}>
+              <span className="rank-medal">{index + 1}</span>
+              <strong>{member.name}</strong>
+              <span className="mono">{member.points}</span>
+            </div>
+          ))}
+        </div>
+      </article>
+    </aside>
+  )
+}
+
+function ClassroomView({
+  state,
+  activeLevel,
+  searchQuery,
+  onTogglePage,
+  onJoin,
+  onOpenAdmin,
+}: {
+  state: AppState
+  activeLevel: number
+  searchQuery: string
+  onTogglePage: (pageId: string) => void
+  onJoin: () => void
+  onOpenAdmin: (tab: AdminTab) => void
+}) {
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null)
+  const [lockedCourse, setLockedCourse] = useState<ClassroomCourse | null>(null)
+  const selectedCourse = state.courses.find((course) => course.id === selectedCourseId)
+  const selectedPage = selectedCourse?.pages.find((page) => page.id === selectedPageId) ?? selectedCourse?.pages[0]
+  const visibleCourses = state.courses.filter((course) => matchesQuery(searchQuery, course.title, course.description, accessLabel(course.accessMode), course.pages.map((page) => page.title).join(' ')))
+  const isCourseLocked = (course: ClassroomCourse) => {
+    if (state.role === 'admin') return false
+    return state.role === 'visitor' || (course.accessMode === 'level-unlock' && activeLevel < (course.requiredLevel ?? 1)) || course.accessMode === 'private'
+  }
+  const lockReason = (course: ClassroomCourse) => {
+    if (state.role === 'visitor') return '你還不是社群會員，加入後才能查看 Classroom 內容。'
+    if (course.accessMode === 'level-unlock') return `這堂課需要 Level ${course.requiredLevel ?? 1}，你目前是 Level ${activeLevel}。`
+    if (course.accessMode === 'private') return '這是私人或 Beta 課程，需要管理員手動授權後才能查看。'
+    return '這堂課目前尚未開放。'
+  }
+  const openCourse = (course: ClassroomCourse) => {
+    if (isCourseLocked(course)) {
+      setLockedCourse(course)
+      return
+    }
+    setSelectedCourseId(course.id)
+    setSelectedPageId(course.pages[0]?.id ?? null)
+  }
+  useEscapeKey(Boolean(lockedCourse), () => setLockedCourse(null))
+
+  if (selectedCourse && selectedPage) {
+    const completedCount = selectedCourse.pages.filter((page) => state.completedPageIds.includes(page.id)).length
+    const progress = selectedCourse.pages.length ? Math.round((completedCount / selectedCourse.pages.length) * 100) : 0
+    const selectedComplete = state.completedPageIds.includes(selectedPage.id)
+
+    return (
+      <section>
+        <div className="course-detail-actions">
+          <Button className="ghost-button" type="button" onClick={() => setSelectedCourseId(null)}>Back to Classroom</Button>
+        </div>
+        <div className="course-detail-layout">
+          <aside className="course-outline">
+            <div className="course-progress-head">
+              <strong>{selectedCourse.title}</strong>
+              <small className="mono">{progress}%</small>
+            </div>
+            <div className="progress-track" aria-label="Course progress"><span style={{ width: `${progress}%` }} /></div>
+            <div className="lesson-list">
+              {selectedCourse.pages.map((page) => {
+                const complete = state.completedPageIds.includes(page.id)
+                return (
+                  <button key={page.id} type="button" className={`${complete ? 'complete ' : ''}${selectedPage.id === page.id ? 'active' : ''}`} onClick={() => setSelectedPageId(page.id)}>
+                    <span>{complete ? <CheckCircle2 size={16} /> : <FileText size={16} />}</span>
+                    <span>
+                      <strong>{page.title}</strong>
+                      <small>{page.minutes}m</small>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           </aside>
+
+          <div className="course-reader-stack">
+            <article className="course-reader">
+              <div className="course-reader-head">
+                <h2>{selectedPage.title}</h2>
+                <button className={`course-complete-toggle${selectedComplete ? ' complete' : ''}`} type="button" onClick={() => onTogglePage(selectedPage.id)} aria-label={selectedComplete ? '標記未完成' : '標記完成'}>
+                  <CheckCircle2 size={20} />
+                </button>
+              </div>
+              <div className="course-body rich-text-output-block" dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(selectedPage.body) }} />
+            </article>
+            {selectedPage.resources.length > 0 && (
+              <section className="course-attachments" aria-label="Lesson attachments">
+                <strong>Attachments</strong>
+                <div className="course-resource-list">
+                  {selectedPage.resources.map((resource) => (
+                    <a key={resource} href={attachmentDownloadHref(resource)} download={attachmentDownloadName(resource)}>
+                      <CheckCircle2 size={15} aria-hidden="true" />
+                      <span>{resource}</span>
+                      <Download size={15} aria-hidden="true" />
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
         </div>
       </section>
     )
   }
 
   return (
-    <section className={isSkillsSchool ? 'section-block editorial-article-hub' : publicationHome ? 'section-block publication-home' : 'section-block'}>
-      <div className="section-heading horizontal">
-        <div>
-          <span className="eyebrow">{preset.id === 'signal-brief' ? '公開閱讀' : isSkillsSchool ? '文章 Hub' : '社群預覽'}</span>
-          <h3>{preset.id === 'signal-brief' ? 'Signal Brief 公開部落格' : isSkillsSchool ? 'AI Skill 文章、工作流拆解與工具教學' : 'Skills School AI Skill 公開內容'}</h3>
-          {publicationHome && <p>閱讀公開文章，或訂閱後解鎖完整研究、資料補充與每週 Newsletter。</p>}
+    <>
+      <section>
+        <SectionHeading eyebrow="Classroom" title="課程、頁面、資源與逐字稿">
+          Classroom 用來組織 guides、instructions、courses、resources 和 templates。這裡只模擬權限與完成狀態。
+        </SectionHeading>
+        <AdminFrontActions
+          state={state}
+          onOpenAdmin={onOpenAdmin}
+          actions={[{ label: 'Manage classroom', tab: 'classroom' }]}
+        />
+        <div className="course-grid">
+          {visibleCourses.length === 0 && <p className="empty-note">找不到符合搜尋條件的課程。</p>}
+          {visibleCourses.map((course, index) => {
+            const locked = isCourseLocked(course)
+            return (
+              <article
+                key={course.id}
+                className={`course-card clickable${course.published ? '' : ' draft'}${locked ? ' locked' : ''}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => openCourse(course)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return
+                  event.preventDefault()
+                  openCourse(course)
+                }}
+              >
+                <div className={`course-cover tone-${(index % 4) + 1} stock-cover`} style={stockCoverStyle(courseCoverImages[index % courseCoverImages.length])} />
+                <div className="course-head">
+                  <div>
+                    <Badge variant="outline" className="status-badge">{accessLabel(course.accessMode)}</Badge>
+                    {!course.published && <Badge variant="outline" className="status-badge">Draft</Badge>}
+                    {course.requiredLevel && <Badge variant="outline" className="status-badge">Level {course.requiredLevel}</Badge>}
+                  </div>
+                  {locked && <Lock size={18} />}
+                </div>
+                <h3>{course.title}</h3>
+                <p>{course.description}</p>
+                {course.price && <strong className="mono">{course.price}</strong>}
+                {course.unlockAfterDays && <small className="mono">Unlock after {course.unlockAfterDays} days</small>}
+              </article>
+            )
+          })}
         </div>
-        <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />{preset.id === 'signal-brief' ? '訂閱完整研究' : '加入會員'}</Button>
-      </div>
+      </section>
 
-      {isSkillsSchool && (
-        <div className="article-hub-toolbar">
-          <div className="article-tabs" aria-label="文章分類">
-            {skillCategories.map((category) => (
-              <button key={category} type="button" className={articleCategory === category ? 'active' : ''} onClick={() => setArticleCategory(category)}>
-                {category}
-              </button>
+      {lockedCourse && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setLockedCourse(null)
+          }}
+        >
+          <article className="course-lock-modal" role="dialog" aria-modal="true" aria-label="課程無法查看原因">
+            <button className="modal-close" type="button" onClick={() => setLockedCourse(null)} aria-label="關閉課程鎖定說明">×</button>
+            <SectionHeading eyebrow="Locked" title={`目前無法查看 ${lockedCourse.title}`}>
+              {lockReason(lockedCourse)}
+            </SectionHeading>
+            <div className="button-row">
+              {state.role === 'visitor' && <Button className="primary-button" type="button" onClick={onJoin}>免費加入</Button>}
+              <Button variant="outline" className="secondary-button" type="button" onClick={() => setLockedCourse(null)}>知道了</Button>
+            </div>
+          </article>
+        </div>
+      )}
+    </>
+  )
+}
+
+function CalendarView({ state, activeLevel, searchQuery, onAddEvent, onOpenAdmin }: { state: AppState; activeLevel: number; searchQuery: string; onAddEvent: (event: Omit<CalendarEvent, 'id'>) => void; onOpenAdmin: (tab: AdminTab) => void }) {
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
+  const [calendarProviderEvent, setCalendarProviderEvent] = useState<CalendarEvent | null>(null)
+  const [addEventOpen, setAddEventOpen] = useState(false)
+  const [draft, setDraft] = useState<Omit<CalendarEvent, 'id'>>({
+    title: '',
+    date: '2026-07-10',
+    time: '20:00',
+    duration: '60m',
+    timezone: 'Asia/Taipei',
+    location: 'MemberHub Call',
+    recurrence: 'none',
+    accessMode: 'all',
+    description: '',
+  })
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date()
+    return new Date(today.getFullYear(), today.getMonth(), 1)
+  })
+  const calendarYear = calendarMonth.getFullYear()
+  const calendarMonthIndex = calendarMonth.getMonth()
+  const calendarMonthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(calendarMonth)
+  const calendarMonthPrefix = `${calendarYear}-${String(calendarMonthIndex + 1).padStart(2, '0')}`
+  const daysInMonth = new Date(calendarYear, calendarMonthIndex + 1, 0).getDate()
+  const leadingDays = (new Date(calendarYear, calendarMonthIndex, 1).getDay() + 6) % 7
+  const calendarCellCount = Math.ceil((leadingDays + daysInMonth) / 7) * 7
+  const calendarCells = Array.from({ length: calendarCellCount }, (_, index) => {
+    const day = index - leadingDays + 1
+    return day > 0 && day <= daysInMonth ? day : null
+  })
+  const today = new Date()
+  const visibleEvents = state.events.filter((event) => matchesQuery(searchQuery, event.title, event.description, event.date, event.time, event.location, event.timezone))
+  const closeEventModal = () => {
+    setSelectedEvent(null)
+    setCalendarProviderEvent(null)
+  }
+  const goToCurrentMonth = () => setCalendarMonth(new Date(today.getFullYear(), today.getMonth(), 1))
+  const changeMonth = (offset: number) => setCalendarMonth((date) => new Date(date.getFullYear(), date.getMonth() + offset, 1))
+  const eventLocked = (event: CalendarEvent) => state.role === 'visitor' || (event.accessMode === 'level' && activeLevel < (event.requiredLevel ?? 1))
+  const eventLockReason = (event: CalendarEvent) => state.role === 'visitor'
+    ? '加入社群後才能新增活動到行事曆。'
+    : `這個活動需要 Level ${event.requiredLevel ?? 1}，你目前是 Level ${activeLevel}。`
+  useEscapeKey(addEventOpen, () => setAddEventOpen(false))
+  useEscapeKey(Boolean(selectedEvent), closeEventModal)
+  useEscapeKey(Boolean(calendarProviderEvent), () => setCalendarProviderEvent(null))
+
+  return (
+    <>
+      <section className="page-grid">
+        <article className="span-3">
+          <div className="section-heading-row">
+            <SectionHeading eyebrow="Calendar" title="活動、直播與回放排程">
+              管理 live、office hour、workshop 和 recurring events。第一版只做本機 demo。
+            </SectionHeading>
+            {state.role === 'admin' && (
+              <Button className="primary-button" type="button" onClick={() => setAddEventOpen(true)}>
+                <Plus data-icon="inline-start" size={18} aria-hidden="true" />
+                Add event
+              </Button>
+            )}
+          </div>
+          <AdminFrontActions
+            state={state}
+            onOpenAdmin={onOpenAdmin}
+            actions={[{ label: 'Manage events', tab: 'calendar' }]}
+          />
+          <div className="calendar-board">
+            <div className="calendar-head">
+              <div className="calendar-month-controls">
+                <Button variant="outline" className="icon-button ghost-button" type="button" onClick={() => changeMonth(-1)} aria-label="Previous month">
+                  <ChevronRight className="flip-icon" size={16} aria-hidden="true" />
+                </Button>
+                <Button variant="outline" className="ghost-button" type="button" onClick={goToCurrentMonth}>Today</Button>
+                <Button variant="outline" className="icon-button ghost-button" type="button" onClick={() => changeMonth(1)} aria-label="Next month">
+                  <ChevronRight size={16} aria-hidden="true" />
+                </Button>
+              </div>
+              <div>
+                <strong>{calendarMonthLabel}</strong>
+                <small>Asia/Taipei</small>
+              </div>
+            </div>
+            <div className="calendar-weekdays">
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => <strong key={day}>{day}</strong>)}
+            </div>
+            <div className="calendar-grid">
+              {calendarCells.map((day, index) => {
+                if (!day) return <div key={`empty-${index}`} className="calendar-empty-cell" aria-hidden="true" />
+                const dayEvents = visibleEvents.filter((event) => event.date === `${calendarMonthPrefix}-${String(day).padStart(2, '0')}`)
+                const isToday = calendarYear === today.getFullYear() && calendarMonthIndex === today.getMonth() && day === today.getDate()
+                return (
+                  <div key={day} className={isToday ? 'today' : ''}>
+                    <span>{day}</span>
+                    {dayEvents.map((event) => (
+                      <button key={event.id} className="calendar-event-button" type="button" onClick={() => setSelectedEvent(event)}>
+                        {event.time} · {event.title}
+                      </button>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+          <div className="event-list">
+            {visibleEvents.length === 0 && <p className="empty-note">找不到符合搜尋條件的活動。</p>}
+            {visibleEvents.map((event) => (
+              <article key={event.id} className="event-card">
+                <div className="date-box">
+                  <strong>{event.date.slice(5)}</strong>
+                  <small>{event.time}</small>
+                </div>
+                <div className="event-card-main">
+                  <h3>{event.title}</h3>
+                  <p>{event.description}</p>
+                  <div className="event-meta">
+                    <span className="mono">{event.duration}</span>
+                    <span className="mono">{event.timezone}</span>
+                    <Badge variant="outline" className="status-badge">{event.location}</Badge>
+                    <Badge variant="outline" className="status-badge">{event.recurrence}</Badge>
+                    <Badge variant="outline" className="status-badge">{eventAccessLabel(event, state)}</Badge>
+                  </div>
+                </div>
+                <div className="event-card-actions">
+                  <EventCalendarAction event={event} onOpen={setCalendarProviderEvent} />
+                </div>
+              </article>
             ))}
           </div>
-          <label className="search-box">
-            <Search size={18} aria-hidden="true" />
-            <Input value={articleQuery} onChange={(event) => setArticleQuery(event.target.value)} placeholder="輸入想搜尋的東西" />
-          </label>
+        </article>
+      </section>
+
+      {addEventOpen && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setAddEventOpen(false)
+          }}
+        >
+          <div className="event-modal" role="dialog" aria-modal="true" aria-label="新增活動">
+            <button className="modal-close" type="button" onClick={() => setAddEventOpen(false)} aria-label="關閉新增活動">×</button>
+            <SectionHeading eyebrow="Add event" title="新增活動">
+              設定活動時間、地點與可見權限。
+            </SectionHeading>
+            <EventForm state={state} draft={draft} setDraft={setDraft} onAddEvent={onAddEvent} onDone={() => setAddEventOpen(false)} />
+          </div>
         </div>
       )}
 
-      {featurePost && !isSkillsSchool && (
-      <button className="hero-product blog-feature article-card-button" type="button" onClick={() => setSelectedPostId(featurePost.id)}>
-        <Badge variant="outline" className="pill">{featurePost.category}</Badge>
-        <h4>{featurePost.title}</h4>
-        <p>{featurePost.excerpt}</p>
-        <small>{featurePost.minutes} 分鐘閱讀 · {preset.brand.creatorName}</small>
-      </button>
+      {selectedEvent && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeEventModal()
+          }}
+        >
+          <div className="event-modal" role="dialog" aria-modal="true" aria-label="活動詳細資訊">
+            <button className="modal-close" type="button" onClick={closeEventModal} aria-label="關閉活動詳細資訊">×</button>
+            <article className="event-detail-card">
+              <SectionHeading eyebrow="Event detail" title={selectedEvent.title}>
+                {selectedEvent.description}
+              </SectionHeading>
+              <div className="event-detail-meta">
+                <div><span>Date</span><strong>{selectedEvent.date}</strong></div>
+                <div><span>Time</span><strong>{selectedEvent.time}</strong></div>
+                <div><span>Duration</span><strong>{selectedEvent.duration}</strong></div>
+                <div><span>Timezone</span><strong>{selectedEvent.timezone}</strong></div>
+                <div><span>Access</span><strong>{eventAccessLabel(selectedEvent, state)}</strong></div>
+              </div>
+              <div className="event-meta">
+                <Badge variant="outline" className="status-badge">{selectedEvent.location}</Badge>
+                <Badge variant="outline" className="status-badge">{selectedEvent.recurrence}</Badge>
+                <Badge variant="outline" className="status-badge">{eventAccessLabel(selectedEvent, state)}</Badge>
+              </div>
+              <div className="add-calendar-menu">
+                {isEventExpired(selectedEvent) ? (
+                  <button className="event-calendar-disabled" type="button" disabled>Event ended</button>
+                ) : eventLocked(selectedEvent) ? (
+                  <article className="locked-panel inline-locked-panel"><Lock size={18} /><p>{eventLockReason(selectedEvent)}</p></article>
+                ) : (
+                  <>
+                    <button className="add-calendar-button" type="button" onClick={() => setCalendarProviderEvent(selectedEvent)}>
+                      <CalendarDays size={18} aria-hidden="true" />
+                      <span>Add to calendar</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </article>
+          </div>
+        </div>
       )}
+      {calendarProviderEvent && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setCalendarProviderEvent(null)
+          }}
+        >
+          <div className="settings-modal calendar-provider-modal" role="dialog" aria-modal="true" aria-label="選擇行事曆">
+            <button className="modal-close" type="button" onClick={() => setCalendarProviderEvent(null)} aria-label="關閉行事曆選擇">×</button>
+            <SectionHeading eyebrow="Add to calendar" title={calendarProviderEvent.title}>
+              選擇要新增到哪個行事曆服務。
+            </SectionHeading>
+            <CalendarProviderLinks event={calendarProviderEvent} onSelect={() => setCalendarProviderEvent(null)} />
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
 
-      <div className={isSkillsSchool ? 'content-list blog-list editorial-article-list' : 'content-list blog-list'}>
-        {(isSkillsSchool ? skillPosts : publicPosts).map((item) => (
-          <button key={item.id} type="button" className="content-row article-card-button" onClick={() => setSelectedPostId(item.id)}>
-            <div>
-              <Badge variant="outline" className="pill">{isSkillsSchool ? item.isPaid ? '會員文章' : '公開文章' : contentTypeLabel(item.type)}</Badge>
-              <h4>{item.title}</h4>
-              <p>{item.excerpt}</p>
-              <small>{item.category} · {item.minutes} 分鐘 · {sourceLabel(item.source)}</small>
-            </div>
-            {item.isPaid && !hasPaidAccess ? <span className="lock-button lock-label"><Lock data-icon="inline-start" />加入後閱讀</span> : <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span>}
-          </button>
-        ))}
-        {!isSkillsSchool && memberPosts.slice(0, 3).map((item) => (
-          <button key={item.id} type="button" className="content-row article-card-button" onClick={() => setSelectedPostId(item.id)}>
-            <div>
-              <Badge variant="outline" className="pill">會員限定</Badge>
-              <h4>{item.title}</h4>
-              <p>{item.excerpt}</p>
-              <small>{item.category} · {item.minutes} 分鐘 · 付費牆在第 {paywallParagraph(item)} 段後</small>
-            </div>
-            {hasPaidAccess ? <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span> : <span className="lock-button lock-label"><Lock data-icon="inline-start" />{preset.id === 'signal-brief' ? '訂閱後閱讀' : '加入後閱讀'}</span>}
-          </button>
-        ))}
+function EventForm({
+  state,
+  draft,
+  setDraft,
+  onAddEvent,
+  onDone,
+}: {
+  state: AppState
+  draft: Omit<CalendarEvent, 'id'>
+  setDraft: (draft: Omit<CalendarEvent, 'id'>) => void
+  onAddEvent: (event: Omit<CalendarEvent, 'id'>) => void
+  onDone?: () => void
+}) {
+  return (
+    <form
+      className="settings-form"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (!draft.title.trim()) return
+        onAddEvent(draft)
+        setDraft({ ...draft, title: '', description: '' })
+        onDone?.()
+      }}
+    >
+      <label>Title<Input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label>
+      <div className="two-col">
+        <label>Date<Input type="date" value={draft.date} onChange={(event) => setDraft({ ...draft, date: event.target.value })} /></label>
+        <label>Time<Input type="time" value={draft.time} onChange={(event) => setDraft({ ...draft, time: event.target.value })} /></label>
+      </div>
+      <div className="two-col">
+        <label>Duration<Input value={draft.duration} onChange={(event) => setDraft({ ...draft, duration: event.target.value })} /></label>
+        <label>Timezone<Input value={draft.timezone} onChange={(event) => setDraft({ ...draft, timezone: event.target.value })} /></label>
+      </div>
+      <label>Location<select value={draft.location} onChange={(event) => setDraft({ ...draft, location: event.target.value as CalendarEvent['location'] })}>
+        <option>MemberHub Call</option>
+        <option>Zoom</option>
+        <option>Meet</option>
+        <option>Address</option>
+      </select></label>
+      <label>Recurrence<select value={draft.recurrence} onChange={(event) => setDraft({ ...draft, recurrence: event.target.value as CalendarEvent['recurrence'] })}>
+        <option value="none">none</option>
+        <option value="weekly">weekly</option>
+        <option value="monthly">monthly</option>
+      </select></label>
+      <label>Access<select aria-label="Event access" value={draft.accessMode ?? 'all'} onChange={(event) => setDraft({ ...draft, accessMode: event.target.value as CalendarEvent['accessMode'] })}>
+        <option value="all">All members</option>
+        <option value="level">Members on/above level</option>
+        <option value="plan">Members on/above plan</option>
+        <option value="course">Members in course</option>
+      </select></label>
+      {draft.accessMode === 'level' && (
+        <label>Required level<Input aria-label="Required level" type="number" min={1} max={9} value={draft.requiredLevel ?? 2} onChange={(event) => setDraft({ ...draft, requiredLevel: Number(event.target.value) })} /></label>
+      )}
+      {draft.accessMode === 'plan' && (
+        <label>Required plan<select aria-label="Required plan" value={draft.requiredPlanId ?? state.plans[0]?.id} onChange={(event) => setDraft({ ...draft, requiredPlanId: event.target.value as Plan['id'] })}>
+          {state.plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
+        </select></label>
+      )}
+      {draft.accessMode === 'course' && (
+        <label>Required course<select aria-label="Required course" value={draft.courseId ?? state.courses[0]?.id} onChange={(event) => setDraft({ ...draft, courseId: event.target.value })}>
+          {state.courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+        </select></label>
+      )}
+      <label>Description<Textarea value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label>
+      <Button className="primary-button" type="submit">Save event</Button>
+    </form>
+  )
+}
+
+function MembersView({ state, activePoints, activeLevel, searchQuery, onOpenAdmin }: { state: AppState; activePoints: number; activeLevel: number; searchQuery: string; onOpenAdmin: (tab: AdminTab) => void }) {
+  const [filter, setFilter] = useState<'members' | 'admins' | 'online'>('members')
+  const currentMember: Member & { avatarUrl?: string } = {
+    id: 'current',
+    name: state.profileName.trim() || 'You',
+    email: state.profileEmail.trim() || 'you@example.test',
+    role: state.role === 'admin' ? 'admin' : 'member',
+    planId: state.selectedPlanId,
+    level: activeLevel,
+    points: activePoints,
+    joinedAt: 'Today',
+    posts: state.posts.filter((post) => post.authorId === 'current').length,
+    comments: 0,
+    avatarUrl: state.profileAvatarUrl,
+  }
+  const activeSavedMembers = state.members.filter((member) => member.status !== 'removed' && member.status !== 'banned')
+  const members: Array<Member & { avatarUrl?: string }> = state.role === 'visitor' ? activeSavedMembers : [currentMember, ...activeSavedMembers]
+  const admins = members.filter((member) => member.role === 'owner' || member.role === 'admin')
+  const onlineCount = Number.parseInt(state.group.onlineLabel, 10) || 0
+  const onlineMembers = members.slice(0, onlineCount)
+  const onlineMemberIds = new Set(onlineMembers.map((member) => member.id))
+  const visibleMembers = (filter === 'admins' ? admins : filter === 'online' ? onlineMembers : members)
+    .filter((member) => matchesQuery(searchQuery, member.name, member.email, member.role, planLabel(member.planId), member.status))
+  return (
+    <section className="hub-bento-grid aside-left">
+      <GroupAside state={state} activePoints={activePoints} activeLevel={activeLevel} />
+      <div className="feed-column">
+        <AdminFrontActions
+          state={state}
+          onOpenAdmin={onOpenAdmin}
+          actions={[
+            { label: 'Manage members', tab: 'members' },
+            { label: 'Edit roles', tab: 'members' },
+          ]}
+        />
+        <div className="member-filter-row">
+          <button className={filter === 'members' ? 'active' : ''} type="button" onClick={() => setFilter('members')}>Members {members.length}</button>
+          <button className={filter === 'admins' ? 'active' : ''} type="button" onClick={() => setFilter('admins')}>Admins {admins.length}</button>
+          <button className={filter === 'online' ? 'active' : ''} type="button" onClick={() => setFilter('online')}>Online {onlineMembers.length}</button>
+          <Button className="primary-button" type="button"><UserPlus data-icon="inline-start" />Invite</Button>
+        </div>
+        <div className="member-list">
+          {visibleMembers.length === 0 && <p className="empty-note">找不到符合搜尋條件的會員。</p>}
+          {visibleMembers.map((member) => (
+            <article key={member.id} className="member-card member-row">
+              <ProfileAvatar name={member.name} url={member.avatarUrl} />
+              <div>
+                <h3>{member.name}</h3>
+                <small>{member.email}</small>
+                <p>{member.posts} posts · {member.comments} comments · {planLabel(member.planId)}</p>
+                <div className="member-meta">
+                  {onlineMemberIds.has(member.id) && <><span className="online-dot" /> <span>Online now</span></>}
+                  <span className="mono">Joined {member.joinedAt}</span>
+                  <Badge variant="outline" className="status-badge">Level {levelForPoints(member.points, state.levelThresholds)}</Badge>
+                  <span className="mono">{member.points} pts</span>
+                </div>
+              </div>
+              <Button variant="outline" className="secondary-button" type="button" disabled={member.chatBlocked || activeLevel < state.accessSettings.chatLevel}>Chat</Button>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   )
 }
 
-function cleanPostTitle(title: string) {
-  return title.replace(/^(公開文章|付費文章)：/, '')
-}
-
-function postMeta(item: ContentItem, preset: ReturnType<typeof getPreset>) {
-  return `${preset.brand.creatorName} · ${item.minutes} 分鐘閱讀 · ${sourceLabel(item.source)}`
-}
-
-function ArticleReader({
-  item,
-  preset,
-  hasPaidAccess,
-  onBack,
-  onJoin,
-}: {
-  item: ContentItem
-  preset: ReturnType<typeof getPreset>
-  hasPaidAccess: boolean
-  onBack: () => void
-  onJoin: () => void
-}) {
-  const paragraphs = contentParagraphs(item)
-  const gateAfter = paywallParagraph(item)
-  const locked = isContentLocked(item, hasPaidAccess)
-  const visibleParagraphs = locked ? paragraphs.slice(0, gateAfter) : paragraphs
+function LeaderboardView({ state, activePoints, activeLevel, onOpenAdmin }: { state: AppState; activePoints: number; activeLevel: number; onOpenAdmin: (tab: AdminTab) => void }) {
+  const ranked = [
+    ...(state.role !== 'visitor' ? [{ id: 'current', name: state.profileName.trim() || 'You', role: 'member' as const, points: activePoints, level: activeLevel, avatarUrl: state.profileAvatarUrl }] : []),
+    ...state.members.filter((member) => member.status !== 'removed' && member.status !== 'banned' && !['owner', 'billing', 'admin'].includes(member.role)),
+  ].sort((a, b) => b.points - a.points)
+  const nextPoints = nextLevelPoints(activePoints, state.levelThresholds)
+  const progress = nextPoints == null ? 100 : Math.min(100, (activePoints / nextPoints) * 100)
 
   return (
-    <article className="section-block article-reader">
-      <div className="article-reader-top">
-        <Button variant="outline" className="ghost-button" onClick={onBack}>回到文章列表</Button>
-        <Badge variant="outline" className="pill">{isLimitedFreeActive(item) ? '限時免費' : item.isPaid ? '付費文章' : '免費文章'}</Badge>
-      </div>
-      <header className="article-header">
-        <span className="eyebrow">{item.category}</span>
-        <h3>{item.title}</h3>
-        <p>{item.excerpt}</p>
-        <small>
-          {preset.brand.creatorName} · {item.minutes} 分鐘閱讀 · {sourceLabel(item.source)}
-          {isLimitedFreeActive(item) ? ` · ${limitedFreeLabel(item)}` : ''}
-        </small>
-      </header>
-      <div className="article-body">
-        {visibleParagraphs.map((block, index) => (
-          <RichTextBlock key={`${item.id}-paragraph-${index}`} id={`${item.id}-paragraph-${index}`} html={block} />
-        ))}
-      </div>
-      {!locked && !item.isPaid ? (
-        <div className="subscribe-callout">
-          <div>
-            <strong>喜歡這類拆解？</strong>
-            <p>免費訂閱後，每週收到 AI Skill 文章、工作流拆解與公開課程更新。</p>
+    <section className="page-grid">
+      <article className="span-3">
+        <SectionHeading eyebrow="Leaderboard" title="Points, levels, and unlocks">
+          分數來源以貼文/留言被讚為核心。管理者、billing manager 與 owner 不列入排行榜。
+        </SectionHeading>
+        <AdminFrontActions
+          state={state}
+          onOpenAdmin={onOpenAdmin}
+          actions={[
+            { label: 'Edit roles', tab: 'members' },
+            { label: 'Edit access', tab: 'access' },
+          ]}
+        />
+        <div className="leaderboard-hero">
+          <div className="profile-level">
+            <ProfileAvatar name={state.profileName} url={state.profileAvatarUrl} className="level-avatar" />
+            <h3>{state.profileName.trim() || 'You'}</h3>
+            <p>Level {activeLevel}</p>
+            <small className="mono">{activePoints} pts · {nextPoints ? `${Math.max(0, nextPoints - activePoints)} points to level up` : 'Top level reached'}</small>
           </div>
-          <Button variant="outline" className="secondary-button" onClick={onJoin}><Mail data-icon="inline-start" />免費訂閱</Button>
-        </div>
-      ) : null}
-      {locked ? (
-        <div className="paywall-box">
-          <Lock size={18} />
-          <div>
-            <strong>{preset.id === 'skills-school' ? '會員限定內容' : '付費牆已啟用'}</strong>
-            <p>{preset.id === 'skills-school' ? `加入 AI Skill 會員後，繼續閱讀完整拆解、提示詞結構與 SOP 範本。` : `這篇文章由創作者設定在第 ${gateAfter} 段後進入付費牆。訂閱後可以繼續閱讀完整內容、資料補充與每週 Newsletter。`}</p>
+          <div className="level-thresholds">
+            {state.levelThresholds.map((threshold, index) => {
+              const level = index + 1
+              return (
+                <div key={threshold} className={activePoints >= threshold ? 'unlocked' : ''}>
+                  <span className="rank-medal">{level}</span>
+                  <strong>Level {level}</strong>
+                  <small>{index === 0 ? '0 points' : `${threshold} points`}</small>
+                  <ul className="level-benefit-list">
+                    {benefitsForLevel(state, level).map((benefit) => <li key={benefit}>{benefit}</li>)}
+                  </ul>
+                </div>
+              )
+            })}
           </div>
-          <Button className="primary-button" onClick={onJoin}><CircleDollarSign data-icon="inline-start" />{preset.id === 'skills-school' ? '加入會員繼續閱讀' : '訂閱後繼續閱讀'}</Button>
         </div>
-      ) : null}
-    </article>
-  )
-}
-
-function JoinView({
-  preset,
-  role,
-  selectedPlan,
-  onCheckout,
-}: {
-  preset: ReturnType<typeof getPreset>
-  role: Role
-  selectedPlan: Plan
-  onCheckout: (plan: Plan) => void
-}) {
-  const memberPlan = preset.plans.find((plan) => plan.highlighted) ?? preset.plans[1]
-  const roleCopy = roleProfile(preset, role)
-
-  return (
-    <section className="section-block join-section">
-      <div className="section-heading horizontal">
-        <div>
-          <span className="eyebrow">{preset.id === 'skills-school' ? '加入社群' : '訂閱研究'}</span>
-          <h3>{preset.id === 'skills-school' ? '加入 Skills School，開始 AI Skill 課程、社群與每週實作' : '訂閱 Signal Brief，閱讀付費文章與每週電子報'}</h3>
-          <p>{roleCopy.label}：{roleCopy.description}</p>
+        <small className="mono">Last updated: Jun 24th 2026 02:30am</small>
+        <div className="leaderboard-grid">
+          {['Leaderboard (7-day)', 'Leaderboard (30-day)', 'Leaderboard (all-time)'].map((title) => (
+            <article key={title}>
+              <h3>{title}</h3>
+              <div className="leaderboard-list">
+                {ranked.slice(0, 5).map((member, index) => (
+                  <div key={`${title}-${member.id}`}>
+                    <span className="rank-medal">{index + 1}</span>
+                    <ProfileAvatar name={member.name} url={'avatarUrl' in member ? member.avatarUrl : undefined} className="leaderboard-avatar" />
+                    <strong>{member.id === 'current' ? 'Current member' : member.name}</strong>
+                    <span className="mono">{index === 0 && title.includes('all-time') ? member.points.toLocaleString() : `+${Math.max(1, Math.round(member.points / 10))}`}</span>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
         </div>
-        <Button className="primary-button" onClick={() => onCheckout(memberPlan)}><CircleDollarSign data-icon="inline-start" />選擇 {memberPlan.name}</Button>
-      </div>
-      <div className="plan-grid">
-        {preset.plans.map((plan) => (
-          <article key={plan.id} className={`${plan.highlighted ? 'plan-card highlighted' : 'plan-card'} ${role !== 'visitor' && selectedPlan.id === plan.id ? 'current-plan' : ''}`}>
-            <span className="plan-name">{plan.name}</span>
-            <strong>{plan.price}</strong>
-            <small>{plan.cadence}</small>
-            <p>{plan.description}</p>
-            <ul>
-              {plan.features.map((feature) => (
-                <li key={feature}><CheckCircle2 size={16} />{feature}</li>
-              ))}
-            </ul>
-            <Button variant={plan.highlighted ? 'default' : 'outline'} onClick={() => onCheckout(plan)}>
-              {role !== 'visitor' && selectedPlan.id === plan.id
-                ? '目前方案'
-                : plan.price === 'NT$0'
-                  ? (preset.id === 'signal-brief' ? '加入免費讀者' : '加入免費方案')
-                  : role === 'admin'
-                    ? '預覽此方案'
-                    : '選擇此方案'}
-            </Button>
-          </article>
-        ))}
-      </div>
-      <div className="self-service-grid join-proof">
-        <article>
-          <h4>{preset.id === 'skills-school' ? '加入後會看到什麼' : '訂閱後會收到什麼'}</h4>
-          <ul className="check-list">
-            {preset.id === 'skills-school' ? (
-              <>
-                <li><CheckCircle2 size={16} />完整課程與會員限定文章</li>
-                <li><CheckCircle2 size={16} />每週任務、資源下載與直播回放</li>
-                <li><CheckCircle2 size={16} />會員討論區、AI Skill 回饋與活動通知</li>
-              </>
-            ) : (
-              <>
-                <li><CheckCircle2 size={16} />完整研究專欄與會員資料庫</li>
-                <li><CheckCircle2 size={16} />每週摘要、資料表更新與問答回放</li>
-                <li><CheckCircle2 size={16} />讀者討論、專題直播與活動通知</li>
-              </>
-            )}
-          </ul>
-        </article>
-        <article>
-          <h4>{preset.id === 'signal-brief' ? '適合這樣的讀者' : '適合這樣的學員'}</h4>
-          <p>{preset.audience}</p>
-        </article>
-      </div>
+      </article>
     </section>
   )
 }
 
-function ContentView({
-  preset,
-  items,
-  level,
-  query,
-  onQuery,
-  hasPaidAccess,
-  canCreateContent,
-  onCreateContent,
-  onCheckout,
+function AccountView({
+  state,
+  updateState,
+  currentPlan,
+  activeLevel,
+  activePoints,
 }: {
-  preset: ReturnType<typeof getPreset>
-  items: ContentItem[]
-  level: number
-  query: string
-  onQuery: (value: string) => void
-  hasPaidAccess: boolean
-  canCreateContent: boolean
-  onCreateContent: (item: Omit<ContentItem, 'id' | 'source' | 'minutes'>) => void
-  onCheckout: () => void
+  state: AppState
+  updateState: (patch: Partial<AppState>, notice?: string) => void
+  currentPlan: Plan
+  activeLevel: number
+  activePoints: number
 }) {
-  const isPublication = isPublicationPreset(preset)
-  const [draft, setDraft] = useState({
-    title: '',
-    type: 'article' as ContentItem['type'],
-    category: '公開內容',
-    excerpt: '',
-    body: '',
-    isPaid: false,
-    paywallAfterParagraph: 1,
-    requiredLevel: 1,
+  const [avatarMessage, setAvatarMessage] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [passwordMessage, setPasswordMessage] = useState('')
+  const paidPlans = state.plans.filter((plan) => plan.id !== 'free')
+  const changePlan = paidPlans.find((plan) => plan.id !== currentPlan.id) ?? (currentPlan.id === 'free' ? paidPlans[0] : undefined)
+  const billingMethod = currentPlan.id === 'free' ? '無扣款' : 'Portaly checkout'
+  const billingCycle = currentPlan.id === 'free' ? '不扣款' : currentPlan.id === 'monthly' ? '每月循環扣款' : currentPlan.cadence
+  const updateNotifications = (patch: Partial<AppState['notificationSettings']>) => updateState({
+    notificationSettings: { ...state.notificationSettings, ...patch },
   })
-
-  const draftBodyText = richTextPlainText(draft.body)
-  const canPublish = draft.title.trim() && draft.excerpt.trim() && draftBodyText.trim()
-
-  const updateDraft = (patch: Partial<typeof draft>) => setDraft((prev) => ({ ...prev, ...patch }))
-
-  const handlePublish = () => {
-    if (!canPublish) return
-    onCreateContent({
-      title: draft.title.trim(),
-      type: draft.type,
-      category: draft.category.trim() || '未分類',
-      excerpt: draft.excerpt.trim(),
-      body: draft.body.trim(),
-      isPaid: draft.isPaid,
-      paywallAfterParagraph: draft.isPaid ? draft.paywallAfterParagraph : undefined,
-      requiredLevel: draft.requiredLevel > 1 ? draft.requiredLevel : undefined,
-    })
-    setDraft({
-      title: '',
-      type: 'article',
-      category: '公開內容',
-      excerpt: '',
-      body: '',
-      isPaid: false,
-      paywallAfterParagraph: 1,
-      requiredLevel: 1,
-    })
+  const updateEmail = (value: string) => updateState({
+    profileEmail: value,
+    ...(state.role === 'admin' ? { adminEmail: value.trim().toLowerCase() } : {}),
+  })
+  const changePassword = (event: FormEvent) => {
+    event.preventDefault()
+    setPasswordMessage('')
+    if (newPassword.length < 8) {
+      setPasswordMessage('新密碼至少需要 8 位數。')
+      return
+    }
+    if (state.role === 'admin') {
+      if (currentPassword !== state.adminPassword) {
+        setPasswordMessage('目前密碼不正確。')
+        return
+      }
+      updateState({ adminPassword: newPassword }, '管理員密碼已更新。')
+      setCurrentPassword('')
+      setNewPassword('')
+      setPasswordMessage('管理員密碼已更新。')
+      return
+    }
+    setPasswordMessage(hasInsForgeConfig()
+      ? '會員密碼請先使用「忘記密碼」信件流程更新。'
+      : '本機 demo 不保存會員密碼；正式站 fork 後請串接 Auth provider 的變更密碼流程。')
+  }
+  const uploadAvatar = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setAvatarMessage('請上傳圖片檔。')
+      return
+    }
+    if (file.size > 1_500_000) {
+      setAvatarMessage('圖片請小於 1.5MB，避免本地預覽資料過大。')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') return
+      updateState({ profileAvatarUrl: reader.result })
+      setAvatarMessage('頭貼已更新。')
+    }
+    reader.onerror = () => setAvatarMessage('頭貼讀取失敗，請換一張圖片。')
+    reader.readAsDataURL(file)
   }
 
   return (
-    <section className="section-block">
-      <div className="section-heading horizontal">
-        <div>
-          <span className="eyebrow">{isPublication ? '文章庫' : '內容庫'}</span>
-          <h3>{isPublication ? '公開文章、付費文章與付費牆' : '公開文章、會員內容與付費牆'}</h3>
-        </div>
-        <label className="search-box">
-          <Search size={18} aria-hidden="true" />
-          <Input value={query} onChange={(event) => onQuery(event.target.value)} placeholder={isPublication ? '搜尋文章、主題、類型' : '搜尋內容、分類、類型'} />
-        </label>
-      </div>
-
-      {canCreateContent && (
-        <article className="editor-panel" aria-label="Content editor">
-          <div className="editor-head">
-            <div>
-              <span className="eyebrow">發文管理</span>
-              <h4>發文編輯器</h4>
-            </div>
-            <StatusPill tone={draft.isPaid ? 'blue' : 'green'}>{draft.isPaid ? '會員限定' : '公開'}</StatusPill>
+    <section className="page-grid">
+      <article className="span-2 account-profile-card">
+        <SectionHeading eyebrow="Account" title="Account settings">
+          管理頭貼、顯示名稱、登入信箱與通知偏好。
+        </SectionHeading>
+        <div className="account-settings-grid">
+          <div className="avatar-upload-stack">
+            <label className="avatar-upload-control">
+              <ProfileAvatar name={state.profileName} url={state.profileAvatarUrl} className="account-avatar-preview" />
+              <Input aria-label="Avatar upload" type="file" accept="image/*" onChange={uploadAvatar} />
+              <span className="avatar-upload-overlay" aria-hidden="true">
+                <Upload size={22} />
+              </span>
+            </label>
+            {avatarMessage && <p className="form-helper">{avatarMessage}</p>}
           </div>
-          <div className="editor-grid">
-            <label>
-              標題
-              <Input value={draft.title} onChange={(event) => updateDraft({ title: event.target.value })} placeholder="輸入文章標題" />
-            </label>
-            <label>
-              分類
-              <Input value={draft.category} onChange={(event) => updateDraft({ category: event.target.value })} placeholder={isPublication ? '公開文章 / 付費文章 / 讀者信' : '公開內容 / 會員課 / 公告'} />
-            </label>
-            <label>
-              類型
-              <select className="editor-select" value={draft.type} onChange={(event) => updateDraft({ type: event.target.value as ContentItem['type'] })}>
-                <option value="article">文章</option>
-                <option value="podcast">音訊</option>
-                <option value="newsletter">通訊</option>
-                {!isPublication && <option value="video">影片</option>}
-                {!isPublication && <option value="resource">資源</option>}
-              </select>
-            </label>
-            <label className="editor-toggle">
-              <input type="checkbox" checked={draft.isPaid} onChange={(event) => updateDraft({ isPaid: event.target.checked })} />
-              {isPublication ? '付費訂閱 / 付費牆' : '會員限定 / 付費牆'}
-            </label>
-            {isPublication && draft.isPaid && (
-              <label>
-                付費牆段落
-                <Input
-                  type="number"
-                  min={1}
-                  value={draft.paywallAfterParagraph}
-                  onChange={(event) => updateDraft({ paywallAfterParagraph: Math.max(1, Number(event.target.value) || 1) })}
-                />
+          <div className="settings-form">
+            <div className="two-col account-identity-row">
+              <label>Display name<Input aria-label="Display name" value={state.profileName} onChange={(event) => updateState({ profileName: event.target.value })} /></label>
+              <label>Account email<Input aria-label="Account email" type="email" value={state.profileEmail} onChange={(event) => updateEmail(event.target.value)} /></label>
+            </div>
+            <div className="account-notification-panel">
+              <strong>Notifications</strong>
+              <label className="switch-row">
+                <input type="checkbox" checked={state.notificationSettings.emailEnabled} onChange={(event) => updateNotifications({ emailEnabled: event.target.checked })} />
+                <span>Receive email reminders</span>
               </label>
-            )}
-            {!isPublication && (
-              <label>
-                需要等級
-                <Input
-                  type="number"
-                  min={1}
-                  value={draft.requiredLevel}
-                  onChange={(event) => updateDraft({ requiredLevel: Math.max(1, Number(event.target.value) || 1) })}
-                />
-              </label>
-            )}
-          </div>
-          <label className="editor-field">
-            摘要
-            <Input value={draft.excerpt} onChange={(event) => updateDraft({ excerpt: event.target.value })} placeholder="列表與分享時顯示的短摘要" />
-          </label>
-          <label className="editor-field">
-            內文
-            <DeferredRichTextEditor
-              value={draft.body}
-              onChange={(body) => updateDraft({ body })}
-              ariaLabel="文章內文"
-              placeholder={isPublication ? '撰寫文章或電子報內容…' : '撰寫文章、課程公告或通訊內容…'}
-            />
-          </label>
-          <div className="editor-actions">
-            <small>{draftBodyText.length} 字 · 預估 {Math.max(3, Math.ceil(draftBodyText.length / 220))} 分鐘閱讀</small>
-            <Button className="primary-button" type="button" disabled={!canPublish} onClick={handlePublish}><FileText data-icon="inline-start" />{isPublication ? '發布文章' : '發布到內容庫'}</Button>
-          </div>
-        </article>
-      )}
-
-      <div className="content-list">
-        {items.map((item) => {
-          const paidLocked = item.isPaid && !hasPaidAccess
-          const levelLocked = item.requiredLevel != null && level < item.requiredLevel
-          const locked = paidLocked || levelLocked
-          return (
-            <article key={item.id} className="content-row">
-              <div>
-                <Badge variant="outline" className="pill">{contentTypeLabel(item.type)}</Badge>
-                {item.requiredLevel && <Badge variant="outline" className="pill">Level {item.requiredLevel}</Badge>}
-                <h4>{item.title}</h4>
-                <p>{item.excerpt}</p>
-                <small>{item.category} · {item.minutes} 分鐘 · {sourceLabel(item.source)}</small>
-              </div>
-              {locked ? (
-                <Button className="lock-button" onClick={onCheckout}><Lock data-icon="inline-start" />{levelLocked ? `Level ${item.requiredLevel} 解鎖` : '升級解鎖'}</Button>
-              ) : (
-                <span className="access-ok"><CheckCircle2 size={16} />可閱讀</span>
-              )}
-            </article>
-          )
-        })}
-      </div>
-    </section>
-  )
-}
-
-function NewsletterView({
-  preset,
-  onAddIssue,
-  onCreateReferral,
-}: {
-  preset: ReturnType<typeof getPreset>
-  onAddIssue: () => void
-  onCreateReferral: () => void
-}) {
-  const isPublication = isPublicationPreset(preset)
-  return (
-    <section className="section-block">
-      <div className="section-heading horizontal">
-        <div>
-          <span className="eyebrow">通訊與成長</span>
-          <h3>{isPublication ? 'Newsletter、付費轉換與推薦贈閱' : 'Email/LINE 通訊、付費轉換與推薦贈閱'}</h3>
-        </div>
-        <div className="button-row compact">
-          <Button variant="outline" className="secondary-button" onClick={onAddIssue}><Mail data-icon="inline-start" />新增通訊</Button>
-          <Button className="primary-button" onClick={onCreateReferral}><Gift data-icon="inline-start" />建立贈閱碼</Button>
-        </div>
-      </div>
-
-      <div className="newsletter-grid">
-        <article className="newsletter-panel span-2">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">{isPublication ? '文章電子報' : '課程通訊'}</span>
-              <h4>{isPublication ? '把文章寄給訂閱讀者' : '把文章、課程或活動寄給會員'}</h4>
-            </div>
-            <Mail size={18} aria-hidden="true" />
-          </div>
-          <div className="newsletter-send-flow">
-            <div>
-              <span>1</span>
-              <strong>選擇文章</strong>
-              <small>{preset.content[0]?.title ?? '尚未建立文章'}</small>
-            </div>
-            <div>
-              <span>2</span>
-              <strong>選擇讀者</strong>
-              <small>{isPublication ? '免費讀者、付費讀者或全部訂閱者' : '免費會員、付費會員或全部會員'}</small>
-            </div>
-            <div>
-              <span>3</span>
-              <strong>安排發送</strong>
-              <small>立即寄出、排程發送或存成草稿</small>
-            </div>
-          </div>
-          <div className="button-row compact">
-            <Button variant="outline" className="secondary-button" onClick={onAddIssue}><FileText data-icon="inline-start" />建立文章電子報</Button>
-            <Button className="primary-button" onClick={onCreateReferral}><Gift data-icon="inline-start" />建立訂閱贈閱碼</Button>
-          </div>
-        </article>
-
-        <article className="newsletter-panel span-2">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">發送排程</span>
-              <h4>發送排程與內容存檔</h4>
-            </div>
-            <Megaphone size={18} />
-          </div>
-          <div className="admin-content-stack">
-            {preset.newsletter.map((issue) => (
-              <div key={issue.id} className="newsletter-row">
-                <span>
-                  <Badge variant="outline" className="pill">{segmentLabel(issue.segment)} · {statusLabel(issue.status)}</Badge>
-                  <strong>{issue.subject}</strong>
-                  <small>{issue.sendAt === 'on signup' ? '註冊後自動寄送' : issue.sendAt} · 開信 {issue.openRate} · 點擊 {issue.clickRate}</small>
-                </span>
-                <StatusPill tone={issue.paidConversions > 0 ? 'green' : 'yellow'}>{`${issue.paidConversions} 人升級`}</StatusPill>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="newsletter-panel">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">通知設定</span>
-              <h4>{isPublication ? 'Email / 站內通知' : 'Email / LINE / 站內通知'}</h4>
-            </div>
-            <Bell size={18} />
-          </div>
-          <div className="admin-content-stack">
-            {preset.notifications.map((notification) => (
-              <div key={notification.id} className="admin-content-item">
-                <Badge variant="outline" className="pill">{channelLabel(notification.channel)}</Badge>
-                <strong>{notificationTriggerLabel(notification.trigger)}</strong>
-                <small>{notificationAudienceLabel(notification.audience, isPublication)} · {statusLabel(notification.status)}</small>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="newsletter-panel span-2">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">推薦成長</span>
-              <h4>推薦碼、贈閱與來源歸因</h4>
-            </div>
-            <Hash size={18} />
-          </div>
-          <div className="referral-grid">
-            {preset.referrals.map((campaign) => (
-              <div key={campaign.id} className="referral-card">
-                <Badge variant="outline" className="pill">{campaign.code}</Badge>
-                <strong>{campaign.label}</strong>
-                <small>{sourceLabel(campaign.source)} · {campaign.reward}</small>
-                <div className="referral-metrics">
-                  <span>{campaign.freeTrials} 人體驗</span>
-                  <span>{campaign.paidConversions} 人升級</span>
-                  <span>{campaign.revenueLabel}</span>
+              <label>Notification scope<select aria-label="Notification scope" value={state.notificationSettings.scope} onChange={(event) => updateNotifications({ scope: event.target.value as AppState['notificationSettings']['scope'] })}>
+                <option value="all">全接收</option>
+                <option value="selected">只接收指定類型</option>
+              </select></label>
+              {state.notificationSettings.scope === 'selected' && (
+                <div className="notification-category-list">
+                  <label className="switch-row">
+                    <input type="checkbox" checked={state.notificationSettings.adminPosts} onChange={(event) => updateNotifications({ adminPosts: event.target.checked })} />
+                    <span>管理員發文</span>
+                  </label>
+                  <label className="switch-row">
+                    <input type="checkbox" checked={state.notificationSettings.courses} onChange={(event) => updateNotifications({ courses: event.target.checked })} />
+                    <span>發課程</span>
+                  </label>
+                  <label className="switch-row">
+                    <input type="checkbox" checked={state.notificationSettings.events} onChange={(event) => updateNotifications({ events: event.target.checked })} />
+                    <span>發活動</span>
+                  </label>
                 </div>
+              )}
+              <p className="form-helper">通知偏好會先存成本地設定；正式寄信需要 fork 後串接 Email worker。</p>
+            </div>
+            <form className="password-change-panel" onSubmit={changePassword}>
+              <strong>Password</strong>
+              <div className="two-col">
+                <label>Current password<Input aria-label="Current password" type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label>
+                <label>New password<Input aria-label="New password" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} /></label>
               </div>
-            ))}
+              <Button variant="outline" className="secondary-button" type="submit">Change password</Button>
+              {passwordMessage && <p className="form-helper">{passwordMessage}</p>}
+            </form>
           </div>
-        </article>
-      </div>
+        </div>
+      </article>
+      <article className="account-plan-card">
+        <div className="account-score-card">
+          <SectionHeading eyebrow="Progress" title="Level & points" />
+          <div className="account-score-grid">
+            <Metric label="Level" value={`${activeLevel}`} />
+            <Metric label="Points" value={`${activePoints}`} />
+          </div>
+          <p className="form-helper">Role: {roleLabel(state.role)}</p>
+        </div>
+        {state.role !== 'admin' && (
+          <>
+            <SectionHeading eyebrow="Plan" title="Subscription plan" />
+            <p className="plan-summary">
+              目前方案是 <strong>{currentPlan.name}</strong>，費用 <span className="mono">{currentPlan.price}</span> / {currentPlan.cadence}；扣款方式為 {billingMethod}，續訂狀態為 {billingCycle}。
+            </p>
+            <p className="form-helper">方案按鈕目前只更新本機預覽；正式扣款與退訂需串接 Portaly Payment callback。</p>
+            <div className="subscription-action-row">
+              {changePlan && (
+                <Button className="primary-button" type="button" onClick={() => updateState({ selectedPlanId: changePlan.id }, `方案已切換為 ${changePlan.name}。`)}>Change plan</Button>
+              )}
+              {currentPlan.id !== 'free' && (
+                <Button variant="outline" className="secondary-button danger-button" type="button" onClick={() => updateState({ selectedPlanId: 'free' }, '訂閱已在本機預覽取消。')}>Cancel subscription</Button>
+              )}
+            </div>
+          </>
+        )}
+      </article>
     </section>
   )
 }
 
 function LoginView({
-  preset,
-  onLogin,
-  formalAuth = false,
   onCredentialsLogin,
+  onForgotPassword,
+  onJoin,
+  onVerifyEmail,
+  onSuccess,
 }: {
-  preset: ReturnType<typeof getPreset>
-  onLogin: (role?: Role) => void
-  formalAuth?: boolean
-  onCredentialsLogin?: (email: string, password: string) => Promise<AuthResult>
+  onCredentialsLogin: (email: string, password: string, role: Role) => Promise<AuthResult>
+  onForgotPassword: (email: string) => Promise<AuthResult>
+  onJoin: () => void
+  onVerifyEmail: (email: string, otp: string, role: Role) => Promise<AuthResult>
+  onSuccess: () => void
 }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [otp, setOtp] = useState('')
+  const [pending, setPending] = useState<{ email: string; role: Role } | null>(null)
   const [error, setError] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [message, setMessage] = useState('')
+  const insForgeEnabled = hasInsForgeConfig()
+
+  const run = async (action: () => Promise<AuthResult>) => {
+    setError('')
+    setMessage('')
+    const result = await action()
+    if (result.requiresVerification && result.email && result.role) {
+      setPending({ email: result.email, role: result.role })
+      setError(result.error ?? '')
+      return
+    }
+    if (!result.ok) {
+      setError(result.error ?? '登入失敗，請稍後再試。')
+      return
+    }
+    onSuccess()
+  }
+  const requestPasswordReset = async () => {
+    setError('')
+    setMessage('')
+    const result = await onForgotPassword(email)
+    if (!result.ok) {
+      setError(result.error ?? '無法送出密碼重設。')
+      return
+    }
+    setMessage(result.message ?? '已送出密碼重設。')
+  }
 
   return (
-    <section className="auth-layout">
-      <article className="auth-card">
-        <span className="eyebrow">會員登入</span>
-        <h3>登入 {preset.brand.productName}</h3>
-        <p>
-          {formalAuth
-            ? '登入後會進入同一個私密社團；管理員只會多看到編輯、邀請、設定與審核工具。'
-            : preset.id === 'signal-brief'
-              ? '登入後可以閱讀會員研究、下載資料表、參與讀者問答，並管理自己的訂閱狀態。'
-              : '登入後可以繼續課程進度、參與討論區、完成每週打卡，並查看自己的會員方案。'}
-        </p>
-        <form
-          className="auth-form"
-          onSubmit={async (event) => {
-            event.preventDefault()
-            setError('')
-            if (!formalAuth) {
-              onLogin('member')
-              return
-            }
-            if (!onCredentialsLogin) return
-            setIsSubmitting(true)
-            const result = await onCredentialsLogin(email, password)
-            setIsSubmitting(false)
-            if (!result.ok) setError(result.error ?? '登入失敗，請稍後再試。')
+    <section className="login-stack">
+      <article className="login-card">
+        <SectionHeading eyebrow="Account" title="登入社群">
+          {insForgeEnabled ? '使用 Email 與密碼登入社群。' : '本機 demo 可使用預設管理員帳號登入。'}
+        </SectionHeading>
+        <form className="settings-form" onSubmit={(event) => { event.preventDefault(); void run(() => onCredentialsLogin(email, password, 'member')) }}>
+          <label>Email<Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
+          <label>Password<Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required /></label>
+          <button className="link-button" type="button" onClick={() => void requestPasswordReset()}>忘記密碼？</button>
+          <div className="button-stack">
+            <Button className="primary-button" type="submit">登入</Button>
+            <Button variant="outline" className="secondary-button" type="button" onClick={onJoin}>免費加入</Button>
+          </div>
+        </form>
+      </article>
+
+      {pending && (
+        <article className="span-2">
+          <SectionHeading eyebrow="Email verification" title="輸入 6 位驗證碼" />
+          <form className="form-row" onSubmit={(event) => { event.preventDefault(); void run(() => onVerifyEmail(pending.email, otp, pending.role)) }}>
+            <Input value={otp} onChange={(event) => setOtp(event.target.value)} placeholder="123456" />
+            <Button className="primary-button" type="submit">Verify</Button>
+          </form>
+        </article>
+      )}
+      {message && <p className="form-helper">{message}</p>}
+      {error && <p className="form-error">{error}</p>}
+    </section>
+  )
+}
+
+function AdminView({
+  state,
+  updateState,
+  onAddEvent,
+  tab,
+  setTab,
+}: {
+  state: AppState
+  updateState: (patch: Partial<AppState>) => void
+  onAddEvent: (event: Omit<CalendarEvent, 'id'>) => void
+  tab: AdminTab
+  setTab: (tab: AdminTab) => void
+}) {
+  return (
+    <section className="admin-view">
+      <SectionHeading eyebrow="Admin" title="社群設定中心">
+        Dashboard、Community、Classroom、Calendar、Members、Pricing、Plugins 集中管理。
+      </SectionHeading>
+      <Badge variant="outline" className="status-badge admin-ready-badge">社群管理後台已開啟</Badge>
+      <nav className="admin-tabs" aria-label="Admin tabs">
+        {adminTabs.map((item) => {
+          const Icon = item.icon
+          return <button key={item.id} type="button" className={tab === item.id ? 'active' : ''} onClick={() => setTab(item.id)}><Icon size={16} />{item.label}</button>
+        })}
+      </nav>
+      {tab === 'dashboard' && <AdminDashboard state={state} />}
+      {tab === 'general' && <AdminGeneral state={state} updateState={updateState} />}
+      {tab === 'access' && <AdminAccess state={state} updateState={updateState} />}
+      {tab === 'community' && <AdminCommunity state={state} updateState={updateState} />}
+      {tab === 'classroom' && <AdminClassroom state={state} updateState={updateState} />}
+      {tab === 'calendar' && <AdminCalendar state={state} updateState={updateState} onAddEvent={onAddEvent} />}
+      {tab === 'members' && <AdminMembers state={state} updateState={updateState} />}
+      {tab === 'pricing' && <AdminPricing state={state} />}
+      {tab === 'plugins' && <AdminPlugins state={state} updateState={updateState} />}
+    </section>
+  )
+}
+
+function AdminGeneral({ state, updateState }: { state: AppState; updateState: (patch: Partial<AppState>, notice?: string) => void }) {
+  const [linkDraft, setLinkDraft] = useState<{ label: string; url: string; visibility: 'public' | 'members' }>({ label: '', url: '', visibility: 'public' })
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false)
+  const [deleteLinkId, setDeleteLinkId] = useState<string | null>(null)
+  const [coverMessage, setCoverMessage] = useState('')
+  const updateGroup = (patch: Partial<AppState['group']>) => updateState({ group: { ...state.group, ...patch } })
+  const updateLink = (id: string, patch: Partial<AppState['externalLinks'][number]>) => {
+    updateState({ externalLinks: state.externalLinks.map((link) => link.id === id ? { ...link, ...patch } : link) })
+  }
+  const addLink = (event: FormEvent) => {
+    event.preventDefault()
+    const label = linkDraft.label.trim()
+    const url = linkDraft.url.trim()
+    if (!label || !url || state.externalLinks.length >= 3) return
+    updateState({ externalLinks: [...state.externalLinks, { id: `link-${Date.now()}`, label, url, visibility: linkDraft.visibility }] })
+    setLinkDraft({ label: '', url: '', visibility: 'public' })
+    setLinkDialogOpen(false)
+  }
+  const uploadCover = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setCoverMessage('請上傳圖片檔。')
+      return
+    }
+    if (file.size > 2_500_000) {
+      setCoverMessage('封面圖片請小於 2.5MB。')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') return
+      updateGroup({ coverImageUrl: reader.result })
+      setCoverMessage('封面已更新。')
+    }
+    reader.onerror = () => setCoverMessage('封面讀取失敗，請換一張圖片。')
+    reader.readAsDataURL(file)
+  }
+  const deleteLink = () => {
+    if (!deleteLinkId) return
+    updateState({ externalLinks: state.externalLinks.filter((item) => item.id !== deleteLinkId) }, '外部連結已刪除。')
+    setDeleteLinkId(null)
+  }
+  useEscapeKey(linkDialogOpen, () => setLinkDialogOpen(false))
+  useEscapeKey(Boolean(deleteLinkId), () => setDeleteLinkId(null))
+  return (
+    <div className="admin-grid">
+      <article className="span-2">
+        <SectionHeading eyebrow="General" title="社群基本設定">
+          管理社群名稱、URL、icon、cover photo 和 About 文案。
+        </SectionHeading>
+        <div className="settings-form">
+          <div className="two-col">
+            <label>Group name<Input aria-label="Group name" value={state.group.name} onChange={(event) => updateGroup({ name: event.target.value })} /></label>
+            <label>Group slug<Input aria-label="Group slug" value={state.group.slug} onChange={(event) => updateGroup({ slug: event.target.value })} /></label>
+          </div>
+          <label>Creator name<Input aria-label="Creator name" value={state.group.creatorName} onChange={(event) => updateGroup({ creatorName: event.target.value })} /></label>
+          <label>Tagline<Input aria-label="Group tagline" value={state.group.tagline} onChange={(event) => updateGroup({ tagline: event.target.value })} /></label>
+          <label>Description<Textarea aria-label="Group description" value={state.group.description} onChange={(event) => updateGroup({ description: event.target.value })} /></label>
+          <label>Cover image upload<Input aria-label="Cover image upload" type="file" accept="image/*" onChange={uploadCover} /></label>
+          {coverMessage && <p className="form-helper">{coverMessage}</p>}
+          <label>Logo image URL<Input aria-label="Logo image URL" value={state.group.logoImageUrl ?? ''} onChange={(event) => updateGroup({ logoImageUrl: event.target.value })} /></label>
+          <label>Online label<Input aria-label="Online label" value={state.group.onlineLabel} onChange={(event) => updateGroup({ onlineLabel: event.target.value })} /></label>
+        </div>
+      </article>
+      <article>
+        <SectionHeading eyebrow="Preview" title="About card" />
+        <div className="admin-preview-card">
+          <div className="cover-box stock-cover" style={stockCoverStyle(state.group.coverImageUrl?.trim() || fallbackCoverImage)} />
+          <strong>{state.group.name}</strong>
+          <small className="mono">{state.group.slug}.community</small>
+          <p>{state.group.description}</p>
+        </div>
+      </article>
+      <article className="span-3">
+        <div className="section-heading-row">
+          <SectionHeading eyebrow="Links" title="社群資訊卡連結">
+            在社群資訊卡加入最多 3 個外部連結。
+          </SectionHeading>
+          <Button className="primary-button" type="button" onClick={() => setLinkDialogOpen(true)} disabled={state.externalLinks.length >= 3}>Add</Button>
+        </div>
+        <div className="link-editor-list">
+          {state.externalLinks.map((link, index) => (
+            <div key={link.id} className="link-editor-row">
+              <label>Label<Input aria-label={`External link ${index + 1} label`} value={link.label} onChange={(event) => updateLink(link.id, { label: event.target.value })} /></label>
+              <label>URL<Input aria-label={`External link ${index + 1} URL`} value={link.url} onChange={(event) => updateLink(link.id, { url: event.target.value })} /></label>
+              <label>Visibility<select aria-label={`External link ${index + 1} visibility`} value={link.visibility} onChange={(event) => updateLink(link.id, { visibility: event.target.value as typeof link.visibility })}>
+                <option value="public">Public</option>
+                <option value="members">Members</option>
+              </select></label>
+              <Button variant="outline" className="secondary-button danger-button" type="button" onClick={() => setDeleteLinkId(link.id)}>Delete</Button>
+            </div>
+          ))}
+        </div>
+        {linkDialogOpen && (
+          <div
+            className="modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setLinkDialogOpen(false)
+            }}
+          >
+            <div className="settings-modal" role="dialog" aria-modal="true" aria-label="新增社群資訊卡連結">
+              <button className="modal-close" type="button" onClick={() => setLinkDialogOpen(false)} aria-label="關閉新增連結">×</button>
+              <SectionHeading eyebrow="Add link" title="新增社群資訊卡連結">
+                設定連結名稱、網址與可見權限。
+              </SectionHeading>
+              <form className="settings-form" onSubmit={addLink}>
+                <label>Label<Input aria-label="Link label" value={linkDraft.label} onChange={(event) => setLinkDraft({ ...linkDraft, label: event.target.value })} placeholder="Label" required /></label>
+                <label>URL<Input aria-label="Link URL" value={linkDraft.url} onChange={(event) => setLinkDraft({ ...linkDraft, url: event.target.value })} placeholder="https://..." required /></label>
+                <label>Visibility<select aria-label="Link visibility" value={linkDraft.visibility} onChange={(event) => setLinkDraft({ ...linkDraft, visibility: event.target.value as typeof linkDraft.visibility })}>
+                  <option value="public">Public</option>
+                  <option value="members">Members</option>
+                </select></label>
+                <div className="button-stack">
+                  <Button variant="outline" className="secondary-button" type="button" onClick={() => setLinkDialogOpen(false)}>Cancel</Button>
+                  <Button className="primary-button" type="submit">Add</Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+        {deleteLinkId && (
+          <div
+            className="modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setDeleteLinkId(null)
+            }}
+          >
+            <div className="settings-modal" role="dialog" aria-modal="true" aria-label="確認刪除社群連結">
+              <button className="modal-close" type="button" onClick={() => setDeleteLinkId(null)} aria-label="關閉刪除連結確認">×</button>
+              <SectionHeading eyebrow="Delete link" title="確認刪除社群連結">
+                這會從 About 資訊卡移除這個連結。
+              </SectionHeading>
+              <div className="button-stack">
+                <Button variant="outline" className="secondary-button" type="button" onClick={() => setDeleteLinkId(null)}>Cancel</Button>
+                <Button variant="outline" className="secondary-button danger-button" type="button" onClick={deleteLink}>Delete</Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </article>
+    </div>
+  )
+}
+
+function AdminAccess({ state, updateState }: { state: AppState; updateState: (patch: Partial<AppState>) => void }) {
+  const [questionDialog, setQuestionDialog] = useState<{ mode: 'add' } | { mode: 'edit'; index: number } | null>(null)
+  const [questionDraft, setQuestionDraft] = useState('')
+  const [deleteQuestionIndex, setDeleteQuestionIndex] = useState<number | null>(null)
+  const updateAccessPlugin = (id: 'instant-approval' | 'unlock-posting' | 'unlock-chat', enabled: boolean, patch: Partial<AppState['accessSettings']>) => {
+    updateState({
+      accessSettings: { ...state.accessSettings, ...patch },
+      plugins: state.plugins.map((plugin) => plugin.id === id ? { ...plugin, enabled } : plugin),
+    })
+  }
+  const updateLevelThreshold = (index: number, value: number) => {
+    updateState({ levelThresholds: state.levelThresholds.map((threshold, currentIndex) => currentIndex === index ? Math.max(index === 0 ? 0 : 1, value) : threshold) })
+  }
+  const updatePointRule = (id: PointRuleId, patch: Partial<AppState['pointRules'][number]>) => {
+    updateState({ pointRules: state.pointRules.map((rule) => rule.id === id ? { ...rule, ...patch } : rule) })
+  }
+  const updateLevelBenefit = (level: number, value: string) => {
+    updateState({
+      levelBenefits: state.levelBenefits.map((item) => item.level === level
+        ? { ...item, benefits: value.split('\n').map((benefit) => benefit.trim()).filter(Boolean) }
+        : item),
+    })
+  }
+  const updateCourseLevelGate = (courseId: string, level: number, checked: boolean) => {
+    updateState({
+      courses: state.courses.map((course) => course.id === courseId
+        ? { ...course, accessMode: checked ? 'level-unlock' : 'open', requiredLevel: checked ? level : undefined }
+        : course),
+    })
+  }
+  const updateEventLevelGate = (eventId: string, level: number, checked: boolean) => {
+    updateState({
+      events: state.events.map((event) => event.id === eventId
+        ? { ...event, accessMode: checked ? 'level' : 'all', requiredLevel: checked ? level : undefined }
+        : event),
+    })
+  }
+  const updateApplication = (application: MembershipApplication, status: MembershipApplication['status']) => {
+    const applications = state.membershipApplications.map((item) => item.id === application.id ? { ...item, status } : item)
+    if (status !== 'approved') {
+      updateState({ membershipApplications: applications })
+      return
+    }
+    const member: Member = {
+      id: `member-${Date.now()}`,
+      name: application.email.split('@')[0],
+      email: application.email,
+      role: 'member',
+      planId: application.planId,
+      level: 1,
+      points: 0,
+      joinedAt: 'Today',
+      posts: 0,
+      comments: 0,
+      status: 'active',
+    }
+    updateState({ membershipApplications: applications, members: [member, ...state.members] })
+  }
+  const openQuestionDialog = (dialog: { mode: 'add' } | { mode: 'edit'; index: number }) => {
+    setQuestionDraft(dialog.mode === 'edit' ? state.membershipQuestions[dialog.index] ?? '' : '')
+    setQuestionDialog(dialog)
+  }
+  const saveQuestion = (event: FormEvent) => {
+    event.preventDefault()
+    const question = questionDraft.trim()
+    if (!questionDialog || !question) return
+    if (questionDialog.mode === 'add') {
+      if (state.membershipQuestions.length >= 3) return
+      updateState({ membershipQuestions: [...state.membershipQuestions, question] })
+    } else {
+      updateState({ membershipQuestions: state.membershipQuestions.map((item, index) => index === questionDialog.index ? question : item) })
+    }
+    setQuestionDialog(null)
+    setQuestionDraft('')
+  }
+  const deleteQuestion = () => {
+    if (deleteQuestionIndex === null) return
+    updateState({ membershipQuestions: state.membershipQuestions.filter((_, index) => index !== deleteQuestionIndex) })
+    setDeleteQuestionIndex(null)
+  }
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [questionsOpen, setQuestionsOpen] = useState(false)
+  const [levelsOpen, setLevelsOpen] = useState(false)
+  const pendingApplications = state.membershipApplications.filter((application) => application.status === 'pending')
+  const gatedCourses = state.courses.filter((course) => course.accessMode === 'level-unlock')
+  const gatedEvents = state.events.filter((event) => event.accessMode === 'level')
+  const levels = state.levelThresholds.map((threshold, index) => ({ level: index + 1, threshold }))
+  const levelGateRows: Array<{ id: string; label: string; ariaLabel: string; checked: (level: number) => boolean; toggle: (level: number, checked: boolean) => void }> = [
+    ...state.courses.map((course) => ({
+      id: `course-${course.id}`,
+      label: `Course: ${course.title}`,
+      ariaLabel: `unlock course ${course.title}`,
+      checked: (level: number) => course.accessMode === 'level-unlock' && (course.requiredLevel ?? 1) === level,
+      toggle: (level: number, checked: boolean) => updateCourseLevelGate(course.id, level, checked),
+    })),
+    ...state.events.map((event) => ({
+      id: `event-${event.id}`,
+      label: `Event: ${event.title}`,
+      ariaLabel: `unlock event ${event.title}`,
+      checked: (level: number) => event.accessMode === 'level' && (event.requiredLevel ?? 1) === level,
+      toggle: (level: number, checked: boolean) => updateEventLevelGate(event.id, level, checked),
+    })),
+  ]
+  useEscapeKey(reviewOpen, () => setReviewOpen(false))
+  useEscapeKey(questionsOpen, () => setQuestionsOpen(false))
+  useEscapeKey(levelsOpen, () => setLevelsOpen(false))
+  useEscapeKey(Boolean(questionDialog), () => setQuestionDialog(null))
+  useEscapeKey(deleteQuestionIndex !== null, () => setDeleteQuestionIndex(null))
+  return (
+    <div className="admin-grid admin-access-grid">
+      <article className="span-3 access-overview-card">
+        <SectionHeading eyebrow="Access setup" title="權限設定流程">
+          先設定加入方式與審核問題，再設定 Level 門檻與福利；長列表統一進彈窗處理。
+        </SectionHeading>
+        <div className="access-step-grid" aria-label="Access setup order">
+          <p><strong>1</strong><span>加入方式</span><small>{state.accessSettings.instantMembershipApproval ? '免費會員直接通過' : '免費會員送審核'}</small></p>
+          <p><strong>2</strong><span>審核問題</span><small>{state.membershipQuestions.length}/3 questions</small></p>
+          <p><strong>3</strong><span>申請審核</span><small>{pendingApplications.length} pending</small></p>
+          <p><strong>4</strong><span>等級權限</span><small>{gatedCourses.length + gatedEvents.length + 2} linked gates</small></p>
+        </div>
+      </article>
+
+      <article className="access-equal-card">
+        <SectionHeading eyebrow="Join access" title="加入規則">
+          免費社群可選擇直接通過或管理員審核；付費加入仍直接通過。
+        </SectionHeading>
+        <div className="settings-form compact-access-form">
+          <label className="switch-row">
+            <input type="checkbox" checked={state.accessSettings.instantMembershipApproval} onChange={(event) => updateAccessPlugin('instant-approval', event.target.checked, { instantMembershipApproval: event.target.checked })} />
+            <span>Instant membership approval</span>
+          </label>
+        </div>
+      </article>
+
+      <article className="access-equal-card">
+        <SectionHeading eyebrow="Membership questions" title="Questions before joining">
+          加入前最多 3 題，問題編輯集中在彈窗內。
+        </SectionHeading>
+        <div className="access-card-actions">
+          <strong>{state.membershipQuestions.length}/3</strong>
+          <Button variant="outline" className="secondary-button" type="button" onClick={() => setQuestionsOpen(true)}>Manage questions</Button>
+        </div>
+      </article>
+
+      <article className="access-equal-card">
+        <SectionHeading eyebrow="Join review" title="Review queue">
+          申請列表可能變長，集中到彈窗中審核。
+        </SectionHeading>
+        <div className="access-card-actions">
+          <strong>{pendingApplications.length}</strong>
+          <Button variant="outline" className="secondary-button" type="button" onClick={() => setReviewOpen(true)}>Review applications</Button>
+        </div>
+      </article>
+
+      <article className="span-2">
+        <SectionHeading eyebrow="Leaderboard" title="Level thresholds and gates">
+          設定 points 門檻與主要 Level 權限；更多福利與課程/活動連動放在彈窗。
+        </SectionHeading>
+        <div className="level-threshold-settings">
+          {state.levelThresholds.map((threshold, index) => (
+            <label key={`level-${index + 1}`}>Level {index + 1}
+              <Input
+                aria-label={`Level ${index + 1} points`}
+                type="number"
+                min={index === 0 ? 0 : 1}
+                value={threshold}
+                readOnly={index === 0}
+                onChange={(event) => updateLevelThreshold(index, Number(event.target.value))}
+              />
+            </label>
+          ))}
+        </div>
+        <div className="settings-form access-gate-form">
+          <label>Unlock posting at Level<Input aria-label="Unlock posting at Level" type="number" min={1} max={9} value={state.accessSettings.postingLevel} onChange={(event) => updateAccessPlugin('unlock-posting', Number(event.target.value) > 1, { postingLevel: Number(event.target.value) })} /></label>
+          <label>Unlock chat at Level<Input aria-label="Unlock chat at Level" type="number" min={1} max={9} value={state.accessSettings.chatLevel} onChange={(event) => updateAccessPlugin('unlock-chat', Number(event.target.value) > 1, { chatLevel: Number(event.target.value) })} /></label>
+        </div>
+        <Button variant="outline" className="secondary-button" type="button" onClick={() => setLevelsOpen(true)}>Manage level benefits and gates</Button>
+      </article>
+
+      <article>
+        <SectionHeading eyebrow="Points" title="Point rules">
+          控制會員互動後增加多少 points。
+        </SectionHeading>
+        <div className="point-rule-list">
+          {state.pointRules.map((rule) => (
+            <label key={rule.id}>
+              <input type="checkbox" checked={rule.enabled} onChange={(event) => updatePointRule(rule.id, { enabled: event.target.checked })} />
+              <span>{rule.label}</span>
+              <Input aria-label={`${rule.label} points`} type="number" min={0} value={rule.points} onChange={(event) => updatePointRule(rule.id, { points: Number(event.target.value) })} />
+            </label>
+          ))}
+        </div>
+      </article>
+      {reviewOpen && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setReviewOpen(false) }}>
+          <div className="settings-modal wide-modal" role="dialog" aria-modal="true" aria-label="加入申請審核">
+            <button className="modal-close" type="button" onClick={() => setReviewOpen(false)} aria-label="關閉加入申請審核">×</button>
+            <SectionHeading eyebrow="Join review" title="加入申請審核">
+              免費會員需要管理員核准；付費會員可先確認回答，再導到 Portaly checkout。
+            </SectionHeading>
+            <div className="application-list modal-list">
+              {state.membershipApplications.length === 0 && <p className="empty-note">目前沒有待審核申請。</p>}
+              {state.membershipApplications.map((application) => (
+                <div key={application.id} className="application-item">
+                  <div className="application-header">
+                    <strong>{application.email}</strong>
+                    <small>{planLabel(application.planId)} · {application.createdAt} · {applicationStatusLabel(application.status)}</small>
+                  </div>
+                  <div className="application-answers">
+                    {Object.entries(application.answers).map(([question, answer]) => (
+                      <p key={question}><span>{question}</span><strong>{answer}</strong></p>
+                    ))}
+                  </div>
+                  {application.status === 'pending' && (
+                    <div className="button-stack">
+                      <Button className="primary-button" type="button" onClick={() => updateApplication(application, 'approved')}>核准</Button>
+                      <Button variant="outline" className="secondary-button" type="button" onClick={() => updateApplication(application, 'rejected')}>拒絕</Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {questionsOpen && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setQuestionsOpen(false) }}>
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label="管理審核問題">
+            <button className="modal-close" type="button" onClick={() => setQuestionsOpen(false)} aria-label="關閉審核問題管理">×</button>
+            <div className="section-heading-row">
+              <SectionHeading eyebrow="Membership Questions" title="Questions before joining" />
+              <Button className="primary-button" type="button" onClick={() => openQuestionDialog({ mode: 'add' })} disabled={state.membershipQuestions.length >= 3}>Add</Button>
+            </div>
+            <div className="compact-list membership-question-list">
+              {state.membershipQuestions.map((item, index) => (
+                <p key={`${item}-${index}`}>
+                  <strong>{item}</strong>
+                  <span className="question-actions">
+                    <Button variant="outline" className="icon-button ghost-button" type="button" onClick={() => openQuestionDialog({ mode: 'edit', index })} aria-label={`Edit question ${index + 1}`}><Pencil size={16} aria-hidden="true" /></Button>
+                    <Button variant="outline" className="icon-button ghost-button danger-button" type="button" onClick={() => setDeleteQuestionIndex(index)} aria-label={`Delete question ${index + 1}`}><Trash2 size={16} aria-hidden="true" /></Button>
+                  </span>
+                </p>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {levelsOpen && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setLevelsOpen(false) }}>
+          <div className="settings-modal wide-modal" role="dialog" aria-modal="true" aria-label="Level benefits and gates">
+            <button className="modal-close" type="button" onClick={() => setLevelsOpen(false)} aria-label="關閉等級福利設定">×</button>
+            <SectionHeading eyebrow="Leaderboard" title="Level benefits and gates">
+              設定每個等級顯示的福利；發文與私訊門檻在外層欄位設定。
+            </SectionHeading>
+            <div className="level-benefit-editor">
+              {levels.map(({ level, threshold }) => (
+                <div key={`level-benefit-${level}`} className="level-benefit-card">
+                  <div className="level-benefit-head">
+                    <strong>Level {level}</strong>
+                    <small className="mono">{threshold} pts</small>
+                  </div>
+                  <label>Benefits<Textarea aria-label={`Level ${level} benefits`} value={benefitsForLevel(state, level).join('\n')} onChange={(event) => updateLevelBenefit(level, event.target.value)} /></label>
+                </div>
+              ))}
+            </div>
+            <p className="level-gate-note">
+              下方項目會連動 Classroom 課程與 Calendar 活動；在那邊新增課程或活動後，這裡就能調整等級限制。你也可以在課程或活動新增/編輯時設定，兩邊會同步。
+            </p>
+            <div className="level-gate-matrix" aria-label="Level linked permissions">
+              <div className="level-gate-row level-gate-header" aria-hidden="true">
+                <span>Item</span>
+                <div className="level-gate-levels">
+                  {levels.map(({ level }) => <span key={`gate-head-${level}`}>Level {level}</span>)}
+                </div>
+              </div>
+              {levelGateRows.map((row) => (
+                <div key={row.id} className="level-gate-row">
+                  <strong>{row.label}</strong>
+                  <div className="level-gate-levels">
+                    {levels.map(({ level }) => (
+                      <label key={`${row.id}-${level}`} className="level-gate-check">
+                        <input type="checkbox" aria-label={`Level ${level} ${row.ariaLabel}`} checked={row.checked(level)} onChange={(event) => row.toggle(level, event.target.checked)} />
+                        <span>Level {level}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {questionDialog && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setQuestionDialog(null)
           }}
         >
-          <label>
-            Email
-            <span className="auth-input">
-              <Mail size={18} />
-              <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="輸入你的 Email" required />
-            </span>
-          </label>
-          {formalAuth && (
-            <label>
-              密碼
-              <span className="auth-input">
-                <Lock size={18} />
-                <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" placeholder="輸入密碼" required />
-              </span>
-            </label>
-          )}
-          {error && <p className="auth-error" role="alert">{error}</p>}
-          {formalAuth && <small className="auth-helper">帳密由伺服器驗證，不會寫在前端或 GitHub。</small>}
-          <Button className="primary-button" type="submit" disabled={isSubmitting}>
-            <LogIn data-icon="inline-start" />{formalAuth ? (isSubmitting ? '登入中' : '登入') : '以會員身份登入'}
-          </Button>
-        </form>
-        {!formalAuth && (
-          <div className="button-row">
-            <Button variant="outline" className="secondary-button" onClick={() => onLogin('member')}>以 Google 帳號登入</Button>
-            <Button variant="outline" className="ghost-button" onClick={() => onLogin('admin')}>管理員登入</Button>
-          </div>
-        )}
-      </article>
-      <article className="auth-notes">
-        <h4>{preset.id === 'signal-brief' ? '登入後可以使用' : '登入後可以開始'}</h4>
-        <ul className="check-list">
-          {preset.id === 'signal-brief' ? (
-            <>
-              <li><CheckCircle2 size={16} />閱讀完整會員專欄與資料庫更新</li>
-              <li><CheckCircle2 size={16} />查看每週摘要、問答回放與專題直播</li>
-              <li><CheckCircle2 size={16} />管理訂閱方案、收據與贈閱碼</li>
-            </>
-          ) : (
-            <>
-              <li><CheckCircle2 size={16} />接續課程進度與下載學習資源</li>
-              <li><CheckCircle2 size={16} />進入會員討論區並提交 AI Skill 回饋</li>
-              <li><CheckCircle2 size={16} />查看打卡、等級、活動與回放</li>
-            </>
-          )}
-        </ul>
-      </article>
-    </section>
-  )
-}
-
-function CoursesView({
-  preset,
-  level,
-  role,
-  completedLessons,
-  onUpdatePreset,
-  onToggleLesson,
-}: {
-  preset: ReturnType<typeof getPreset>
-  level: number
-  role: Role
-  completedLessons: string[]
-  onUpdatePreset: (patch: Partial<VerticalPreset>) => void
-  onToggleLesson: (lessonId: string) => void
-}) {
-  const canUseLessons = role !== 'visitor'
-  const [courseName, setCourseName] = useState('')
-  const [courseDescription, setCourseDescription] = useState('')
-  const [courseAccessMode, setCourseAccessMode] = useState<CourseAccessMode>('open')
-  const [courseRequiredLevel, setCourseRequiredLevel] = useState(1)
-  const [coursePublished, setCoursePublished] = useState(true)
-  const nameLength = courseName.trim().length
-  const descriptionLength = courseDescription.trim().length
-  const canAddCourse = nameLength > 0 && descriptionLength > 0
-  const handleAddCourse = () => {
-    if (!canAddCourse) return
-    const nextCourse: Course = {
-      id: `course-${Date.now()}`,
-      title: courseName.trim(),
-      description: courseDescription.trim(),
-      progress: 0,
-      lessons: [],
-      accessMode: courseAccessMode,
-      published: coursePublished,
-      requiredLevel: courseAccessMode === 'level-unlock' || courseAccessMode === 'private' ? courseRequiredLevel : undefined,
-      coverLabel: '1460 x 752 px',
-    }
-    onUpdatePreset({ courses: [nextCourse, ...preset.courses] })
-    setCourseName('')
-    setCourseDescription('')
-    setCourseAccessMode('open')
-    setCourseRequiredLevel(1)
-    setCoursePublished(true)
-  }
-  return (
-    <section className="section-block">
-      <div className="section-heading">
-        <span className="eyebrow">{preset.id === 'signal-brief' ? '研究室課程' : '課程教室'}</span>
-        <h3>AI Skill 課程、進度與等級解鎖</h3>
-        {role === 'visitor' && <p>訪客可以看課程架構，但需要加入會員後才能標記進度、下載會員資源與進入討論。</p>}
-        {role === 'admin' && <p>管理員正在檢查課程內容、資源權限與學員進度。</p>}
-      </div>
-      {role === 'admin' && (
-        <article className="course-builder" aria-label="新增課程">
-          <div className="course-builder-head">
-            <div>
-              <span className="eyebrow">課程管理</span>
-              <h4>新增課程</h4>
-            </div>
-            <Button variant="outline" className="ghost-button" type="button"><KeyRound data-icon="inline-start" />用匯入碼匯入</Button>
-          </div>
-          <div className="course-builder-fields">
-            <label>
-              課程名稱
-              <Input
-                value={courseName}
-                onChange={(event) => setCourseName(event.target.value.slice(0, 50))}
-                placeholder="輸入課程名稱"
-                aria-label="課程名稱"
-                autoComplete="off"
-              />
-              <small>{nameLength} / 50</small>
-            </label>
-            <label>
-              課程說明
-              <Textarea
-                value={courseDescription}
-                onChange={(event) => setCourseDescription(event.target.value.slice(0, 500))}
-                placeholder="說明這門課會帶學員完成什麼成果"
-                aria-label="課程說明"
-                autoComplete="off"
-              />
-              <small>{descriptionLength} / 500</small>
-            </label>
-          </div>
-          <div className="course-access-picker" role="radiogroup" aria-label="課程開放方式">
-            {courseAccessOptions.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={courseAccessMode === option.id}
-                className={courseAccessMode === option.id ? 'selected' : ''}
-                onClick={() => setCourseAccessMode(option.id)}
-              >
-                <span aria-hidden="true" />
-                <strong>{option.label}</strong>
-                <small>{option.description}</small>
-              </button>
-            ))}
-          </div>
-          {(courseAccessMode === 'level-unlock' || courseAccessMode === 'private') && (
-            <div className="course-builder-fields compact-fields">
-              <label>
-                解鎖等級
-                <Input
-                  type="number"
-                  min={1}
-                  value={courseRequiredLevel}
-                  onChange={(event) => setCourseRequiredLevel(Math.max(1, Number(event.target.value) || 1))}
-                  aria-label="課程解鎖等級"
-                />
-              </label>
-              <small className="settings-helper">
-                學員達到這個等級後，才會看到課程完整內容與可操作的課程任務。
-              </small>
-            </div>
-          )}
-          <div className="course-cover-row">
-            <div className="course-cover-upload">上傳封面</div>
-            <div>
-              <strong>課程封面</strong>
-              <small>建議尺寸 1460 x 752 px</small>
-              <Button variant="outline" className="secondary-button" type="button">更換圖片</Button>
-            </div>
-          </div>
-          <div className="course-builder-footer">
-            <label className="editor-toggle course-publish-toggle">
-              <span>已發布</span>
-              <input type="checkbox" checked={coursePublished} onChange={(event) => setCoursePublished(event.target.checked)} />
-            </label>
-            <div>
-              <Button
-                variant="outline"
-                className="ghost-button"
-                type="button"
-                onClick={() => {
-                  setCourseName('')
-                  setCourseDescription('')
-                  setCourseAccessMode('open')
-                  setCourseRequiredLevel(1)
-                  setCoursePublished(true)
-                }}
-              >
-                取消
-              </Button>
-              <Button className="primary-button" type="button" disabled={!canAddCourse} onClick={handleAddCourse}>新增課程</Button>
-            </div>
-          </div>
-        </article>
-      )}
-      <div className="course-grid">
-        {preset.courses.map((course) => {
-          const courseLocked = course.requiredLevel != null && role !== 'admin' && level < course.requiredLevel
-          return (
-          <article key={course.id} className={`course-panel${courseLocked ? ' course-locked' : ''}`}>
-            <div className="course-title">
-              <div>
-                <div className="course-panel-meta">
-                  <Badge variant="outline" className="pill">{courseAccessLabel(course.accessMode)}</Badge>
-                  {course.requiredLevel && <Badge variant="outline" className="pill">Level {course.requiredLevel}</Badge>}
-                  {course.published === false && <Badge variant="outline" className="pill">未發布</Badge>}
-                </div>
-                <h4>{course.title}</h4>
-                <p>{course.description}</p>
-              </div>
-              <strong>{course.progress}%</strong>
-            </div>
-            <div className="progress-track"><span style={{ width: `${course.progress}%` }} /></div>
-            <div className="lesson-list">
-              {course.lessons.map((lesson) => {
-                const locked = lesson.lockedLevel != null && level < lesson.lockedLevel
-                const complete = lesson.complete || completedLessons.includes(lesson.id)
-                const unavailable = courseLocked || locked || !canUseLessons
-                return (
-                  <div key={lesson.id} className={`lesson-card${complete ? ' complete' : ''}${unavailable ? ' locked' : ''}`}>
-                    <button className="lesson-row" disabled={unavailable} onClick={() => onToggleLesson(lesson.id)}>
-                      {unavailable ? <Lock size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
-                      <span>{lesson.title}</span>
-                      <small>{!canUseLessons ? '會員限定' : courseLocked ? `Level ${course.requiredLevel}` : locked ? `Level ${lesson.lockedLevel}` : `${lesson.minutes} 分鐘`}</small>
-                    </button>
-                    <div className="lesson-meta">
-                      {lesson.transcript && <span><FileText size={14} aria-hidden="true" />逐字稿可搜尋</span>}
-                      {lesson.pinnedThreadId && <span><MessageSquareText size={14} aria-hidden="true" />已連到課程討論</span>}
-                    </div>
-                    {lesson.resources && lesson.resources.length > 0 && (
-                      <div className="resource-list">
-                        {lesson.resources.map((resource) => (
-                          <Badge key={resource.id} variant="outline" className="pill">{resourceKindLabel(resource.kind)} · {accessLabel(resource.access)}</Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </article>
-        )})}
-      </div>
-    </section>
-  )
-}
-
-function CommunityView({ preset, role }: { preset: ReturnType<typeof getPreset>; role: Role }) {
-  const isSkillsSchool = preset.id === 'skills-school'
-  const [postDraft, setPostDraft] = useState('')
-  const [localPosts, setLocalPosts] = useState<Array<{ id: string; author: string; body: string; createdAt: string }>>([])
-  const paidMembers = preset.members.filter((member) => member.status === 'active').length
-  const freeMembers = preset.members.filter((member) => member.status === 'free').length
-  const openModeration = preset.moderation.filter((item) => item.status !== 'resolved').length
-  const canPost = role !== 'visitor'
-  const feedAuthor = role === 'admin' ? 'Skills Team' : preset.members[0]?.name ?? '會員'
-  const feedPosts = [
-    ...localPosts,
-    {
-      id: 'seed-post-1',
-      author: 'Yuna',
-      body: '我今天把會議摘要 Skill 的輸出格式改成「結論、待辦、風險」三段，回顧時比較容易直接交付給主管。',
-      createdAt: '今天 09:20',
-    },
-    {
-      id: 'seed-post-2',
-      author: 'Rae',
-      body: '本週直播前可以先把你的 Skill SOP 貼上來，我會優先看「輸入資料是否足夠」和「輸出能不能被檢查」。',
-      createdAt: '昨天 21:10',
-    },
-  ]
-
-  if (isSkillsSchool && canPost) {
-    return (
-      <section className="private-group-shell">
-        <div className="private-group-top">
-          <div className="private-search">
-            <Search size={18} />
-            <span>搜尋社群、課程與成員</span>
-          </div>
-          <div className="private-admin-icons">
-            <span><MessageSquareText size={18} /><strong>2</strong></span>
-            <span><Bell size={18} /><strong>9</strong></span>
-            <span className="private-avatar">{role === 'admin' ? 'S' : feedAuthor.slice(0, 1)}</span>
-          </div>
-        </div>
-
-        <div className="private-group-tabs" aria-label="私密社團分頁">
-          <button type="button" className="active">社群</button>
-          <button type="button">課程</button>
-          <button type="button">行事曆</button>
-          <button type="button">成員</button>
-          <button type="button">排行榜</button>
-          <button type="button">關於</button>
-        </div>
-
-        <div className="private-group-layout">
-          <div className="private-feed">
-            <form
-              className="private-composer"
-              onSubmit={(event) => {
-                event.preventDefault()
-                const body = postDraft.trim()
-                if (!body) return
-                setLocalPosts((posts) => [
-                  { id: `post-${Date.now()}`, author: feedAuthor, body, createdAt: '剛剛' },
-                  ...posts,
-                ])
-                setPostDraft('')
-              }}
-            >
-              <div className="private-avatar">{role === 'admin' ? 'S' : feedAuthor.slice(0, 1)}</div>
-              <Textarea value={postDraft} onChange={(event) => setPostDraft(event.target.value)} placeholder="分享你的 AI Skill 進度、問題或成果" aria-label="撰寫社群貼文" />
-              <div className="private-composer-actions">
-                <Button variant="outline" className="secondary-button" type="button"><PlayCircle data-icon="inline-start" />開直播</Button>
-                <Button className="primary-button" type="submit" disabled={!postDraft.trim()}><MessageSquareText data-icon="inline-start" />發布</Button>
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label={questionDialog.mode === 'add' ? '新增審核問題' : '編輯審核問題'}>
+            <button className="modal-close" type="button" onClick={() => setQuestionDialog(null)} aria-label="關閉審核問題設定">×</button>
+            <SectionHeading eyebrow={questionDialog.mode === 'add' ? 'Add question' : 'Edit question'} title={questionDialog.mode === 'add' ? '新增審核問題' : '編輯審核問題'} />
+            <form className="settings-form" onSubmit={saveQuestion}>
+              <label>Question<Textarea aria-label="Membership question" value={questionDraft} onChange={(event) => setQuestionDraft(event.target.value)} required /></label>
+              <div className="button-stack">
+                <Button variant="outline" className="secondary-button" type="button" onClick={() => setQuestionDialog(null)}>Cancel</Button>
+                <Button className="primary-button" type="submit">Save</Button>
               </div>
             </form>
-
-            <div className="private-filter-row">
-              <div className="member-status-tabs">
-                <button type="button" className="active">全部</button>
-                <button type="button">一般討論</button>
-                <button type="button">Skill 回饋</button>
-              </div>
-              <Button variant="outline" className="ghost-button"><SlidersHorizontal data-icon="inline-start" />篩選</Button>
-            </div>
-
-            {role === 'admin' && (
-              <article className="private-setup-card">
-                <div className="private-setup-head">
-                  <span className="setup-progress-ring" />
-                  <strong>設定你的社群</strong>
-                  <ChevronRight size={18} />
-                </div>
-                <ul>
-                  <li><span />調整社群封面與介紹</li>
-                  <li><span />邀請 3 位 AI Skill 會員</li>
-                  <li><span />發布第一篇置頂公告</li>
-                  <li><span />確認課程權限與入會問題</li>
-                </ul>
-              </article>
-            )}
-
-            <div className="private-post-list" aria-label="社群河道">
-              {feedPosts.map((post) => (
-                <article key={post.id} className="private-feed-post">
-                  <div className="private-avatar">{post.author.slice(0, 1)}</div>
-                  <div>
-                    <div className="private-post-meta">
-                      <strong>{post.author}</strong>
-                      <small>{post.createdAt}</small>
-                    </div>
-                    <p>{post.body}</p>
-                    <div className="private-post-actions">
-                      <button type="button">讚</button>
-                      <button type="button">留言</button>
-                      <button type="button">分享</button>
-                    </div>
-                  </div>
-                </article>
-              ))}
-              {preset.threads.map((thread) => (
-                <article key={thread.id} className="thread-row private-thread-row">
-                  <div>
-                    <Badge variant="outline" className="pill">{thread.category}{thread.pinned ? ' · 置頂' : ''}</Badge>
-                    <h4>{thread.title}</h4>
-                    <small>{thread.author} · {thread.replies} 則回覆 · {thread.reactions} 個反應 · 發文權限：{accessLabel(thread.canStart ?? 'all')}{thread.reportCount ? ` · ${thread.reportCount} 則檢舉` : ''}</small>
-                  </div>
-                  <MessageSquareText size={18} />
-                </article>
-              ))}
+          </div>
+        </div>
+      )}
+      {deleteQuestionIndex !== null && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setDeleteQuestionIndex(null)
+          }}
+        >
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label="確認刪除審核問題">
+            <button className="modal-close" type="button" onClick={() => setDeleteQuestionIndex(null)} aria-label="關閉刪除確認">×</button>
+            <SectionHeading eyebrow="Delete question" title="確認刪除審核問題">
+              這會從加入申請表單移除這個問題。
+            </SectionHeading>
+            <div className="button-stack">
+              <Button variant="outline" className="secondary-button" type="button" onClick={() => setDeleteQuestionIndex(null)}>Cancel</Button>
+              <Button variant="outline" className="secondary-button danger-button" type="button" onClick={deleteQuestion}>Delete</Button>
             </div>
           </div>
-
-          <aside className="private-group-sidebar">
-            <article className="private-group-card">
-              <div className="private-cover-edit">{role === 'admin' ? '上傳社群封面' : '社群封面'}</div>
-              <div className="private-card-body">
-                <strong>{preset.brand.creatorName}</strong>
-                <small>skills-school-memberhub.vercel.app</small>
-                <p>{preset.copy.heroBody}</p>
-                <div className="private-stats">
-                  <span><strong>{paidMembers + freeMembers}</strong><small>會員</small></span>
-                  <span><strong>{paidMembers}</strong><small>在線</small></span>
-                  <span><strong>1</strong><small>管理員</small></span>
-                </div>
-                {role === 'admin' ? (
-                  <Button variant="outline" className="secondary-button"><Settings2 data-icon="inline-start" />設定</Button>
-                ) : (
-                  <Button variant="outline" className="secondary-button"><UserRound data-icon="inline-start" />我的會員資料</Button>
-                )}
-              </div>
-            </article>
-
-            <article className="private-side-panel">
-              <div className="admin-panel-head">
-                <div>
-                  <span className="eyebrow">{role === 'admin' ? '會員管理' : '社群資訊'}</span>
-                  <h4>{role === 'admin' ? '社群狀態' : '目前社群'}</h4>
-                </div>
-                <UsersRound size={18} />
-              </div>
-              <div className="integration-grid">
-                <IntegrationItem label="付費會員" value={`${paidMembers} 位 AI Skill 會員`} />
-                <IntegrationItem label="免費讀者" value={`${freeMembers} 位免費讀者`} />
-                <IntegrationItem label={role === 'admin' ? '待審核' : '本週直播'} value={role === 'admin' ? `${openModeration} 件需處理` : '週四 20:00'} />
-                <IntegrationItem label={role === 'admin' ? '邀請連結' : '可參與內容'} value={role === 'admin' ? '可在設定分頁複製或寄送' : '討論、課程、打卡'} />
-              </div>
-            </article>
-          </aside>
         </div>
-      </section>
-    )
-  }
-
-  return (
-    <section className="section-block">
-      <div className="section-heading">
-        <span className="eyebrow">{preset.id === 'signal-brief' ? '讀者討論' : '社群討論'}</span>
-        <h3>{isSkillsSchool ? 'AI Skill 討論區' : '分類、權限、公告、留言與反應'}</h3>
-        {role === 'visitor' && <p>訪客只能看到公開討論與公告摘要；會員討論串會保留給已加入的人。</p>}
-        {role === 'member' && <p>會員可以閱讀公開與會員討論，並依照權限參與課程討論或活動公告。</p>}
-        {role === 'admin' && <p>管理員可以檢查置頂公告、發文權限、檢舉數與需要處理的討論串。</p>}
-      </div>
-      <div className={isSkillsSchool ? 'community-layout' : 'thread-list'}>
-        <div className="thread-list">
-          {isSkillsSchool && (
-            <article className="community-composer">
-              <MessageSquareText size={18} />
-              <span>分享你正在設計的 Skill 或卡住的流程</span>
-              <Button variant="outline" className="ghost-button">撰寫討論</Button>
-            </article>
-          )}
-          {preset.threads.map((thread) => {
-            const hidden = role === 'visitor' && (thread.adminOnly || thread.canStart === 'paid')
-            return (
-              <article key={thread.id} className={hidden ? 'thread-row locked' : 'thread-row'}>
-                <div>
-                  <Badge variant="outline" className="pill">{thread.category}{thread.pinned ? ' · 置頂' : ''}</Badge>
-                  <h4>{hidden ? '會員限定討論串' : thread.title}</h4>
-                  <small>{thread.author} · {thread.replies} 則回覆 · {thread.reactions} 個反應 · 發文權限：{accessLabel(thread.canStart ?? 'all')}{thread.reportCount ? ` · ${thread.reportCount} 則檢舉` : ''}</small>
-                </div>
-                {hidden ? <Lock size={18} /> : <MessageSquareText size={18} />}
-              </article>
-            )
-          })}
-        </div>
-        {isSkillsSchool && (
-          <aside className="community-sidebar">
-            <article>
-              <span className="eyebrow">本週直播</span>
-              <strong>{preset.events[0]?.title ?? 'AI Skill 案例拆解'}</strong>
-              <small>{preset.events[0]?.date ?? '本週四 20:00'} · 會員可看回放</small>
-            </article>
-            <article>
-              <span className="eyebrow">熱門標籤</span>
-              <div className="tag-row">
-                <Badge variant="outline" className="pill">研究摘要</Badge>
-                <Badge variant="outline" className="pill">SOP</Badge>
-                <Badge variant="outline" className="pill">Notion</Badge>
-                <Badge variant="outline" className="pill">內容改寫</Badge>
-              </div>
-            </article>
-          </aside>
-        )}
-      </div>
-    </section>
+      )}
+    </div>
   )
 }
 
-function MembersView({
-  preset,
-  role,
-  onInviteMember,
-  onOpenMembershipQuestions,
-}: {
-  preset: ReturnType<typeof getPreset>
-  role: Role
-  onInviteMember: () => void
-  onOpenMembershipQuestions: () => void
-}) {
+function AdminDashboard({ state }: { state: AppState }) {
+  const openPlugins = state.plugins.filter((plugin) => plugin.enabled).length
   return (
-    <section className="section-block">
-      <div className="section-heading horizontal">
-        <div>
-          <span className="eyebrow">{preset.id === 'signal-brief' ? '讀者社群' : '學員社群'}</span>
-          <h3>會員目錄、角色、個人頁與活躍度</h3>
-          {role === 'member' && <p>會員可以看到社群成員與公開活躍度；Email、風險狀態與審核操作只會出現在管理員視角。</p>}
-          {role === 'admin' && <p>管理員可以邀請會員、查看 Email、風險狀態、入會問題與社群參與紀錄。</p>}
-        </div>
-        {role === 'admin' && (
-          <div className="button-row compact">
-            <Button variant="outline" className="secondary-button" onClick={onInviteMember}><UserRound data-icon="inline-start" />邀請會員</Button>
-            <Button variant="outline" className="ghost-button" onClick={onOpenMembershipQuestions}><ClipboardCheck data-icon="inline-start" />入會問題</Button>
-          </div>
-        )}
-      </div>
-      <div className="member-directory">
-        {preset.members.map((member) => {
-          const canSeeEmail = role === 'admin'
-          const plan = preset.plans.find((item) => item.id === member.planId)
-          return (
-            <article key={member.id} className="member-card">
-              <div className="member-avatar">{member.name.slice(0, 1)}</div>
-              <div>
-                <div className="member-card-head">
-                  <strong>{member.name}</strong>
-                  <StatusPill tone={member.risk === 'high' ? 'red' : member.risk === 'medium' ? 'yellow' : 'green'}>{riskLabel(member.risk)}</StatusPill>
-                </div>
-                <p>{member.bio}</p>
-                <small>{canSeeEmail ? `${member.email} · ` : ''}{roleDisplayLabel(member.groupRole)} · {plan?.name ?? member.planId} · 加入日期 {member.joinedAt}</small>
-                <div className="member-stats">
-                  <span>Level {member.level}</span>
-                  <span>{member.points} 分</span>
-                  <span>{member.contributions.posts} 篇發文</span>
-                  <span>{member.contributions.comments} 則留言</span>
-                </div>
-              </div>
-            </article>
-          )
-        })}
-      </div>
-    </section>
+    <div className="dashboard-grid">
+      <Metric label="Members" value={`${state.members.length}`} />
+      <Metric label="Posts" value={`${state.posts.length}`} />
+      <Metric label="Courses" value={`${state.courses.length}`} />
+      <Metric label="Events" value={`${state.events.length}`} />
+      <Metric label="Plugins" value={`${openPlugins}/${state.plugins.length}`} />
+    </div>
   )
 }
 
-function LevelSettingsPanel({ preset, onUpdatePreset }: { preset: VerticalPreset; onUpdatePreset: (patch: Partial<VerticalPreset>) => void }) {
-  const levelSystem = getLevelSystem(preset)
-  const updateLevelSystem = (patch: Partial<LevelSystem>) => {
-    onUpdatePreset({ levelSystem: { ...levelSystem, ...patch } })
+function AdminCommunity({ state, updateState }: { state: AppState; updateState: (patch: Partial<AppState>, notice?: string) => void }) {
+  const [categoryName, setCategoryName] = useState('')
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
+  const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null)
+  const [ruleDialog, setRuleDialog] = useState<{ mode: 'add' } | { mode: 'edit'; index: number } | null>(null)
+  const [ruleDraft, setRuleDraft] = useState('')
+  const [deleteRuleIndex, setDeleteRuleIndex] = useState<number | null>(null)
+  const updateCategory = (id: string, patch: Partial<CommunityCategory>) => updateState({ categories: state.categories.map((category) => category.id === id ? { ...category, ...patch } : category) })
+  const saveCategory = (event: FormEvent) => {
+    event.preventDefault()
+    const name = categoryName.trim()
+    if (!name) return
+    const next: CommunityCategory = { id: `cat-${Date.now()}`, name, permission: 'members', sort: 'default' }
+    updateState({ categories: [...state.categories, next] })
+    setCategoryName('')
+    setCategoryDialogOpen(false)
   }
-  const updateRule = (ruleId: string, patch: Partial<LevelPointRule>) => {
-    updateLevelSystem({ rules: levelSystem.rules.map((rule) => rule.id === ruleId ? { ...rule, ...patch } : rule) })
+  const openRuleDialog = (dialog: { mode: 'add' } | { mode: 'edit'; index: number }) => {
+    setRuleDraft(dialog.mode === 'edit' ? state.rules[dialog.index] ?? '' : '')
+    setRuleDialog(dialog)
   }
-  const updateLevel = (levelNumber: number, patch: Partial<LevelDefinition>) => {
-    updateLevelSystem({ levels: levelSystem.levels.map((level) => level.level === levelNumber ? { ...level, ...patch } : level) })
-  }
-  const updateBinding = (bindingId: string, patch: Partial<LevelAccessBinding>) => {
-    updateLevelSystem({ bindings: levelSystem.bindings.map((binding) => binding.id === bindingId ? { ...binding, ...patch } : binding) })
-  }
-
-  return (
-    <article className="admin-panel span-3 level-settings-panel">
-      <div className="admin-panel-head">
-        <div>
-          <span className="eyebrow">會員等級與權限</span>
-          <h4>升級規則、等級福利與功能權限綁定</h4>
-        </div>
-        <Trophy size={18} />
-      </div>
-      <div className="level-settings-grid">
-        <section>
-          <h5>積分規則</h5>
-          <div className="settings-stack">
-            {levelSystem.rules.map((rule) => (
-              <div key={rule.id} className="level-rule-editor">
-                <label className="editor-toggle compact-toggle">
-                  <input type="checkbox" checked={rule.enabled} onChange={(event) => updateRule(rule.id, { enabled: event.target.checked })} />
-                  啟用
-                </label>
-                <label>
-                  行為
-                  <Input value={rule.label} onChange={(event) => updateRule(rule.id, { label: event.target.value })} aria-label={`${rule.label} 規則名稱`} />
-                </label>
-                <label>
-                  點數
-                  <Input type="number" min={0} value={rule.points} onChange={(event) => updateRule(rule.id, { points: Number(event.target.value) })} aria-label={`${rule.label} 點數`} />
-                </label>
-              </div>
-            ))}
-          </div>
-        </section>
-        <section>
-          <h5>等級門檻與福利</h5>
-          <div className="settings-stack">
-            {levelSystem.levels.map((level) => (
-              <div key={level.level} className="level-definition-editor">
-                <strong>Level {level.level}</strong>
-                <label>
-                  等級名稱
-                  <Input value={level.name} onChange={(event) => updateLevel(level.level, { name: event.target.value })} aria-label={`Level ${level.level} 名稱`} />
-                </label>
-                <label>
-                  升級點數
-                  <Input type="number" min={0} value={level.pointsRequired} onChange={(event) => updateLevel(level.level, { pointsRequired: Number(event.target.value) })} aria-label={`Level ${level.level} 升級點數`} />
-                </label>
-                <label>
-                  解鎖福利
-                  <Textarea value={level.unlocks.join('、')} onChange={(event) => updateLevel(level.level, { unlocks: event.target.value.split('、').map((item) => item.trim()).filter(Boolean) })} aria-label={`Level ${level.level} 解鎖福利`} />
-                </label>
-              </div>
-            ))}
-          </div>
-        </section>
-        <section>
-          <h5>網站功能權限綁定</h5>
-          <div className="settings-stack">
-            {levelSystem.bindings.map((binding) => (
-              <div key={binding.id} className="level-binding-editor">
-                <Badge variant="outline" className="pill">{featureBindingLabel(binding.feature)}</Badge>
-                <label>
-                  功能或內容
-                  <Input value={binding.title} onChange={(event) => updateBinding(binding.id, { title: event.target.value })} aria-label={`${binding.title} 權限名稱`} />
-                </label>
-                <label>
-                  需要等級
-                  <Input type="number" min={1} value={binding.requiredLevel} onChange={(event) => updateBinding(binding.id, { requiredLevel: Number(event.target.value) })} aria-label={`${binding.title} 需要等級`} />
-                </label>
-                <label>
-                  解鎖後福利
-                  <Input value={binding.benefit} onChange={(event) => updateBinding(binding.id, { benefit: event.target.value })} aria-label={`${binding.title} 福利`} />
-                </label>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
-    </article>
-  )
-}
-
-function SearchView({
-  preset,
-  query,
-  onQuery,
-}: {
-  preset: ReturnType<typeof getPreset>
-  query: string
-  onQuery: (value: string) => void
-}) {
-  const isPublication = isPublicationPreset(preset)
-  const searchTerm = query.trim().toLowerCase()
-  const results = useMemo(() => {
-    const rows: Array<{ id: string; type: string; title: string; meta: string; text: string }> = []
-    preset.content.forEach((item) => rows.push({ id: item.id, type: contentTypeLabel(item.type), title: item.title, meta: `${item.category} · ${sourceLabel(item.source)}`, text: `${item.title} ${item.category} ${item.excerpt} ${item.body}` }))
-    preset.newsletter.forEach((issue) => rows.push({ id: issue.id, type: isPublication ? '電子報' : '通訊', title: issue.subject, meta: `${segmentLabel(issue.segment)} · ${statusLabel(issue.status)}`, text: `${issue.subject} ${issue.segment} ${issue.status}` }))
-    preset.courses.forEach((course) => {
-      rows.push({ id: course.id, type: '課程', title: course.title, meta: `完成度 ${course.progress}%`, text: `${course.title} ${course.description}` })
-      course.lessons.forEach((lesson) => rows.push({ id: lesson.id, type: '單元', title: lesson.title, meta: `${course.title} · ${lesson.minutes} 分鐘`, text: `${lesson.title} ${lesson.transcript ?? ''} ${(lesson.resources ?? []).map((resource) => resource.title).join(' ')}` }))
+  const saveRule = (event: FormEvent) => {
+    event.preventDefault()
+    const rule = ruleDraft.trim()
+    if (!ruleDialog || !rule) return
+    updateState({
+      rules: ruleDialog.mode === 'add'
+        ? [...state.rules, rule]
+        : state.rules.map((item, index) => index === ruleDialog.index ? rule : item),
     })
-    preset.threads.forEach((thread) => rows.push({ id: thread.id, type: '討論', title: thread.title, meta: `${thread.category} · ${thread.replies} 則回覆`, text: `${thread.title} ${thread.category} ${thread.author}` }))
-    preset.members.forEach((member) => rows.push({ id: member.id, type: isPublication ? '訂閱者' : '成員', title: member.name, meta: isPublication ? `${statusLabel(member.status)} · ${sourceLabel(member.source)}` : `${roleDisplayLabel(member.groupRole)} · Level ${member.level}`, text: `${member.name} ${member.bio} ${member.source} ${member.groupRole}` }))
-    preset.events.forEach((event) => rows.push({ id: event.id, type: '活動', title: event.title, meta: `${eventKindLabel(event.kind)} · ${event.date}`, text: `${event.title} ${event.description} ${event.audience}` }))
-
-    if (!searchTerm) return rows
-    return rows.filter((row) => row.text.toLowerCase().includes(searchTerm))
-  }, [isPublication, preset, searchTerm])
-
+    setRuleDialog(null)
+    setRuleDraft('')
+  }
+  const deleteRule = () => {
+    if (deleteRuleIndex === null) return
+    updateState({ rules: state.rules.filter((_, index) => index !== deleteRuleIndex) })
+    setDeleteRuleIndex(null)
+  }
+  const deleteCategory = () => {
+    if (!deleteCategoryId) return
+    updateState({ categories: state.categories.filter((item) => item.id !== deleteCategoryId) }, '社群分類已刪除。')
+    setDeleteCategoryId(null)
+  }
+  useEscapeKey(categoryDialogOpen, () => setCategoryDialogOpen(false))
+  useEscapeKey(Boolean(ruleDialog), () => setRuleDialog(null))
+  useEscapeKey(deleteRuleIndex !== null, () => setDeleteRuleIndex(null))
+  useEscapeKey(Boolean(deleteCategoryId), () => setDeleteCategoryId(null))
   return (
-    <section className="section-block">
-      <div className="section-heading horizontal">
-        <div>
-          <span className="eyebrow">站內搜尋</span>
-          <h3>{isPublication ? '搜尋文章、Newsletter、讀者與訂閱資料' : '搜尋文章、課程、逐字稿、討論、活動與會員'}</h3>
+    <div className="admin-grid">
+      <article className="span-2">
+        <div className="section-heading-row">
+          <SectionHeading eyebrow="Categories" title="Community categories" />
+          <Button className="primary-button" type="button" onClick={() => { setCategoryName(''); setCategoryDialogOpen(true) }}>Add</Button>
         </div>
-        <label className="search-box">
-          <Search size={18} aria-hidden="true" />
-          <Input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="輸入想搜尋的東西" />
-        </label>
-      </div>
-      <div className="search-results">
-        {results.map((result) => (
-          <article key={`${result.type}-${result.id}`} className="search-result">
-            <div className="search-result-main">
-              <strong>{result.title}</strong>
-              <small>{result.meta}</small>
+        <div className="category-editor-list">
+          {state.categories.map((category) => (
+            <div key={category.id} className="category-editor-row">
+              <strong>{category.name}</strong>
+              <label>Permission<select aria-label={`${category.name} permission`} value={category.permission} onChange={(event) => updateCategory(category.id, { permission: event.target.value as CommunityCategory['permission'] })}>
+                <option value="members">Members can post</option>
+                <option value="admins">Admin-only posts</option>
+              </select></label>
+              <label>Sort<select aria-label={`${category.name} sort`} value={category.sort} onChange={(event) => updateCategory(category.id, { sort: event.target.value as CommunityCategory['sort'] })}>
+                <option value="default">Default</option>
+                <option value="new">New</option>
+                <option value="top-week">Top week</option>
+                <option value="top-month">Top month</option>
+              </select></label>
+              <Button variant="outline" className="secondary-button danger-button" type="button" onClick={() => setDeleteCategoryId(category.id)}>Delete</Button>
             </div>
-            <Badge variant="outline" className="pill search-result-type">{result.type}</Badge>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function ChallengesView({
-  preset,
-  role,
-  currentMember,
-  activePoints,
-  checkedInChallenges,
-  onCheckIn,
-}: {
-  preset: ReturnType<typeof getPreset>
-  role: Role
-  currentMember: Member
-  activePoints: number
-  checkedInChallenges: string[]
-  onCheckIn: (challengeId: string) => void
-}) {
-  const canCheckIn = role !== 'visitor'
-  const levelSystem = getLevelSystem(preset)
-  const currentLevel = role === 'visitor' ? levelSystem.levels[0] : levelForPoints(levelSystem, activePoints)
-  const nextLevel = role === 'visitor' ? levelSystem.levels[1] : nextLevelForPoints(levelSystem, activePoints)
-  const previousPoints = currentLevel?.pointsRequired ?? 0
-  const nextPoints = nextLevel?.pointsRequired ?? Math.max(activePoints, previousPoints + 1)
-  const levelProgress = Math.min(100, Math.max(0, ((activePoints - previousPoints) / Math.max(1, nextPoints - previousPoints)) * 100))
-  const pointsToNext = nextLevel ? Math.max(0, nextLevel.pointsRequired - activePoints) : 0
-  const rankedMembers = preset.members.slice().sort((a, b) => b.points - a.points)
-  const thirtyDayMembers = rankedMembers
-    .map((member, index) => ({ ...member, periodPoints: Math.max(12, Math.round(member.points * (0.08 - index * 0.01))) }))
-    .sort((a, b) => b.periodPoints - a.periodPoints)
-  const sevenDayMembers = rankedMembers
-    .map((member, index) => ({ ...member, periodPoints: Math.max(5, Math.round(member.contributions.comments * 0.8 + member.contributions.posts * 1.2 - index)) }))
-    .sort((a, b) => b.periodPoints - a.periodPoints)
-  return (
-    <section className="section-block">
-      <div className="section-heading">
-        <span className="eyebrow">打卡挑戰</span>
-        <h3>打卡挑戰、積分、等級與排行榜</h3>
-        {role === 'visitor' && <p>訪客可以先看到挑戰節奏與排行榜；加入會員後才能完成打卡、累積積分與更新連續紀錄。</p>}
-        {role === 'member' && <p>會員可以完成每日或每週打卡，累積積分並在排行榜中追蹤自己的進度。</p>}
-        {role === 'admin' && <p>管理員可以檢查挑戰參與狀態、積分規則與排行榜呈現是否正常。</p>}
-      </div>
-      <article className="level-overview-card">
-        <div className="level-profile">
-          <div className="level-avatar-ring">
-            <div className="level-avatar">{currentMember.name.slice(0, 1)}</div>
-            <span>{currentLevel?.level ?? 1}</span>
-          </div>
-          <h4>{role === 'visitor' ? '訪客' : currentMember.name}</h4>
-          <strong>Level {currentLevel?.level ?? 1} · {currentLevel?.name ?? '入門會員'}</strong>
-          <p>{nextLevel ? `${pointsToNext} 分後升到 Level ${nextLevel.level}` : '已達目前最高等級'}</p>
-          <div className="progress-track"><span style={{ width: `${levelProgress}%` }} /></div>
-        </div>
-        <div className="level-ladder">
-          {levelSystem.levels.map((level) => {
-            const unlocked = role !== 'visitor' && activePoints >= level.pointsRequired
-            return (
-              <div key={level.level} className={unlocked ? 'unlocked' : ''}>
-                <span>{unlocked ? level.level : <Lock size={16} />}</span>
-                <div>
-                  <strong>Level {level.level} · {level.name}</strong>
-                  <small>{level.pointsRequired} 分解鎖 · {level.memberPercent}% 會員達成</small>
-                  {level.unlocks.length > 0 && <p>解鎖：{level.unlocks.join('、')}</p>}
-                </div>
-              </div>
-            )
-          })}
+          ))}
         </div>
       </article>
-      <div className="level-rules-grid">
-        {levelSystem.rules.map((rule) => (
-          <article key={rule.id} className={rule.enabled ? 'level-rule-card' : 'level-rule-card disabled'}>
-            <span>{pointRuleLabel(rule.action)}</span>
-            <strong>{rule.label}</strong>
-            <small>{rule.enabled ? `+${rule.points} 分` : '已停用'}</small>
-          </article>
-        ))}
-      </div>
-      <div className="challenge-grid">
-        {preset.challenges.map((challenge) => {
-          const done = checkedInChallenges.includes(challenge.id)
-          return (
-            <article key={challenge.id} className="challenge-card">
-              <Flame size={22} aria-hidden="true" />
-              <h4>{challenge.title}</h4>
-              <p>{challenge.cadence} · {challenge.participants} 位參與</p>
-              <strong>連續 {challenge.streak} 次 · +{challenge.points} 分</strong>
-              <button disabled={done || !canCheckIn} onClick={() => onCheckIn(challenge.id)}>
-                {!canCheckIn ? '加入後打卡' : done ? '今日已打卡' : role === 'admin' ? '檢查打卡' : '完成打卡'}
-              </button>
-            </article>
-          )
-        })}
-      </div>
-      {preset.levelSystem && preset.levelSystem.bindings.length > 0 && (
-        <div className="level-binding-grid">
-          {preset.levelSystem.bindings.map((binding) => (
-            <article key={binding.id}>
-              <Badge variant="outline" className="pill">{featureBindingLabel(binding.feature)} · Level {binding.requiredLevel}</Badge>
-              <strong>{binding.title}</strong>
-              <small>{binding.benefit}</small>
-            </article>
+      <article>
+        <div className="section-heading-row">
+          <SectionHeading eyebrow="Rules" title="Group rules" />
+          <Button className="primary-button" type="button" onClick={() => openRuleDialog({ mode: 'add' })}>Add</Button>
+        </div>
+        <div className="compact-list rule-list">
+          {state.rules.map((item, index) => (
+            <p key={`${item}-${index}`}>
+              <strong>{item}</strong>
+              <span className="question-actions">
+                <Button variant="outline" className="icon-button ghost-button" type="button" onClick={() => openRuleDialog({ mode: 'edit', index })} aria-label={`Edit rule ${index + 1}`}><Pencil size={16} aria-hidden="true" /></Button>
+                <Button variant="outline" className="icon-button ghost-button danger-button" type="button" onClick={() => setDeleteRuleIndex(index)} aria-label={`Delete rule ${index + 1}`}><Trash2 size={16} aria-hidden="true" /></Button>
+              </span>
+            </p>
           ))}
         </div>
-      )}
-      <div className="leaderboard-cards">
-        <LeaderboardCard title="7 日排行榜" members={sevenDayMembers.slice(0, 4)} score={(member) => `+${member.periodPoints}`} />
-        <LeaderboardCard title="30 日排行榜" members={thirtyDayMembers.slice(0, 4)} score={(member) => `+${member.periodPoints}`} />
-        <LeaderboardCard title="總積分排行榜" members={rankedMembers.slice(0, 4)} score={(member) => `${member.points}`} />
-      </div>
-      <div className="leaderboard">
-        {rankedMembers
-          .map((member, index) => (
-            <div key={member.id}>
-              <span>#{index + 1}</span>
-              <strong>{member.name}</strong>
-              <small>Level {member.level} · {member.points} 分</small>
-            </div>
-          ))}
-      </div>
-    </section>
-  )
-}
-
-function LeaderboardCard<T extends Member & { periodPoints?: number }>({
-  title,
-  members,
-  score,
-}: {
-  title: string
-  members: T[]
-  score: (member: T) => string
-}) {
-  return (
-    <article className="leaderboard-card">
-      <h4>{title}</h4>
-      <div>
-        {members.map((member, index) => (
-          <div key={`${title}-${member.id}`} className="leaderboard-card-row">
-            <span>{index + 1}</span>
-            <div className="member-avatar small">{member.name.slice(0, 1)}</div>
-            <strong>{member.name}</strong>
-            <small>{score(member)}</small>
-          </div>
-        ))}
-      </div>
-    </article>
-  )
-}
-
-function EventsView({ preset }: { preset: ReturnType<typeof getPreset> }) {
-  return (
-    <section className="section-block">
-      <div className="section-heading">
-        <span className="eyebrow">活動日曆</span>
-        <h3>Webinar、Live、Office hour 與回放</h3>
-      </div>
-      <div className="event-grid">
-        {preset.events.map((event) => (
-          <article key={event.id} className="event-card">
-            <Badge variant="outline" className="pill">{eventKindLabel(event.kind)} · {statusLabel(event.status)}</Badge>
-            <h4>{event.title}</h4>
-            <p>{event.description}</p>
-            <small>{event.date} · 對象：{accessLabel(event.audience)} · 回放：{accessLabel(event.replayAccess)}</small>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function MemberView({ preset, state, selectedPlan }: { preset: ReturnType<typeof getPreset>; state: AppState; selectedPlan: Plan }) {
-  const lastEvent = state.paymentEvents[0]
-  const isPublication = isPublicationPreset(preset)
-  return (
-    <section className="section-block">
-      <div className="section-heading">
-        <span className="eyebrow">{isPublication ? '我的訂閱' : '我的會員中心'}</span>
-        <h3>{isPublication ? '訂閱方案、收據/發票與付款自助' : '會員方案、收據/發票狀態與付款自助'}</h3>
-        <p>{isPublication ? '讀者可以在這裡確認目前訂閱、收據/發票、付款方式與推薦贈閱。' : '會員可以在這裡確認目前方案、收據/發票、付款方式與推薦贈閱。'}</p>
-      </div>
-      <div className="member-grid">
-        <MetricTile label="目前方案" value={selectedPlan.name} icon={ShieldCheck} />
-        <MetricTile label={isPublication ? '讀者狀態' : '會員狀態'} value={state.role === 'visitor' ? '訪客' : '有效'} icon={UserRound} />
-        <MetricTile label="收據/發票" value={paymentValueLabel(lastEvent?.invoiceStatus)} icon={CircleDollarSign} />
-        <MetricTile label="付款自助" value="可使用" icon={ChevronRight} />
-      </div>
-      <div className="self-service-grid">
-        <article>
-          <h4>付款與訂閱自助</h4>
-          <ul className="check-list">
-            <li><CircleDollarSign size={16} />更新付款方式、取消訂閱或恢復訂閱</li>
-            <li><FileText size={16} />查看收據、發票與付款紀錄</li>
-            <li><Bell size={16} />付款失敗時可發 Email、LINE、站內通知</li>
-          </ul>
-        </article>
-        <article>
-          <h4>我的推薦與贈閱</h4>
-          <div className="referral-grid compact">
-            {preset.referrals.slice(0, 2).map((campaign) => (
-              <div key={campaign.id} className="referral-card">
-                <Badge variant="outline" className="pill">{campaign.code}</Badge>
-                <strong>{campaign.label}</strong>
-                <small>{campaign.reward}</small>
+      </article>
+      {categoryDialogOpen && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setCategoryDialogOpen(false)
+          }}
+        >
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label="新增社群分類">
+            <button className="modal-close" type="button" onClick={() => setCategoryDialogOpen(false)} aria-label="關閉新增分類">×</button>
+            <SectionHeading eyebrow="Add category" title="新增社群分類" />
+            <form className="settings-form" onSubmit={saveCategory}>
+              <label>Category name<Input aria-label="Category name" value={categoryName} onChange={(event) => setCategoryName(event.target.value)} required /></label>
+              <div className="button-stack">
+                <Button variant="outline" className="secondary-button" type="button" onClick={() => setCategoryDialogOpen(false)}>Cancel</Button>
+                <Button className="primary-button" type="submit">Save</Button>
               </div>
-            ))}
-          </div>
-        </article>
-      </div>
-      <div className="empty-state">
-        <strong>{lastEvent ? '最近一次付款紀錄' : '目前沒有付款紀錄'}</strong>
-        <small>{lastEvent ? `${lastEvent.planId} · ${lastEvent.amountLabel} · ${paymentValueLabel(lastEvent.invoiceStatus)}` : '加入付費方案後，這裡會顯示付款、收據與發票狀態。'}</small>
-      </div>
-    </section>
-  )
-}
-
-function AdminSettingsEditor({
-  preset,
-  onUpdatePreset,
-  section = 'all',
-}: {
-  preset: VerticalPreset
-  onUpdatePreset: (patch: Partial<VerticalPreset>) => void
-  section?: 'all' | 'site' | 'content' | 'newsletter' | 'courses'
-}) {
-  const isPublication = isPublicationPreset(preset)
-  const showSite = section === 'all' || section === 'site'
-  const showContent = section === 'all' || section === 'content'
-  const showNewsletter = section === 'all' || section === 'newsletter'
-  const showCourses = section === 'all' || section === 'courses'
-  const [publicationMode, setPublicationMode] = useState<'article' | 'article-newsletter'>('article')
-  const [publicationAudience, setPublicationAudience] = useState<NewsletterIssue['segment']>('all')
-  const [publicationSchedule, setPublicationSchedule] = useState('立即寄出')
-  const editorTitle = {
-    all: isPublication ? '出版站可調整的內容' : 'Fork 後可調整的網站內容',
-    site: isPublication ? '站點、品牌與訂閱方案' : '網站、品牌與會員方案',
-    content: isPublication ? '文章、付費牆與限時免費' : '內容、權限與素材',
-    newsletter: isPublication ? 'Newsletter 發送設定' : '通訊發送設定',
-    courses: '課程標題與說明',
-  }[section]
-  const updateBrand = (key: keyof VerticalPreset['brand'], value: string) => {
-    onUpdatePreset({ brand: { ...preset.brand, [key]: value } })
-  }
-  const updateCopy = (key: keyof VerticalPreset['copy'], value: string) => {
-    onUpdatePreset({ copy: { ...preset.copy, [key]: value } })
-  }
-  const updatePlan = (planId: string, patch: Partial<Plan>) => {
-    onUpdatePreset({ plans: updateById(preset.plans, planId, patch) })
-  }
-  const updateContent = (contentId: string, patch: Partial<ContentItem>) => {
-    onUpdatePreset({ content: updateById(preset.content, contentId, patch) })
-  }
-  const updateNewsletter = (issueId: string, patch: Partial<NewsletterIssue>) => {
-    onUpdatePreset({ newsletter: updateById(preset.newsletter, issueId, patch) })
-  }
-  const updateCourse = (courseId: string, patch: Partial<Course>) => {
-    onUpdatePreset({ courses: updateById(preset.courses, courseId, patch) })
-  }
-
-  return (
-    <article className={`admin-panel ${section === 'all' ? 'span-3' : 'span-2'} settings-editor`}>
-      <div className="admin-panel-head">
-        <div>
-          <span className="eyebrow">基礎編輯</span>
-          <h4>{editorTitle}</h4>
-        </div>
-        <StatusPill tone="green">可編輯</StatusPill>
-      </div>
-
-      {showSite && (
-        <>
-          <div className="settings-editor-grid">
-            <label>
-              網站名稱
-              <Input name="productName" value={preset.brand.productName} onChange={(event) => updateBrand('productName', event.target.value)} autoComplete="off" />
-            </label>
-            <label>
-              作者 / 品牌名稱
-              <Input name="creatorName" value={preset.brand.creatorName} onChange={(event) => updateBrand('creatorName', event.target.value)} autoComplete="off" />
-            </label>
-            <label>
-              首頁主標題
-              <Input name="heroTitle" value={preset.copy.heroTitle} onChange={(event) => updateCopy('heroTitle', event.target.value)} autoComplete="off" />
-            </label>
-            <label>
-              主要按鈕
-              <Input name="ctaPrimary" value={preset.copy.ctaPrimary} onChange={(event) => updateCopy('ctaPrimary', event.target.value)} autoComplete="off" />
-            </label>
-            <label className="span-2">
-              首頁介紹
-              <Textarea name="heroBody" value={preset.copy.heroBody} onChange={(event) => updateCopy('heroBody', event.target.value)} autoComplete="off" />
-            </label>
-          </div>
-
-          <div className="settings-editor-section">
-            <div>
-              <span className="eyebrow">方案設定</span>
-              <h5>訂閱方案、價格與權益</h5>
-            </div>
-            <div className="settings-repeat-grid">
-              {preset.plans.map((plan) => (
-                <div key={plan.id} className="settings-card">
-                  <label>
-                    方案名稱
-                    <Input name={`plan-${plan.id}-name`} value={plan.name} onChange={(event) => updatePlan(plan.id, { name: event.target.value })} autoComplete="off" />
-                  </label>
-                  <label>
-                    價格
-                    <Input name={`plan-${plan.id}-price`} value={plan.price} onChange={(event) => updatePlan(plan.id, { price: event.target.value })} autoComplete="off" />
-                  </label>
-                  <label>
-                    說明
-                    <Textarea name={`plan-${plan.id}-description`} value={plan.description} onChange={(event) => updatePlan(plan.id, { description: event.target.value })} autoComplete="off" />
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
-      {showContent && (
-        <div className="settings-editor-section">
-          <div>
-            <span className="eyebrow">文章與付費牆</span>
-            <h5>{isPublication ? '文章發布、付費牆與電子報' : '公開內容、會員內容與課程素材'}</h5>
-          </div>
-          {isPublication && (
-            <div className="publication-publish-flow">
-              <div className="publication-publish-copy">
-                <span className="eyebrow">發布方式</span>
-                <strong>發布文章時決定是否同步寄出電子報</strong>
-                <small>創作者可以只把文章發布到網站，也可以同時建立 Newsletter 並發給指定讀者分眾。</small>
-              </div>
-              <div className="publication-publish-options" role="radiogroup" aria-label="文章發布方式">
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={publicationMode === 'article'}
-                  className={publicationMode === 'article' ? 'selected' : ''}
-                  onClick={() => setPublicationMode('article')}
-                >
-                  <span aria-hidden="true" />
-                  <strong>只發布文章</strong>
-                  <small>文章上架到網站，不寄電子報。</small>
-                </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={publicationMode === 'article-newsletter'}
-                  className={publicationMode === 'article-newsletter' ? 'selected' : ''}
-                  onClick={() => setPublicationMode('article-newsletter')}
-                >
-                  <span aria-hidden="true" />
-                  <strong>文章與電子報同時發布</strong>
-                  <small>文章上架後，同步寄給指定讀者。</small>
-                </button>
-              </div>
-              {publicationMode === 'article-newsletter' && (
-                <div className="publication-recipient-grid">
-                  <label>
-                    發送給讀者
-                    <select className="editor-select" value={publicationAudience} onChange={(event) => setPublicationAudience(event.target.value as NewsletterIssue['segment'])}>
-                      <option value="all">全部讀者</option>
-                      <option value="free">免費讀者</option>
-                      <option value="paid">付費讀者</option>
-                      <option value="founding">創始訂閱讀者</option>
-                    </select>
-                  </label>
-                  <label>
-                    發送時間
-                    <Input value={publicationSchedule} onChange={(event) => setPublicationSchedule(event.target.value)} autoComplete="off" />
-                  </label>
-                  <small className="settings-helper span-2">目前設定：文章發布後會寄給{segmentLabel(publicationAudience)}，發送時間為「{publicationSchedule}」。</small>
-                </div>
-              )}
-            </div>
-          )}
-          <div className="settings-stack">
-            {preset.content.slice(0, 4).map((item) => (
-              <div key={item.id} className="settings-card compact">
-                <div className="settings-card-head">
-                  <StatusPill tone={item.isPaid ? 'blue' : 'green'}>{item.isPaid ? '付費訂閱' : '公開'}</StatusPill>
-                  <label className="editor-toggle compact-toggle">
-                    <input
-                      type="checkbox"
-                      checked={item.isPaid}
-                      onChange={(event) => updateContent(item.id, {
-                        isPaid: event.target.checked,
-                        limitedFreeUntil: event.target.checked ? item.limitedFreeUntil : undefined,
-                      })}
-                    />
-                    訂閱制
-                  </label>
-                </div>
-                {isPublication && item.isPaid && (
-                  <div className="settings-inline-grid">
-                    <label>
-                      付費牆段落位置
-                      <Input
-                        name={`content-${item.id}-paywall`}
-                        type="number"
-                        min={1}
-                        value={paywallParagraph(item)}
-                        onChange={(event) => updateContent(item.id, { paywallAfterParagraph: Math.max(1, Number(event.target.value) || 1) })}
-                        autoComplete="off"
-                      />
-                    </label>
-                    <label>
-                      限時免費公開到
-                      <Input
-                        name={`content-${item.id}-limited-free`}
-                        type="datetime-local"
-                        value={datetimeLocalValue(item.limitedFreeUntil)}
-                        onChange={(event) => updateContent(item.id, { limitedFreeUntil: event.target.value || undefined })}
-                        autoComplete="off"
-                      />
-                    </label>
-                    <small className="settings-helper span-2">
-                      設定後，這篇付費文章會在期限前開放閱讀；時間過後會自動回到付費牆。
-                    </small>
-                  </div>
-                )}
-                <label>
-                  標題
-                  <Input name={`content-${item.id}-title`} value={item.title} onChange={(event) => updateContent(item.id, { title: event.target.value })} autoComplete="off" />
-                </label>
-                {!isPublication && (
-                  <label>
-                    需要等級
-                    <Input
-                      name={`content-${item.id}-required-level`}
-                      type="number"
-                      min={1}
-                      value={item.requiredLevel ?? 1}
-                      onChange={(event) => updateContent(item.id, { requiredLevel: Math.max(1, Number(event.target.value) || 1) })}
-                      autoComplete="off"
-                    />
-                  </label>
-                )}
-                <label>
-                  摘要
-                  <Textarea name={`content-${item.id}-excerpt`} value={item.excerpt} onChange={(event) => updateContent(item.id, { excerpt: event.target.value })} autoComplete="off" />
-                </label>
-                <label>
-                  內文
-                  <DeferredRichTextEditor
-                    value={item.body}
-                    onChange={(body) => updateContent(item.id, { body })}
-                    ariaLabel={`${item.title} 內文`}
-                    placeholder={isPublication ? '撰寫公開或付費文章內容' : '撰寫文章、課程公告或會員內容'}
-                    compact
-                  />
-                </label>
-              </div>
-            ))}
+            </form>
           </div>
         </div>
       )}
-
-      {showCourses && preset.courses.length > 0 && (
-        <div className="settings-editor-section">
-          <div>
-            <span className="eyebrow">課程設定</span>
-            <h5>課程標題與說明</h5>
-          </div>
-          <div className="settings-repeat-grid">
-            {preset.courses.map((course) => (
-              <div key={course.id} className="settings-card">
-                <label>
-                  課程名稱
-                  <Input name={`course-${course.id}-title`} value={course.title} onChange={(event) => updateCourse(course.id, { title: event.target.value })} autoComplete="off" />
-                </label>
-                <label>
-                  課程說明
-                  <Textarea name={`course-${course.id}-description`} value={course.description} onChange={(event) => updateCourse(course.id, { description: event.target.value })} autoComplete="off" />
-                </label>
-                {!isPublication && (
-                  <label>
-                    解鎖等級
-                    <Input
-                      name={`course-${course.id}-required-level`}
-                      type="number"
-                      min={1}
-                      value={course.requiredLevel ?? 1}
-                      onChange={(event) => updateCourse(course.id, { requiredLevel: Math.max(1, Number(event.target.value) || 1) })}
-                      autoComplete="off"
-                    />
-                  </label>
-                )}
-              </div>
-            ))}
+      {deleteCategoryId && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setDeleteCategoryId(null)
+          }}
+        >
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label="確認刪除社群分類">
+            <button className="modal-close" type="button" onClick={() => setDeleteCategoryId(null)} aria-label="關閉刪除分類確認">×</button>
+            <SectionHeading eyebrow="Delete category" title="確認刪除社群分類">
+              刪除分類後，既有貼文仍會保留，但分類選項會移除。
+            </SectionHeading>
+            <div className="button-stack">
+              <Button variant="outline" className="secondary-button" type="button" onClick={() => setDeleteCategoryId(null)}>Cancel</Button>
+              <Button variant="outline" className="secondary-button danger-button" type="button" onClick={deleteCategory}>Delete</Button>
+            </div>
           </div>
         </div>
       )}
-
-      {showNewsletter && (
-        <div className="settings-editor-section">
-          <div>
-            <span className="eyebrow">電子報設定</span>
-            <h5>{isPublication ? 'Newsletter 發送、分眾與歡迎信' : '文章電子報、分眾與發送時間'}</h5>
-          </div>
-          <div className="settings-stack">
-            {preset.newsletter.map((issue) => (
-              <div key={issue.id} className="settings-card compact">
-                <div className="settings-card-head">
-                  <StatusPill tone={issue.status === 'sent' ? 'green' : issue.status === 'scheduled' ? 'blue' : 'yellow'}>{statusLabel(issue.status)}</StatusPill>
-                  <small>{segmentLabel(issue.segment)}</small>
-                </div>
-                <label>
-                  主旨
-                  <Input name={`newsletter-${issue.id}-subject`} value={issue.subject} onChange={(event) => updateNewsletter(issue.id, { subject: event.target.value })} autoComplete="off" />
-                </label>
-                <label>
-                  發送時間
-                  <Input name={`newsletter-${issue.id}-sendAt`} value={issue.sendAt} onChange={(event) => updateNewsletter(issue.id, { sendAt: event.target.value })} autoComplete="off" />
-                </label>
+      {ruleDialog && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setRuleDialog(null)
+          }}
+        >
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label={ruleDialog.mode === 'add' ? '新增社群規範' : '編輯社群規範'}>
+            <button className="modal-close" type="button" onClick={() => setRuleDialog(null)} aria-label="關閉社群規範設定">×</button>
+            <SectionHeading eyebrow={ruleDialog.mode === 'add' ? 'Add rule' : 'Edit rule'} title={ruleDialog.mode === 'add' ? '新增社群規範' : '編輯社群規範'} />
+            <form className="settings-form" onSubmit={saveRule}>
+              <label>Rule<Textarea aria-label="Group rule" value={ruleDraft} onChange={(event) => setRuleDraft(event.target.value)} required /></label>
+              <div className="button-stack">
+                <Button variant="outline" className="secondary-button" type="button" onClick={() => setRuleDialog(null)}>Cancel</Button>
+                <Button className="primary-button" type="submit">Save</Button>
               </div>
-            ))}
+            </form>
           </div>
         </div>
       )}
-    </article>
-  )
-}
-
-type PublicationAdminTabId = 'articles' | 'readers' | 'growth' | 'system' | 'settings'
-
-const publicationAdminTabs: Array<{ id: PublicationAdminTabId; label: string; description: string; icon: typeof LayoutDashboard }> = [
-  { id: 'articles', label: '文章發布', description: '文章、付費牆與電子報發送', icon: BookOpen },
-  { id: 'readers', label: '讀者', description: '免費與付費讀者狀態', icon: UsersRound },
-  { id: 'growth', label: '成長', description: '推薦、贈閱與升級', icon: Gift },
-  { id: 'system', label: '金流與系統', description: '付款、發票與整合狀態', icon: ShieldCheck },
-  { id: 'settings', label: '設定', description: '品牌、首頁與方案', icon: Settings2 },
-]
-
-type SkillAdminTabId = 'settings' | 'members' | 'articles' | 'courses' | 'newsletter' | 'subscriptions'
-
-const skillAdminTabs: Array<{ id: SkillAdminTabId; label: string; icon: typeof LayoutDashboard }> = [
-  { id: 'settings', label: '社團設定', icon: Settings2 },
-  { id: 'members', label: '會員', icon: UsersRound },
-  { id: 'articles', label: '文章', icon: BookOpen },
-  { id: 'courses', label: '課程', icon: PlayCircle },
-  { id: 'newsletter', label: '電子報', icon: Megaphone },
-  { id: 'subscriptions', label: '訂閱', icon: CircleDollarSign },
-]
-
-function PublicationAdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; state: AppState; onUpdatePreset: (patch: Partial<VerticalPreset>) => void }) {
-  const [activeTab, setActiveTab] = useState<PublicationAdminTabId>('articles')
-  const activeTabMeta = publicationAdminTabs.find((tab) => tab.id === activeTab) ?? publicationAdminTabs[0]
-  const paidMembers = preset.members.filter((member) => member.status === 'active').length
-  const freeMembers = preset.members.filter((member) => member.status === 'free').length
-  const paidContent = preset.content.filter((item) => item.isPaid).length
-  const publicContent = preset.content.filter((item) => !item.isPaid).length
-  const openModeration = preset.moderation.filter((item) => item.status !== 'resolved').length
-  const scheduledNewsletter = preset.newsletter.filter((issue) => issue.status === 'scheduled').length
-  const adminQueue = [
-    { label: '付費文章', value: `${paidContent}`, tone: 'yellow' },
-    { label: '讀者回覆待處理', value: `${openModeration}`, tone: 'red' },
-    { label: '付款狀態待確認', value: `${state.paymentEvents.length}`, tone: 'blue' },
-    { label: 'Newsletter 排程', value: `${scheduledNewsletter}`, tone: 'green' },
-  ]
-
-  return (
-    <div className="admin-workspace publication-admin-workspace">
-      <section className="section-block admin-hero publication-admin-hero">
-        <div className="section-heading">
-          <span className="eyebrow">出版後台</span>
-          <h3>{preset.brand.productName} 出版後台</h3>
-          <p>先看整體狀態，再處理文章發布、電子報發送、讀者、成長、付款發票與站點設定。文章與電子報已整合在同一個發布流程。</p>
+      {deleteRuleIndex !== null && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setDeleteRuleIndex(null)
+          }}
+        >
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label="確認刪除社群規範">
+            <button className="modal-close" type="button" onClick={() => setDeleteRuleIndex(null)} aria-label="關閉刪除社群規範確認">×</button>
+            <SectionHeading eyebrow="Delete rule" title="確認刪除社群規範">
+              這會從 About 頁面的社群規範中移除這條內容。
+            </SectionHeading>
+            <div className="button-stack">
+              <Button variant="outline" className="secondary-button" type="button" onClick={() => setDeleteRuleIndex(null)}>Cancel</Button>
+              <Button variant="outline" className="secondary-button danger-button" type="button" onClick={deleteRule}>Delete</Button>
+            </div>
+          </div>
         </div>
-        <div className="admin-grid">
-          <MetricTile label="月訂閱收入" value={preset.metrics.mrr} icon={BarChart3} />
-          <MetricTile label="免費讀者" value={String(freeMembers)} icon={UsersRound} />
-          <MetricTile label="付費讀者" value={String(paidMembers)} icon={ShieldCheck} />
-          <MetricTile label="公開 / 付費文章" value={`${publicContent} / ${paidContent}`} icon={BookOpen} />
-        </div>
-      </section>
-
-      <section className="publication-admin-overview">
-        <article className="admin-panel">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">總覽</span>
-              <h4>今日待辦</h4>
-            </div>
-            <AlertCircle size={18} />
-          </div>
-          <div className="admin-queue">
-            {adminQueue.map((item) => (
-              <div key={item.label}>
-                <StatusPill tone={item.tone}>{item.value}</StatusPill>
-                <span>{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="admin-panel">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">審核</span>
-              <h4>留言、讀者回覆與付款爭議</h4>
-            </div>
-            <ShieldCheck size={18} />
-          </div>
-          <div className="admin-content-stack">
-            {preset.moderation.map((item) => (
-              <div key={item.id} className="admin-content-item">
-                <Badge variant="outline" className="pill">{moderationKindLabel(item.kind, true)} · {statusLabel(item.status)}</Badge>
-                <strong>{item.title}</strong>
-                <small>{item.subject} · 優先度 {priorityLabel(item.priority)}</small>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>
-
-      <section className="publication-admin-shell">
-        <div className="publication-admin-content">
-          <div className="publication-admin-tab-head">
-            <div>
-              <span className="eyebrow">目前分頁</span>
-              <h4>{activeTabMeta.label}</h4>
-              <p>{activeTabMeta.description}</p>
-            </div>
-            <nav className="publication-admin-tabs" aria-label="Signal Brief 後台分頁">
-              {publicationAdminTabs.map((tab) => {
-                const Icon = tab.icon
-                return (
-                  <button key={tab.id} type="button" className={activeTab === tab.id ? 'active' : ''} onClick={() => setActiveTab(tab.id)}>
-                    <Icon size={16} />
-                    <span>{tab.label}</span>
-                  </button>
-                )
-              })}
-            </nav>
-          </div>
-
-          {activeTab === 'articles' && (
-            <div className="publication-admin-tab-grid">
-              <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="content" />
-              <article className="admin-panel">
-                <div className="admin-panel-head">
-                  <div>
-                    <span className="eyebrow">文章狀態</span>
-                    <h4>文章、付費牆與限時免費</h4>
-                  </div>
-                  <BookOpen size={18} />
-                </div>
-                <div className="admin-content-stack">
-                  {preset.content.map((item) => (
-                    <div key={item.id} className="admin-content-item">
-                      <Badge variant="outline" className="pill">{item.isPaid ? '付費文章' : '公開文章'} · {contentTypeLabel(item.type)}</Badge>
-                      <strong>{item.title}</strong>
-                      <small>{item.isPaid ? `第 ${paywallParagraph(item)} 段後啟用付費牆` : '公開可閱讀'} · {item.minutes} 分鐘</small>
-                      {item.limitedFreeUntil && <small>限時免費至 {item.limitedFreeUntil}</small>}
-                    </div>
-                  ))}
-                </div>
-              </article>
-
-              <article className="admin-panel">
-                <div className="admin-panel-head">
-                  <div>
-                    <span className="eyebrow">電子報成效</span>
-                    <h4>發信、讀者分眾與升級</h4>
-                  </div>
-                  <Megaphone size={18} />
-                </div>
-                <div className="admin-content-stack">
-                  {preset.newsletter.map((issue) => (
-                    <div key={issue.id} className="admin-content-item horizontal">
-                      <span>
-                        <Badge variant="outline" className="pill">{segmentLabel(issue.segment)} · {statusLabel(issue.status)}</Badge>
-                        <strong>{issue.subject}</strong>
-                        <small>{issue.sendAt === 'on signup' ? '註冊後自動寄送' : issue.sendAt} · 開信 {issue.openRate} · 點擊 {issue.clickRate}</small>
-                      </span>
-                      <StatusPill tone={issue.paidConversions > 0 ? 'green' : 'yellow'}>{`${issue.paidConversions} 人升級`}</StatusPill>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            </div>
-          )}
-
-          {activeTab === 'readers' && (
-            <article className="admin-panel publication-admin-table-panel">
-              <div className="admin-panel-head">
-                <div>
-                  <span className="eyebrow">讀者營運</span>
-                  <h4>讀者與訂閱狀態</h4>
-                </div>
-                <Button variant="outline" className="ghost-button"><SlidersHorizontal data-icon="inline-start" />篩選</Button>
-              </div>
-              <div className="admin-table">
-                <div className="admin-table-head">
-                  <span>讀者</span>
-                  <span>方案</span>
-                  <span>狀態</span>
-                  <span>來源</span>
-                  <span>互動</span>
-                </div>
-                {preset.members.map((member) => {
-                  const plan = preset.plans.find((item) => item.id === member.planId)
-                  return (
-                    <div key={member.id} className="admin-table-row">
-                      <span>
-                        <strong>{member.name}</strong>
-                        <small>{member.email}</small>
-                      </span>
-                      <span>{plan?.name ?? member.planId}</span>
-                      <span><StatusPill tone={member.status === 'active' ? 'green' : 'yellow'}>{statusLabel(member.status)}</StatusPill></span>
-                      <span>{sourceLabel(member.source)}</span>
-                      <span>{member.contributions.posts} 則留言 · {member.contributions.comments} 次互動</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </article>
-          )}
-
-          {activeTab === 'growth' && (
-            <div className="publication-admin-tab-grid">
-              <article className="admin-panel">
-                <div className="admin-panel-head">
-                  <div>
-                    <span className="eyebrow">成長</span>
-                    <h4>推薦、贈閱與來源成長</h4>
-                  </div>
-                  <Gift size={18} />
-                </div>
-                <div className="admin-content-stack">
-                  {preset.referrals.map((campaign) => (
-                    <div key={campaign.id} className="admin-content-item">
-                      <Badge variant="outline" className="pill">{campaign.code}</Badge>
-                      <strong>{campaign.label}</strong>
-                      <small>{campaign.freeTrials} 人體驗 · {campaign.paidConversions} 人升級 · {campaign.revenueLabel}</small>
-                    </div>
-                  ))}
-                </div>
-              </article>
-
-              <article className="admin-panel">
-                <div className="admin-panel-head">
-                  <div>
-                    <span className="eyebrow">來源</span>
-                    <h4>讀者來源與轉換</h4>
-                  </div>
-                  <Globe2 size={18} />
-                </div>
-                <div className="integration-grid">
-                  <IntegrationItem label="主要來源" value={sourceLabel(preset.metrics.topSource)} />
-                  <IntegrationItem label="付費轉換率" value={preset.metrics.conversion} />
-                  <IntegrationItem label="流失風險" value={`${preset.metrics.churnRisk} 位需追蹤`} />
-                  <IntegrationItem label="推薦碼" value={`${preset.referrals.length} 組活動中`} />
-                </div>
-              </article>
-            </div>
-          )}
-
-          {activeTab === 'system' && (
-            <div className="publication-admin-tab-grid">
-              <article className="admin-panel">
-                <div className="admin-panel-head">
-                  <div>
-                    <span className="eyebrow">付款</span>
-                    <h4>金流、訂閱與發票</h4>
-                  </div>
-                  <CircleDollarSign size={18} />
-                </div>
-                {state.paymentEvents.length === 0 ? (
-                  <div className="empty-state">
-                    <strong>尚未啟用正式金流</strong>
-                    <small>等文章、讀者、登入與訂閱流程確認後，再啟用金流與發票。</small>
-                  </div>
-                ) : (
-                  state.paymentEvents.map((event) => (
-                    <div key={event.id} className="event-line">
-                      <strong>{event.planId}</strong>
-                      <small>{event.amountLabel} · {event.invoiceStatus}</small>
-                    </div>
-                  ))
-                )}
-              </article>
-
-              <article className="admin-panel">
-                <div className="admin-panel-head">
-                  <div>
-                    <span className="eyebrow">系統狀態</span>
-                    <h4>InsForge / Portaly Vibe 設定狀態</h4>
-                  </div>
-                  <ShieldCheck size={18} />
-                </div>
-                <div className="integration-grid">
-                  <IntegrationItem label="登入" value="正式登入已可使用" />
-                  <IntegrationItem label="資料庫權限" value="文章、讀者與訂閱表已準備" />
-                  <IntegrationItem label="檔案儲存" value="文章圖片與付費附件" />
-                  <IntegrationItem label="Portaly Vibe MCP" value="專案層級設定已加入" />
-                  <IntegrationItem label="金流" value="核心流程完成後再啟用" />
-                  <IntegrationItem label="發票狀態" value="可同步到付款紀錄" />
-                </div>
-              </article>
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <div className="publication-admin-tab-grid">
-              <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="site" />
-              <article className="admin-panel">
-                <div className="admin-panel-head">
-                  <div>
-                    <span className="eyebrow">設定檢查</span>
-                    <h4>目前出版站設定</h4>
-                  </div>
-                  <Settings2 size={18} />
-                </div>
-                <div className="integration-grid">
-                  <IntegrationItem label="網站名稱" value={preset.brand.productName} />
-                  <IntegrationItem label="作者名稱" value={preset.brand.creatorName} />
-                  <IntegrationItem label="訂閱方案" value={`${preset.plans.length} 種方案`} />
-                  <IntegrationItem label="主要按鈕" value={preset.copy.ctaPrimary} />
-                </div>
-              </article>
-            </div>
-          )}
-        </div>
-      </section>
+      )}
     </div>
   )
 }
 
-function AdminView({ preset, state, onUpdatePreset }: { preset: VerticalPreset; state: AppState; onUpdatePreset: (patch: Partial<VerticalPreset>) => void }) {
-  const isPublication = isPublicationPreset(preset)
-  const [skillAdminTab, setSkillAdminTab] = useState<SkillAdminTabId>('settings')
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [copiedInvite, setCopiedInvite] = useState(false)
-  const paidMembers = preset.members.filter((member) => member.status === 'active').length
-  const freeMembers = preset.members.filter((member) => member.status === 'free').length
-  const pausedMembers = preset.members.filter((member) => member.status === 'paused').length
-  const paidContent = preset.content.filter((item) => item.isPaid).length
-  const totalLessons = preset.courses.reduce((count, course) => count + course.lessons.length, 0)
-  const openModeration = preset.moderation.filter((item) => item.status !== 'resolved').length
-  const inviteLink = 'https://skills-school-memberhub.vercel.app/join'
-  const adminQueue = isPublication
-    ? [
-        { label: '付費文章草稿', value: `${paidContent}`, tone: 'yellow' },
-        { label: '讀者回覆待處理', value: `${openModeration}`, tone: 'red' },
-        { label: '付款狀態待確認', value: `${state.paymentEvents.length}`, tone: 'blue' },
-        { label: 'Newsletter 排程', value: `${preset.newsletter.filter((issue) => issue.status === 'scheduled').length}`, tone: 'green' },
-      ]
-    : [
-        { label: '內容草稿待審', value: `${paidContent + 2}`, tone: 'yellow' },
-        { label: '社群檢舉待處理', value: `${openModeration}`, tone: 'red' },
-        { label: '付款狀態待確認', value: `${state.paymentEvents.length}`, tone: 'blue' },
-        { label: '通訊排程', value: `${preset.newsletter.filter((issue) => issue.status === 'scheduled').length}`, tone: 'green' },
-      ]
-
-  if (isPublication) {
-    return <PublicationAdminView preset={preset} state={state} onUpdatePreset={onUpdatePreset} />
+function AdminClassroom({ state, updateState }: { state: AppState; updateState: (patch: Partial<AppState>, notice?: string) => void }) {
+  const [view, setView] = useState<'list' | 'edit' | 'lesson'>('list')
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null)
+  const [editingPageId, setEditingPageId] = useState<string | null>(null)
+  const [deleteCourseId, setDeleteCourseId] = useState<string | null>(null)
+  const [deletePageTarget, setDeletePageTarget] = useState<{ courseId: string; pageId: string } | null>(null)
+  const [attachmentMessage, setAttachmentMessage] = useState('')
+  const editingCourse = state.courses.find((course) => course.id === editingCourseId)
+  const editingPage = editingCourse?.pages.find((page) => page.id === editingPageId)
+  const deleteCourseTarget = state.courses.find((course) => course.id === deleteCourseId)
+  const deletePageCourse = state.courses.find((course) => course.id === deletePageTarget?.courseId)
+  const deletePageItem = deletePageCourse?.pages.find((page) => page.id === deletePageTarget?.pageId)
+  const updateCourse = (id: string, patch: Partial<ClassroomCourse>) => {
+    updateState({ courses: state.courses.map((course) => course.id === id ? { ...course, ...patch } : course) })
   }
+  const updateCoursePage = (courseId: string, pageId: string, patch: Partial<ClassroomCourse['pages'][number]>) => {
+    updateState({
+      courses: state.courses.map((course) => course.id === courseId ? {
+        ...course,
+        pages: course.pages.map((page) => page.id === pageId ? { ...page, ...patch } : page),
+      } : course),
+    })
+  }
+  const addCoursePage = (courseId: string) => {
+    const pageId = `page-${Date.now()}`
+    updateState({
+      courses: state.courses.map((course) => course.id === courseId ? {
+        ...course,
+        pages: [...course.pages, { id: pageId, title: 'New lesson', minutes: 10, body: 'Write lesson content here.', resources: [] }],
+      } : course),
+    })
+    setEditingPageId(pageId)
+    setView('lesson')
+  }
+  const deleteCoursePage = (courseId: string, pageId: string) => {
+    updateState({
+      courses: state.courses.map((course) => course.id === courseId ? {
+        ...course,
+        pages: course.pages.length > 1 ? course.pages.filter((page) => page.id !== pageId) : course.pages,
+      } : course),
+    })
+  }
+  const deleteCourse = () => {
+    if (!deleteCourseId) return
+    updateState({ courses: state.courses.filter((course) => course.id !== deleteCourseId) }, '課程已刪除。')
+    if (editingCourseId === deleteCourseId) {
+      setEditingCourseId(null)
+      setEditingPageId(null)
+      setView('list')
+    }
+    setDeleteCourseId(null)
+  }
+  const confirmDeletePage = () => {
+    if (!deletePageTarget) return
+    deleteCoursePage(deletePageTarget.courseId, deletePageTarget.pageId)
+    if (editingPageId === deletePageTarget.pageId) {
+      setEditingPageId(null)
+      setView('edit')
+    }
+    setDeletePageTarget(null)
+  }
+  const appendCoursePageFiles = (courseId: string, page: ClassroomCourse['pages'][number], files: FileList | null) => {
+    if (!files?.length) return
+    updateCoursePage(courseId, page.id, { resources: [...page.resources, ...Array.from(files).map((file) => file.name)] })
+    setAttachmentMessage('附件已加入本機預覽清單；目前只保留檔名，正式檔案需 fork 後串接 Storage。')
+  }
+  const startCreateCourse = () => {
+    const courseId = `course-${Date.now()}`
+    const pageId = `page-${Date.now()}`
+    const next: ClassroomCourse = {
+      id: courseId,
+      title: 'Untitled course',
+      description: 'New classroom course created from the admin demo.',
+      accessMode: 'open',
+      published: false,
+      pages: [{ id: pageId, title: 'Start here', minutes: 10, body: 'Add your first lesson page.', resources: [] }],
+    }
+    updateState({ courses: [next, ...state.courses] })
+    setEditingCourseId(courseId)
+    setEditingPageId(null)
+    setView('edit')
+  }
+  useEscapeKey(Boolean(deleteCourseId), () => setDeleteCourseId(null))
+  useEscapeKey(Boolean(deletePageTarget), () => setDeletePageTarget(null))
 
-  if (preset.id === 'skills-school') {
+  if (view === 'lesson' && editingCourse && editingPage) {
     return (
-      <div className="admin-workspace skills-admin-workspace">
-        <section className="section-block admin-hero">
-          <div className="section-heading horizontal">
-            <div>
-              <span className="eyebrow">社團管理工具</span>
-              <h3>{preset.brand.productName} 設定</h3>
-              <p>這裡不是另一個後台，而是管理員在同一個私密社團裡使用的設定層；主要社群、課程、活動與會員畫面會和學員看到的前台保持一致。</p>
+      <div className="admin-grid">
+        <article className="span-3">
+          <div className="admin-page-actions">
+            <Button variant="outline" className="secondary-button" type="button" onClick={() => setView('edit')}>Back to Course content</Button>
+          </div>
+          <SectionHeading eyebrow="Lesson editor" title={editingPage.title}>
+            左側撰寫內容，右側管理單元設定與附件。
+          </SectionHeading>
+          <div className="lesson-editor-page">
+            <div className="lesson-content-editor">
+              <DeferredRichTextEditor
+                value={editingPage.body}
+                onChange={(body) => updateCoursePage(editingCourse.id, editingPage.id, { body })}
+                ariaLabel="Lesson body"
+                placeholder="撰寫文字、清單、引用，或用工具列加入圖片、影片與嵌入內容…"
+              />
             </div>
-            <div className="admin-mini-stats">
-              <StatusPill tone="green">{`免費讀者 ${preset.metrics.activeMembers}`}</StatusPill>
-              <StatusPill tone="blue">{`付費會員 ${paidMembers}`}</StatusPill>
+            <aside className="lesson-settings-sidebar" aria-label="Lesson settings">
+              <SectionHeading eyebrow="Settings" title="Lesson settings" />
+              <label>Lesson title<Input aria-label="Lesson title" value={editingPage.title} onChange={(event) => updateCoursePage(editingCourse.id, editingPage.id, { title: event.target.value })} /></label>
+              <label>Minutes<Input aria-label="Lesson minutes" type="number" min={1} value={editingPage.minutes} onChange={(event) => updateCoursePage(editingCourse.id, editingPage.id, { minutes: Number(event.target.value) })} /></label>
+              <label>Transcript<Textarea aria-label="Lesson transcript" value={editingPage.transcript ?? ''} onChange={(event) => updateCoursePage(editingCourse.id, editingPage.id, { transcript: event.target.value })} /></label>
+              <label>Attachments and resources<Textarea aria-label="Lesson resources" value={editingPage.resources.join('\n')} onChange={(event) => updateCoursePage(editingCourse.id, editingPage.id, { resources: event.target.value.split('\n').map((item) => item.trim()).filter(Boolean) })} /></label>
+              <label>Upload attachments<Input aria-label="Lesson attachments" type="file" multiple onChange={(event) => appendCoursePageFiles(editingCourse.id, editingPage, event.target.files)} /></label>
+              {attachmentMessage && <p className="form-helper">{attachmentMessage}</p>}
+            </aside>
+          </div>
+        </article>
+        {deletePageTarget && deletePageItem && (
+          <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDeletePageTarget(null) }}>
+            <div className="settings-modal" role="dialog" aria-modal="true" aria-label="確認刪除課程單元">
+              <button className="modal-close" type="button" onClick={() => setDeletePageTarget(null)} aria-label="關閉刪除單元確認">×</button>
+              <SectionHeading eyebrow="Delete lesson" title="確認刪除課程單元">
+                這會移除「{deletePageItem.title}」。
+              </SectionHeading>
+              <div className="button-stack">
+                <Button variant="outline" className="secondary-button" type="button" onClick={() => setDeletePageTarget(null)}>Cancel</Button>
+                <Button variant="outline" className="secondary-button danger-button" type="button" onClick={confirmDeletePage}>Delete</Button>
+              </div>
             </div>
           </div>
-          <nav className="skills-admin-tabs" aria-label="Skills School 管理分頁">
-            {skillAdminTabs.map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button key={tab.id} type="button" className={skillAdminTab === tab.id ? 'active' : ''} onClick={() => setSkillAdminTab(tab.id)}>
-                  <Icon size={16} />
-                  {tab.label}
-                </button>
-              )
-            })}
-          </nav>
-        </section>
-
-        {skillAdminTab === 'members' && (
-          <section className="skills-member-admin">
-            <div className="skills-member-toolbar">
-              <div className="member-status-tabs" aria-label="會員狀態篩選">
-                <button type="button" className="active">Active <strong>{paidMembers}</strong></button>
-                <button type="button">Cancelling <strong>0</strong></button>
-                <button type="button">Churned <strong>{pausedMembers}</strong></button>
-                <button type="button">Banned <strong>0</strong></button>
-              </div>
-              <div className="member-toolbar-actions">
-                <Button variant="outline" className="secondary-button"><SlidersHorizontal data-icon="inline-start" />Filter</Button>
-                <Button variant="outline" className="secondary-button"><Download data-icon="inline-start" />Export</Button>
-                <Button className="primary-button"><UserPlus data-icon="inline-start" />Invite</Button>
-              </div>
-            </div>
-
-            <div className="skills-member-layout">
-              <article className="admin-panel">
-                <div className="admin-panel-head">
-                  <div>
-                    <span className="eyebrow">會員管理</span>
-                    <h4>會員名單與狀態</h4>
-                  </div>
-                  <UsersRound size={18} />
-                </div>
-                <div className="skills-member-list">
-                  {preset.members.map((member, index) => {
-                    const plan = preset.plans.find((item) => item.id === member.planId)
-                    const memberStatus = member.status === 'active' ? 'Online now' : member.status === 'free' ? 'Free reader' : 'Paused'
-                    return (
-                      <article key={member.id} className="skills-member-record">
-                        <div className="skills-member-avatar">
-                          {member.name.slice(0, 1)}
-                          <span>{member.level}</span>
-                        </div>
-                        <div className="skills-member-main">
-                          <div className="skills-member-name">
-                            <strong>{member.name}</strong>
-                            <small>{index === 0 ? '(Owner)' : roleDisplayLabel(member.groupRole)}</small>
-                          </div>
-                          <p>@{member.email.split('@')[0].replace(/\./g, '-')}</p>
-                          <strong className="skills-member-title">{member.bio}</strong>
-                          <div className="skills-member-meta">
-                            <span><span className={`member-live-dot ${member.status}`} />{memberStatus}</span>
-                            <span><Tag size={16} />{plan?.name ?? member.planId}</span>
-                            <span><CalendarDays size={16} />Joined {member.joinedAt}</span>
-                            <span><ShieldCheck size={16} />{member.status === 'active' ? 'Membership active' : 'Membership preview'}</span>
-                          </div>
-                        </div>
-                        <div className="skills-member-side">
-                          <StatusPill tone={member.risk === 'high' ? 'red' : member.risk === 'medium' ? 'yellow' : 'green'}>{riskLabel(member.risk)}</StatusPill>
-                          <small>{member.contributions.posts} posts · {member.contributions.comments} comments</small>
-                        </div>
-                      </article>
-                    )
-                  })}
-                </div>
-              </article>
-
-              <aside className="skills-invite-panel">
-                <article className="admin-panel">
-                  <div className="admin-panel-head">
-                    <div>
-                      <span className="eyebrow">邀請連結</span>
-                      <h4>Share your group link</h4>
-                    </div>
-                    <Link2 size={18} />
-                  </div>
-                  <p>這個連結會帶新學員到加入會員頁，讓他們選擇免費讀者或 AI Skill 會員方案。</p>
-                  <div className="invite-link-box">
-                    <span>{inviteLink}</span>
-                    <Button
-                      className="primary-button"
-                      onClick={() => {
-                        void navigator.clipboard?.writeText(inviteLink)
-                        setCopiedInvite(true)
-                      }}
-                    >
-                      <Copy data-icon="inline-start" />{copiedInvite ? '已複製' : 'Copy'}
-                    </Button>
-                  </div>
-                </article>
-
-                <article className="admin-panel">
-                  <div className="admin-panel-head">
-                    <div>
-                      <span className="eyebrow">直接邀請</span>
-                      <h4>Invite members</h4>
-                    </div>
-                    <Send size={18} />
-                  </div>
-                  <p>邀請信會提供加入頁連結，正式發送時優先使用 Portaly Vibe 或 InsForge 的 Email / 邀請能力。</p>
-                  <div className="invite-email-row">
-                    <Input value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} type="email" placeholder="Email address" />
-                    <Button className="primary-button" disabled={!inviteEmail.trim()}><Send data-icon="inline-start" />Send</Button>
-                  </div>
-                </article>
-
-                <article className="admin-panel">
-                  <div className="invite-method-row">
-                    <div className="invite-method-icon csv">CSV</div>
-                    <div>
-                      <strong>Import .CSV file</strong>
-                      <small>批次匯入會員 Email，適合從既有名單搬移到 Skills School。</small>
-                    </div>
-                    <Button variant="outline" className="secondary-button"><ExternalLink data-icon="inline-start" />Import</Button>
-                  </div>
-                  <div className="invite-method-row">
-                    <div className="invite-method-icon portaly"><Link2 size={20} /></div>
-                    <div>
-                      <strong>Portaly / InsForge integration</strong>
-                      <small>需要自動邀請或同步會員時，優先走 Portaly Vibe，再補 InsForge function。</small>
-                    </div>
-                    <Button variant="outline" className="secondary-button"><ExternalLink data-icon="inline-start" />Integrate</Button>
-                  </div>
-                </article>
-              </aside>
-            </div>
-            <LevelSettingsPanel preset={preset} onUpdatePreset={onUpdatePreset} />
-          </section>
         )}
+      </div>
+    )
+  }
 
-        {skillAdminTab === 'articles' && (
-          <section className="admin-dashboard-grid">
-            <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="content" />
-            <article className="admin-panel">
-              <div className="admin-panel-head">
-                <div>
-                  <span className="eyebrow">發送本週摘要</span>
-                  <h4>文章電子報</h4>
-                </div>
-                <Mail size={18} />
-              </div>
-              <p>選擇本週公開文章或會員文章，整理成摘要寄給免費讀者與 AI Skill 會員。</p>
-              <Button className="primary-button"><Mail data-icon="inline-start" />建立摘要</Button>
-            </article>
-          </section>
-        )}
-
-        {skillAdminTab === 'courses' && (
-          <section className="admin-dashboard-grid">
-            <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="courses" />
-            <article className="admin-panel">
-              <div className="admin-panel-head">
-                <div>
-                  <span className="eyebrow">課程狀態</span>
-                  <h4>進度與單元</h4>
-                </div>
-                <PlayCircle size={18} />
-              </div>
-              {preset.courses.map((course) => (
-                <div key={course.id} className="admin-course-summary">
-                  <div>
-                    <strong>{course.title}</strong>
-                    <small>{course.lessons.length} 個單元 · 共 {totalLessons} 筆課程紀錄</small>
+  if (view === 'edit' && editingCourse) {
+    return (
+      <div className="admin-grid">
+        <article className="span-3">
+          <div className="admin-page-actions">
+            <Button variant="outline" className="secondary-button" type="button" onClick={() => setView('list')}>Back to courses</Button>
+          </div>
+          <SectionHeading eyebrow="Course settings" title="Course content">
+            編輯課程基本資料，並把每個單元當成獨立項目管理。
+          </SectionHeading>
+          <div className="settings-form">
+            <label>Course title<Input aria-label="Edit course title" value={editingCourse.title} onChange={(event) => updateCourse(editingCourse.id, { title: event.target.value })} /></label>
+            <label>Description<Textarea aria-label="Edit course description" value={editingCourse.description} onChange={(event) => updateCourse(editingCourse.id, { description: event.target.value })} /></label>
+            <label>Access<select aria-label="Edit course access" value={editingCourse.accessMode} onChange={(event) => updateCourse(editingCourse.id, { accessMode: event.target.value as CourseAccessMode })}>
+              <option value="open">Open</option>
+              <option value="level-unlock">Level unlock</option>
+              <option value="buy-now">Buy now</option>
+              <option value="time-unlock">Time unlock</option>
+              <option value="private">Private</option>
+            </select></label>
+            {editingCourse.accessMode === 'level-unlock' && <label>Level<Input aria-label="Edit course level" type="number" min={1} max={9} value={editingCourse.requiredLevel ?? 3} onChange={(event) => updateCourse(editingCourse.id, { requiredLevel: Number(event.target.value) })} /></label>}
+            {editingCourse.accessMode === 'buy-now' && <label>Price<Input aria-label="Edit course price" value={editingCourse.price ?? ''} onChange={(event) => updateCourse(editingCourse.id, { price: event.target.value })} /></label>}
+            {editingCourse.accessMode === 'time-unlock' && <label>Days<Input aria-label="Edit course unlock days" type="number" min={1} value={editingCourse.unlockAfterDays ?? 7} onChange={(event) => updateCourse(editingCourse.id, { unlockAfterDays: Number(event.target.value) })} /></label>}
+            <label className="switch-row">
+              <input type="checkbox" checked={editingCourse.published} onChange={(event) => updateCourse(editingCourse.id, { published: event.target.checked })} />
+              <span>Published</span>
+            </label>
+            <div className="section-heading-row">
+              <SectionHeading eyebrow="Course content" title="Lessons">
+                每個單元都是一個項目，進入 Edit 後撰寫內容與上傳附件。
+              </SectionHeading>
+              <Button className="primary-button" type="button" onClick={() => addCoursePage(editingCourse.id)}><Plus data-icon="inline-start" />Add lesson</Button>
+            </div>
+            <div className="lesson-editor-list">
+              {editingCourse.pages.map((page, index) => (
+                <div key={page.id} className="lesson-item-row">
+                  <div className="lesson-item-summary">
+                    <strong>Lesson {index + 1}</strong>
+                    <small>{page.title} · {page.minutes}m · {page.resources.length} attachments</small>
                   </div>
-                  <div className="progress-track"><span style={{ width: `${course.progress}%` }} /></div>
+                  <div className="lesson-item-actions">
+                    <Button variant="outline" className="secondary-button" type="button" onClick={() => { setEditingPageId(page.id); setView('lesson') }}><Pencil data-icon="inline-start" size={16} />Edit</Button>
+                    <Button variant="outline" className="secondary-button danger-button" type="button" onClick={() => setDeletePageTarget({ courseId: editingCourse.id, pageId: page.id })} disabled={editingCourse.pages.length <= 1}><Trash2 data-icon="inline-start" size={16} />Delete</Button>
+                  </div>
                 </div>
               ))}
-            </article>
-          </section>
-        )}
-
-        {skillAdminTab === 'newsletter' && (
-          <section className="admin-dashboard-grid">
-            <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="newsletter" />
-            <article className="admin-panel">
-              <div className="admin-panel-head">
-                <div>
-                  <span className="eyebrow">發送紀錄</span>
-                  <h4>本週電子報狀態</h4>
-                </div>
-                <Megaphone size={18} />
+            </div>
+          </div>
+        </article>
+        {deletePageTarget && deletePageItem && (
+          <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDeletePageTarget(null) }}>
+            <div className="settings-modal" role="dialog" aria-modal="true" aria-label="確認刪除課程單元">
+              <button className="modal-close" type="button" onClick={() => setDeletePageTarget(null)} aria-label="關閉刪除單元確認">×</button>
+              <SectionHeading eyebrow="Delete lesson" title="確認刪除課程單元">
+                這會移除「{deletePageItem.title}」。
+              </SectionHeading>
+              <div className="button-stack">
+                <Button variant="outline" className="secondary-button" type="button" onClick={() => setDeletePageTarget(null)}>Cancel</Button>
+                <Button variant="outline" className="secondary-button danger-button" type="button" onClick={confirmDeletePage}>Delete</Button>
               </div>
-              <div className="admin-content-stack">
-                {preset.newsletter.map((issue) => (
-                  <div key={issue.id} className="admin-content-item horizontal">
-                    <span>
-                      <Badge variant="outline" className="pill">{segmentLabel(issue.segment)} · {statusLabel(issue.status)}</Badge>
-                      <strong>{issue.subject}</strong>
-                      <small>{issue.sendAt} · 開信 {issue.openRate} · 點擊 {issue.clickRate}</small>
-                    </span>
-                    <StatusPill tone={issue.paidConversions > 0 ? 'green' : 'yellow'}>{`${issue.paidConversions} 人升級`}</StatusPill>
-                  </div>
-                ))}
-              </div>
-            </article>
-          </section>
-        )}
-
-        {skillAdminTab === 'subscriptions' && (
-          <section className="admin-dashboard-grid">
-            <article className="admin-panel span-2">
-              <div className="admin-panel-head">
-                <div>
-                  <span className="eyebrow">訂閱方案</span>
-                  <h4>免費讀者與 AI Skill 會員</h4>
-                </div>
-                <CircleDollarSign size={18} />
-              </div>
-              <div className="admin-grid">
-                <MetricTile label="月經常收入" value={preset.metrics.mrr} icon={BarChart3} />
-                <MetricTile label="免費讀者" value={String(preset.metrics.activeMembers)} icon={UsersRound} />
-                <MetricTile label="付費會員" value={String(paidMembers)} icon={ShieldCheck} />
-                <MetricTile label="主要來源" value={sourceLabel(preset.metrics.topSource)} icon={Globe2} />
-              </div>
-            </article>
-            <article className="admin-panel">
-              <div className="admin-panel-head">
-                <div>
-                  <span className="eyebrow">金流狀態</span>
-                  <h4>付款與發票</h4>
-                </div>
-                <ShieldCheck size={18} />
-              </div>
-              <div className="empty-state">
-                <strong>核心內容確認後啟用</strong>
-                <small>文章、課程與登入流程穩定後，再接上正式金流與發票。</small>
-              </div>
-            </article>
-          </section>
-        )}
-
-        {skillAdminTab === 'settings' && (
-          <section className="admin-dashboard-grid">
-            <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} section="site" />
-            <article className="admin-panel">
-              <div className="admin-panel-head">
-                <div>
-                  <span className="eyebrow">系統狀態</span>
-                  <h4>InsForge / Portaly Vibe</h4>
-                </div>
-                <ShieldCheck size={18} />
-              </div>
-              <div className="integration-grid">
-                <IntegrationItem label="登入" value="正式登入已可使用" />
-                <IntegrationItem label="資料庫權限" value="資料表與權限規則已準備" />
-                <IntegrationItem label="Portaly Vibe MCP" value="專案層級設定已加入" />
-                <IntegrationItem label="金流" value="確認後再啟用" />
-              </div>
-            </article>
-          </section>
+            </div>
+          </div>
         )}
       </div>
     )
   }
 
   return (
-    <div className="admin-workspace">
-      <section className="section-block admin-hero">
-        <div className="section-heading">
-          <span className="eyebrow">營運後台</span>
-          <h3>{preset.brand.productName} 營運後台</h3>
-          <p>{isPublication ? '這裡集中管理文章、付費牆、訂閱者、Newsletter、推薦贈閱、金流、發票與出版設定，只保留出版與訂閱需要的營運模組。' : '這裡集中管理會員、內容、課程、社群、活動、金流、發票與產品設定狀態，適合每天檢查營運進度。'}</p>
+    <div className="admin-grid">
+      <article className="span-3">
+        <div className="section-heading-row">
+          <SectionHeading eyebrow="Courses" title="Courses" />
+          <Button className="primary-button" type="button" onClick={startCreateCourse}><Plus data-icon="inline-start" />Add classroom course</Button>
         </div>
-        <div className="admin-grid">
-          <MetricTile label={isPublication ? '訂閱收入' : '月經常收入'} value={preset.metrics.mrr} icon={BarChart3} />
-          <MetricTile label={isPublication ? '訂閱讀者' : '活躍會員'} value={String(preset.metrics.activeMembers)} icon={UsersRound} />
-          <MetricTile label={isPublication ? '付費訂閱' : '付費會員'} value={String(paidMembers)} icon={ShieldCheck} />
-          <MetricTile label="主要來源" value={sourceLabel(preset.metrics.topSource)} icon={Globe2} />
+        <div className="course-access-editor">
+          {state.courses.map((course) => (
+            <div key={course.id} className="course-access-row course-summary-row">
+              <div className="course-summary">
+                <strong>{course.title}</strong>
+                <small>{accessLabel(course.accessMode)} · {course.published ? 'Published' : 'Draft'}</small>
+              </div>
+              <div className="button-stack">
+                <Button variant="outline" className="secondary-button" type="button" onClick={() => { setEditingCourseId(course.id); setView('edit') }}>Edit</Button>
+                <Button variant="outline" className="secondary-button danger-button" type="button" onClick={() => setDeleteCourseId(course.id)}>Delete</Button>
+              </div>
+            </div>
+          ))}
         </div>
-      </section>
-
-      <section className="admin-dashboard-grid">
-        <AdminSettingsEditor preset={preset} onUpdatePreset={onUpdatePreset} />
-
-        <article className="admin-panel span-2">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">{isPublication ? '讀者營運' : '會員營運'}</span>
-              <h4>{isPublication ? '讀者與訂閱狀態' : '會員與訂閱狀態'}</h4>
+      </article>
+      {deleteCourseTarget && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDeleteCourseId(null) }}>
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label="確認刪除課程">
+            <button className="modal-close" type="button" onClick={() => setDeleteCourseId(null)} aria-label="關閉刪除課程確認">×</button>
+            <SectionHeading eyebrow="Delete course" title="確認刪除課程">
+              這會移除「{deleteCourseTarget.title}」與其中所有 Lessons。
+            </SectionHeading>
+            <div className="button-stack">
+              <Button variant="outline" className="secondary-button" type="button" onClick={() => setDeleteCourseId(null)}>Cancel</Button>
+              <Button variant="outline" className="secondary-button danger-button" type="button" onClick={deleteCourse}>Delete</Button>
             </div>
-            <Button variant="outline" className="ghost-button"><SlidersHorizontal data-icon="inline-start" />篩選</Button>
           </div>
-          <div className="admin-table">
-            <div className="admin-table-head">
-              <span>{isPublication ? '讀者' : '會員'}</span>
-              <span>方案</span>
-              <span>狀態</span>
-              <span>來源</span>
-              <span>{isPublication ? '互動' : '等級'}</span>
+        </div>
+      )}
+      {deletePageTarget && deletePageItem && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDeletePageTarget(null) }}>
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label="確認刪除課程單元">
+            <button className="modal-close" type="button" onClick={() => setDeletePageTarget(null)} aria-label="關閉刪除單元確認">×</button>
+            <SectionHeading eyebrow="Delete lesson" title="確認刪除課程單元">
+              這會移除「{deletePageItem.title}」。
+            </SectionHeading>
+            <div className="button-stack">
+              <Button variant="outline" className="secondary-button" type="button" onClick={() => setDeletePageTarget(null)}>Cancel</Button>
+              <Button variant="outline" className="secondary-button danger-button" type="button" onClick={confirmDeletePage}>Delete</Button>
             </div>
-            {preset.members.map((member) => {
-              const plan = preset.plans.find((item) => item.id === member.planId)
-              return (
-                <div key={member.id} className="admin-table-row">
-                  <span>
-                    <strong>{member.name}</strong>
-                    <small>{member.email}</small>
-                  </span>
-                  <span>{plan?.name ?? member.planId}</span>
-                  <span><StatusPill tone={member.status === 'active' ? 'green' : 'yellow'}>{statusLabel(member.status)}</StatusPill></span>
-                  <span>{sourceLabel(member.source)}</span>
-                  <span>{isPublication ? `${member.contributions.posts} 則留言 · ${member.contributions.comments} 次互動` : `Level ${member.level} · ${roleDisplayLabel(member.groupRole)} · ${member.points} 分`}</span>
-                </div>
-              )
-            })}
           </div>
-        </article>
-
-        <article className="admin-panel span-2">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">通訊營運</span>
-              <h4>發信、分眾與付費轉換</h4>
-            </div>
-            <Megaphone size={18} />
-          </div>
-          <div className="admin-content-stack">
-            {preset.newsletter.map((issue) => (
-              <div key={issue.id} className="admin-content-item horizontal">
-                <span>
-                  <Badge variant="outline" className="pill">{segmentLabel(issue.segment)} · {statusLabel(issue.status)}</Badge>
-                  <strong>{issue.subject}</strong>
-                  <small>{issue.sendAt === 'on signup' ? '註冊後自動寄送' : issue.sendAt} · 開信 {issue.openRate} · 點擊 {issue.clickRate}</small>
-                </span>
-                <StatusPill tone={issue.paidConversions > 0 ? 'green' : 'yellow'}>{`${issue.paidConversions} 人升級`}</StatusPill>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="admin-panel">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">待辦</span>
-              <h4>今日待辦</h4>
-            </div>
-            <AlertCircle size={18} />
-          </div>
-          <div className="admin-queue">
-            {adminQueue.map((item) => (
-              <div key={item.label}>
-                <StatusPill tone={item.tone}>{item.value}</StatusPill>
-                <span>{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="admin-panel">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">審核</span>
-              <h4>{isPublication ? '留言、讀者回覆與付款爭議' : '入會審核、檢舉與風險處理'}</h4>
-            </div>
-            <ShieldCheck size={18} />
-          </div>
-          <div className="admin-content-stack">
-            {preset.moderation.map((item) => (
-              <div key={item.id} className="admin-content-item">
-                <Badge variant="outline" className="pill">{moderationKindLabel(item.kind, isPublication)} · {statusLabel(item.status)}</Badge>
-                <strong>{item.title}</strong>
-                <small>{item.subject} · 優先度 {priorityLabel(item.priority)}</small>
-                <small>{item.action}</small>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="admin-panel">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">成長</span>
-              <h4>推薦、贈閱與來源成長</h4>
-            </div>
-            <Gift size={18} />
-          </div>
-          <div className="admin-content-stack">
-            {preset.referrals.map((campaign) => (
-              <div key={campaign.id} className="admin-content-item">
-                <Badge variant="outline" className="pill">{campaign.code}</Badge>
-                <strong>{campaign.label}</strong>
-                <small>{campaign.freeTrials} 人體驗 · {campaign.paidConversions} 人升級 · {campaign.revenueLabel}</small>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="admin-panel">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">內容營運</span>
-              <h4>內容與付費牆</h4>
-            </div>
-            <BookOpen size={18} />
-          </div>
-          <div className="admin-content-stack">
-            {preset.content.map((item) => (
-              <div key={item.id} className="admin-content-item">
-                <Badge variant="outline" className="pill">{contentTypeLabel(item.type)}</Badge>
-                <strong>{item.title}</strong>
-                <small>{item.category} · {item.isPaid ? '會員限定' : '公開'} · {item.minutes} 分鐘</small>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        {preset.courses.length > 0 && (
-          <article className="admin-panel">
-            <div className="admin-panel-head">
-              <div>
-                <span className="eyebrow">課程</span>
-                <h4>課程與進度</h4>
-              </div>
-              <PlayCircle size={18} />
-            </div>
-            {preset.courses.map((course) => (
-              <div key={course.id} className="admin-course-summary">
-                <div>
-                  <strong>{course.title}</strong>
-                  <small>{course.lessons.length} 個單元 · 共 {totalLessons} 筆課程紀錄</small>
-                </div>
-                <div className="progress-track"><span style={{ width: `${course.progress}%` }} /></div>
-              </div>
-            ))}
-          </article>
-        )}
-
-        {preset.threads.length > 0 && (
-          <article className="admin-panel">
-            <div className="admin-panel-head">
-              <div>
-                <span className="eyebrow">社群</span>
-                <h4>社群審核與互動</h4>
-              </div>
-              <MessageSquareText size={18} />
-            </div>
-            <div className="admin-content-stack">
-              {preset.threads.map((thread) => (
-                <div key={thread.id} className="admin-content-item">
-                  <Badge variant="outline" className="pill">{thread.category}</Badge>
-                  <strong>{thread.title}</strong>
-                  <small>{thread.replies} 則回覆 · {thread.reactions} 個反應{thread.adminOnly ? ' · 會員限定' : ''}</small>
-                </div>
-              ))}
-            </div>
-          </article>
-        )}
-
-        {preset.events.length > 0 && (
-          <article className="admin-panel">
-            <div className="admin-panel-head">
-              <div>
-                <span className="eyebrow">活動</span>
-                <h4>活動、直播與回放</h4>
-              </div>
-              <CalendarDays size={18} />
-            </div>
-            <div className="admin-content-stack">
-              {preset.events.map((event) => (
-                <div key={event.id} className="admin-content-item">
-                  <Badge variant="outline" className="pill">{eventKindLabel(event.kind)}</Badge>
-                  <strong>{event.title}</strong>
-                  <small>{event.date} · {statusLabel(event.status)}</small>
-                </div>
-              ))}
-            </div>
-          </article>
-        )}
-
-        <article className="admin-panel">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">付款</span>
-              <h4>金流、訂閱與發票</h4>
-            </div>
-            <CircleDollarSign size={18} />
-          </div>
-          {state.paymentEvents.length === 0 ? (
-            <div className="empty-state">
-              <strong>尚未啟用正式金流</strong>
-              <small>等前台、登入、內容與會員流程完成後，再決定是否啟用金流與發票。</small>
-            </div>
-          ) : (
-            state.paymentEvents.map((event) => (
-              <div key={event.id} className="event-line">
-                <strong>{event.planId}</strong>
-                <small>{event.amountLabel} · {event.invoiceStatus}</small>
-              </div>
-            ))
-          )}
-        </article>
-
-        <article className="admin-panel span-2">
-          <div className="admin-panel-head">
-            <div>
-              <span className="eyebrow">系統狀態</span>
-              <h4>InsForge / Portaly Vibe 設定狀態</h4>
-            </div>
-            <ShieldCheck size={18} />
-          </div>
-          <div className="integration-grid">
-            <IntegrationItem label="登入" value="Google 登入可啟用" />
-            <IntegrationItem label="資料庫權限" value="資料表與權限規則已準備" />
-            <IntegrationItem label="檔案儲存" value={isPublication ? '文章圖片與付費附件' : '課程資源與回放檔案'} />
-            <IntegrationItem label="Portaly Vibe MCP" value="專案層級設定已加入" />
-            <IntegrationItem label="金流" value="核心流程完成後再啟用" />
-            <IntegrationItem label="發票狀態" value="可同步到付款紀錄" />
-          </div>
-        </article>
-      </section>
+        </div>
+      )}
     </div>
   )
 }
 
-function StatusPill({ tone, children }: { tone: string; children: string }) {
-  return <Badge variant="outline" className={`status-pill tone-${tone}`}>{children}</Badge>
-}
-
-function IntegrationItem({ label, value }: { label: string; value: string }) {
+function AdminCalendar({ state, updateState, onAddEvent }: { state: AppState; updateState: (patch: Partial<AppState>) => void; onAddEvent: (event: Omit<CalendarEvent, 'id'>) => void }) {
+  const [addEventOpen, setAddEventOpen] = useState(false)
+  const [editEventId, setEditEventId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState<Omit<CalendarEvent, 'id'> | null>(null)
+  const [deleteEventId, setDeleteEventId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<Omit<CalendarEvent, 'id'>>({
+    title: '',
+    date: '2026-07-10',
+    time: '20:00',
+    duration: '60m',
+    timezone: 'Asia/Taipei',
+    location: 'MemberHub Call',
+    recurrence: 'weekly',
+    accessMode: 'all',
+    description: 'Admin-created event.',
+  })
+  const updateEvent = (id: string, patch: Partial<CalendarEvent>) => {
+    updateState({ events: state.events.map((event) => event.id === id ? { ...event, ...patch } : event) })
+  }
+  const openEditEvent = (event: CalendarEvent) => {
+    const { id: _id, ...nextDraft } = event
+    setEditDraft(nextDraft)
+    setEditEventId(event.id)
+  }
+  const deleteEvent = () => {
+    if (!deleteEventId) return
+    updateState({ events: state.events.filter((event) => event.id !== deleteEventId) })
+    setDeleteEventId(null)
+  }
+  const deleteTarget = state.events.find((event) => event.id === deleteEventId)
+  useEscapeKey(addEventOpen, () => setAddEventOpen(false))
+  useEscapeKey(Boolean(editEventId), () => {
+    setEditEventId(null)
+    setEditDraft(null)
+  })
+  useEscapeKey(Boolean(deleteEventId), () => setDeleteEventId(null))
   return (
-    <div className="integration-item">
-      <CheckCircle2 size={16} />
-      <span>
-        <strong>{label}</strong>
-        <small>{value}</small>
-      </span>
+    <div className="admin-grid">
+      <article className="span-3">
+        <div className="section-heading-row">
+          <SectionHeading eyebrow="Events" title="Event access" />
+          <Button className="primary-button" type="button" onClick={() => setAddEventOpen(true)}><Plus data-icon="inline-start" />Add event</Button>
+        </div>
+        <div className="event-access-list">
+          {state.events.map((event) => (
+            <div key={event.id} className="event-access-row">
+              <div className="event-access-summary">
+                <strong>{event.title}</strong>
+                <small>{event.date} · {event.time} · {eventAccessLabel(event, state)}</small>
+              </div>
+              <label>Access<select aria-label={`${event.title} access`} value={event.accessMode ?? 'all'} onChange={(change) => updateEvent(event.id, { accessMode: change.target.value as CalendarEvent['accessMode'] })}>
+                <option value="all">All members</option>
+                <option value="level">Level</option>
+                <option value="plan">Plan</option>
+                <option value="course">Course</option>
+              </select></label>
+              {event.accessMode === 'level' && (
+                <label>Level<Input aria-label={`${event.title} level`} type="number" min={1} max={9} value={event.requiredLevel ?? 2} onChange={(change) => updateEvent(event.id, { requiredLevel: Number(change.target.value) })} /></label>
+              )}
+              <div className="event-access-actions">
+                <Button variant="outline" className="secondary-button" type="button" onClick={() => openEditEvent(event)}><Pencil data-icon="inline-start" size={16} />Edit</Button>
+                <Button variant="outline" className="secondary-button danger-button" type="button" onClick={() => setDeleteEventId(event.id)}><Trash2 data-icon="inline-start" size={16} />Delete</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </article>
+      {addEventOpen && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setAddEventOpen(false)
+          }}
+        >
+          <div className="event-modal" role="dialog" aria-modal="true" aria-label="新增活動">
+            <button className="modal-close" type="button" onClick={() => setAddEventOpen(false)} aria-label="關閉新增活動">×</button>
+            <SectionHeading eyebrow="Add event" title="新增活動">
+              設定活動時間、地點與可見權限。
+            </SectionHeading>
+            <EventForm state={state} draft={draft} setDraft={setDraft} onAddEvent={onAddEvent} onDone={() => setAddEventOpen(false)} />
+          </div>
+        </div>
+      )}
+      {editEventId && editDraft && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setEditEventId(null)
+          }}
+        >
+          <div className="event-modal" role="dialog" aria-modal="true" aria-label="編輯活動">
+            <button className="modal-close" type="button" onClick={() => setEditEventId(null)} aria-label="關閉編輯活動">×</button>
+            <SectionHeading eyebrow="Edit event" title="編輯活動">
+              修改活動內容、時間、地點與可見權限。
+            </SectionHeading>
+            <EventForm state={state} draft={editDraft} setDraft={setEditDraft} onAddEvent={(event) => updateEvent(editEventId, event)} onDone={() => { setEditEventId(null); setEditDraft(null) }} />
+          </div>
+        </div>
+      )}
+      {deleteTarget && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setDeleteEventId(null)
+          }}
+        >
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label="確認刪除活動">
+            <button className="modal-close" type="button" onClick={() => setDeleteEventId(null)} aria-label="關閉刪除活動確認">×</button>
+            <SectionHeading eyebrow="Delete event" title="確認刪除活動">
+              這會移除「{deleteTarget.title}」活動。
+            </SectionHeading>
+            <div className="button-stack">
+              <Button variant="outline" className="secondary-button" type="button" onClick={() => setDeleteEventId(null)}>Cancel</Button>
+              <Button variant="outline" className="secondary-button danger-button" type="button" onClick={deleteEvent}>Delete</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function SetupView({ presetId, onSelectPreset }: { presetId: PresetId; onSelectPreset: (presetId: PresetId) => void }) {
-  const isPublication = presetId === 'signal-brief'
-  const setupChoices: Array<{
-    id: PresetId
-    title: string
-    subtitle: string
-    description: string
-    includes: string[]
-  }> = [
-    {
-      id: 'skills-school',
-      title: '全功能會員社群',
-      subtitle: '類 Skool / School',
-      description: '適合課程、社群、陪跑、教練、挑戰活動與會員制學習產品。',
-      includes: ['課程進度與等級', '社群討論與會員目錄', '打卡挑戰、活動與後台審核'],
-    },
-    {
-      id: 'signal-brief',
-      title: '出版訂閱通訊',
-      subtitle: '類 Substack',
-      description: '適合 Newsletter、專欄、付費文章、研究報告與個人出版站。',
-      includes: ['公開文章與付費文章', '段落付費牆與限時免費', '訂閱方案、Newsletter 與讀者管理'],
-    },
-  ]
+function AdminMembers({ state, updateState }: { state: AppState; updateState: (patch: Partial<AppState>, notice?: string) => void }) {
+  const [addMemberOpen, setAddMemberOpen] = useState(false)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null)
+  const [importMessage, setImportMessage] = useState('')
+  const [memberConfirm, setMemberConfirm] = useState<{ action: 'remove' | 'ban' | 'refund'; memberId: string } | null>(null)
+  const [memberDraft, setMemberDraft] = useState<{ name: string; email: string; role: Member['role']; planId: Plan['id'] }>({ name: '', email: '', role: 'member', planId: 'free' })
+  const importInputRef = useRef<HTMLInputElement>(null)
+  const selectedMember = state.members.find((member) => member.id === selectedMemberId)
+  const editingMember = state.members.find((member) => member.id === editingMemberId)
+  const confirmMember = memberConfirm ? state.members.find((member) => member.id === memberConfirm.memberId) : undefined
+  const selectedApplication = selectedMember ? state.membershipApplications.find((application) => application.email.toLowerCase() === selectedMember.email.toLowerCase()) : undefined
+  const updateMember = (id: string, patch: Partial<Member>, notice?: string) => updateState({ members: state.members.map((member) => member.id === id ? { ...member, ...patch } : member) }, notice)
+  const toggleCourseAccess = (member: Member, courseId: string, checked: boolean) => {
+    const courseIds = new Set(member.courseAccessIds ?? [])
+    if (checked) courseIds.add(courseId)
+    else courseIds.delete(courseId)
+    updateMember(member.id, { courseAccessIds: Array.from(courseIds) })
+  }
+  const grantedCourseNames = (member: Member) => member.courseAccessIds?.map((id) => state.courses.find((course) => course.id === id)?.title ?? id).join(', ')
+  const addMember = (event: FormEvent) => {
+    event.preventDefault()
+    const name = memberDraft.name.trim()
+    const email = memberDraft.email.trim()
+    if (!name || !email) return
+    updateState({
+      members: [{
+        id: `member-${Date.now()}`,
+        name,
+        email,
+        role: memberDraft.role,
+        planId: memberDraft.planId,
+        level: 1,
+        points: 0,
+        joinedAt: 'Today',
+        posts: 0,
+        comments: 0,
+        status: 'active',
+      }, ...state.members],
+    }, '會員已新增。')
+    setMemberDraft({ name: '', email: '', role: 'member', planId: 'free' })
+    setAddMemberOpen(false)
+  }
+  const refundMember = (member: Member) => {
+    updateState({
+      payments: [
+        {
+          id: `payment-${Date.now()}`,
+          planId: member.planId,
+          memberEmail: member.email,
+          amountLabel: state.plans.find((plan) => plan.id === member.planId)?.price ?? 'NT$0',
+          provider: 'portaly',
+          status: 'refunded',
+          invoiceStatus: 'pending',
+          createdAt: '剛剛',
+        },
+        ...state.payments,
+      ],
+    }, '退款記錄已建立。')
+  }
+  const parseCsvLine = (line: string) => line.split(',').map((cell) => cell.trim().replace(/^"|"$/g, ''))
+  const importCsv = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    const text = await file.text()
+    const rows = text.split(/\r?\n/).map((row) => row.trim()).filter(Boolean)
+    if (rows.length === 0) {
+      setImportMessage('CSV 沒有可匯入的資料。')
+      return
+    }
+    const first = parseCsvLine(rows[0]).map((cell) => cell.toLowerCase())
+    const hasHeader = first.includes('email') || first.includes('name')
+    const headers = hasHeader ? first : ['email', 'name', 'role', 'plan']
+    const dataRows = hasHeader ? rows.slice(1) : rows
+    const existingEmails = new Set(state.members.map((member) => member.email.toLowerCase()))
+    const roles: Member['role'][] = ['owner', 'billing', 'admin', 'moderator', 'member']
+    const planIds = new Set(state.plans.map((plan) => plan.id))
+    const nextMembers = dataRows.flatMap((row, index) => {
+      const cells = parseCsvLine(row)
+      const record = Object.fromEntries(headers.map((header, headerIndex) => [header, cells[headerIndex] ?? '']))
+      const email = String(record.email ?? cells[0] ?? '').trim().toLowerCase()
+      if (!email.includes('@') || existingEmails.has(email)) return []
+      existingEmails.add(email)
+      const role = roles.includes(record.role as Member['role']) ? record.role as Member['role'] : 'member'
+      const planId = planIds.has(record.plan as Plan['id']) ? record.plan as Plan['id'] : 'free'
+      return [{
+        id: `member-import-${Date.now()}-${index}`,
+        name: String(record.name || email.split('@')[0]),
+        email,
+        role,
+        planId,
+        level: 1,
+        points: 0,
+        joinedAt: 'Imported',
+        posts: 0,
+        comments: 0,
+        status: 'active' as const,
+      }]
+    })
+    if (nextMembers.length === 0) {
+      setImportMessage('沒有新增會員；可能是格式不符或 Email 已存在。')
+      event.target.value = ''
+      return
+    }
+    updateState({ members: [...nextMembers, ...state.members] }, `已匯入 ${nextMembers.length} 位會員。`)
+    setImportMessage(`已匯入 ${nextMembers.length} 位會員。CSV 欄位可用 email,name,role,plan。`)
+    event.target.value = ''
+  }
+  const runMemberConfirm = () => {
+    if (!memberConfirm || !confirmMember) return
+    if (memberConfirm.action === 'remove') updateMember(confirmMember.id, { status: 'removed' }, '會員已移除。')
+    if (memberConfirm.action === 'ban') updateMember(confirmMember.id, { status: 'banned', chatBlocked: true }, '會員已封鎖。')
+    if (memberConfirm.action === 'refund') refundMember(confirmMember)
+    setMemberConfirm(null)
+  }
+  useEscapeKey(addMemberOpen, () => setAddMemberOpen(false))
+  useEscapeKey(Boolean(editingMember), () => setEditingMemberId(null))
+  useEscapeKey(Boolean(selectedMember), () => setSelectedMemberId(null))
+  useEscapeKey(Boolean(memberConfirm), () => setMemberConfirm(null))
 
   return (
-    <section className="section-block">
-      <div className="section-heading">
-        <span className="eyebrow">設定指南</span>
-        <h3>{isPublication ? '調整出版品牌、文章與訂閱設定' : '調整 AI Skill 品牌、內容與會員設定'}</h3>
-      </div>
-      <div className="setup-choice-grid" aria-label="選擇 fork 版本">
-        {setupChoices.map((choice) => (
-          <article key={choice.id} className={choice.id === presetId ? 'setup-choice-card selected' : 'setup-choice-card'}>
-            <div>
-              <span className="eyebrow">{choice.subtitle}</span>
-              <h4>{choice.title}</h4>
-              <p>{choice.description}</p>
-            </div>
-            <ul className="check-list">
-              {choice.includes.map((item) => <li key={item}><CheckCircle2 size={16} />{item}</li>)}
-            </ul>
-            <Button
-              className={choice.id === presetId ? 'primary-button' : 'ghost-button'}
-              variant={choice.id === presetId ? 'default' : 'outline'}
-              onClick={() => onSelectPreset(choice.id)}
+    <div className="admin-grid">
+      <article className="span-3">
+        <div className="section-heading-row">
+          <SectionHeading eyebrow="Members" title="Member operations" />
+          <div className="button-stack">
+            <input ref={importInputRef} className="sr-only-file" type="file" accept=".csv,text/csv" onChange={(event) => { void importCsv(event) }} aria-label="匯入 CSV 名單" />
+            <Button variant="outline" className="secondary-button" type="button" onClick={() => importInputRef.current?.click()}><ClipboardCheck data-icon="inline-start" />匯入 .CSV 名單</Button>
+            <Button className="primary-button" type="button" onClick={() => setAddMemberOpen(true)}><UserPlus data-icon="inline-start" />Add</Button>
+          </div>
+        </div>
+        {importMessage && <p className="form-helper">{importMessage}</p>}
+        <div className="member-admin-list">
+          {state.members.map((member) => (
+            <div
+              key={member.id}
+              className="member-admin-row"
             >
-              {choice.id === presetId ? '目前選擇' : '切換到這個版本'}
-            </Button>
+              <button
+                className="member-record-button"
+                type="button"
+                onClick={() => setSelectedMemberId(member.id)}
+                aria-label={`查看 ${member.name} 入社群問題記錄`}
+              >
+                <strong>{member.name}</strong>
+                <small>{member.role} · {planLabel(member.planId)} · Level {levelForPoints(member.points, state.levelThresholds)} · {member.status ?? 'active'}</small>
+                {(member.courseAccessIds?.length ?? 0) > 0 && <small>Granted: {grantedCourseNames(member)}</small>}
+              </button>
+              <Button variant="outline" className="secondary-button" type="button" onClick={() => setEditingMemberId(member.id)}><Pencil data-icon="inline-start" size={16} />Edit</Button>
+            </div>
+          ))}
+        </div>
+      </article>
+      {addMemberOpen && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setAddMemberOpen(false)
+          }}
+        >
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label="新增會員">
+            <button className="modal-close" type="button" onClick={() => setAddMemberOpen(false)} aria-label="關閉新增會員">×</button>
+            <SectionHeading eyebrow="Add member" title="新增會員">
+              手動加入一位會員到社群名單。
+            </SectionHeading>
+            <form className="settings-form" onSubmit={addMember}>
+              <label>Display name<Input aria-label="Member name" value={memberDraft.name} onChange={(event) => setMemberDraft({ ...memberDraft, name: event.target.value })} required /></label>
+              <label>Email<Input aria-label="Member email" type="email" value={memberDraft.email} onChange={(event) => setMemberDraft({ ...memberDraft, email: event.target.value })} required /></label>
+              <label>Role<select aria-label="Member role" value={memberDraft.role} onChange={(event) => setMemberDraft({ ...memberDraft, role: event.target.value as Member['role'] })}>
+                <option value="owner">Owner</option>
+                <option value="billing">Billing manager</option>
+                <option value="admin">Admin</option>
+                <option value="moderator">Moderator</option>
+                <option value="member">Member</option>
+              </select></label>
+              <label>Plan<select aria-label="Member plan" value={memberDraft.planId} onChange={(event) => setMemberDraft({ ...memberDraft, planId: event.target.value as Plan['id'] })}>
+                {state.plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
+              </select></label>
+              <div className="button-stack">
+                <Button variant="outline" className="secondary-button" type="button" onClick={() => setAddMemberOpen(false)}>Cancel</Button>
+                <Button className="primary-button" type="submit">Add member</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {editingMember && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setEditingMemberId(null)
+          }}
+        >
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label="編輯會員">
+            <button className="modal-close" type="button" onClick={() => setEditingMemberId(null)} aria-label="關閉編輯會員">×</button>
+            <SectionHeading eyebrow="Member settings" title={editingMember.name}>
+              {editingMember.email}
+            </SectionHeading>
+            <div className="settings-form">
+              <p className="integration-note">角色、方案與課程授權目前會更新本機預覽；正式站需與 Auth/RLS 和後端權限同步。</p>
+              <label>Role<select aria-label={`${editingMember.name} role`} value={editingMember.role} onChange={(event) => updateMember(editingMember.id, { role: event.target.value as Member['role'] })}>
+                <option value="owner">Owner</option>
+                <option value="billing">Billing manager</option>
+                <option value="admin">Admin</option>
+                <option value="moderator">Moderator</option>
+                <option value="member">Member</option>
+              </select></label>
+              <label>Plan<select aria-label={`${editingMember.name} plan`} value={editingMember.planId} onChange={(event) => updateMember(editingMember.id, { planId: event.target.value as Plan['id'] })}>
+                {state.plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
+              </select></label>
+              <label>Status<select aria-label={`${editingMember.name} status`} value={editingMember.status ?? 'active'} onChange={(event) => updateMember(editingMember.id, { status: event.target.value as Member['status'] })}>
+                <option value="active">Active</option>
+                <option value="removed">Removed</option>
+                <option value="banned">Banned</option>
+              </select></label>
+              <div className="two-col">
+                <label>Points<Input aria-label={`${editingMember.name} points`} type="number" min={0} value={editingMember.points} onChange={(event) => {
+                  const points = Number(event.target.value)
+                  updateMember(editingMember.id, { points, level: levelForPoints(points, state.levelThresholds) })
+                }} /></label>
+                <label>Level<Input aria-label={`${editingMember.name} computed level`} value={`Level ${levelForPoints(editingMember.points, state.levelThresholds)}`} readOnly /></label>
+              </div>
+              <label className="switch-row"><input type="checkbox" checked={Boolean(editingMember.chatBlocked)} onChange={(event) => updateMember(editingMember.id, { chatBlocked: event.target.checked })} />Block chat</label>
+              <div className="course-permission-list" aria-label="Course permissions">
+                {state.courses.map((course) => (
+                  <label key={course.id}>
+                    <input
+                      type="checkbox"
+                      aria-label={`${editingMember.name} ${course.title} access`}
+                      checked={Boolean(editingMember.courseAccessIds?.includes(course.id))}
+                      onChange={(event) => toggleCourseAccess(editingMember, course.id, event.target.checked)}
+                    />
+                    <span>{course.title}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="member-editor-actions">
+                <Button variant="outline" className="secondary-button" type="button" onClick={() => setMemberConfirm({ action: 'remove', memberId: editingMember.id })}>Remove</Button>
+                <Button variant="outline" className="secondary-button danger-button" type="button" onClick={() => setMemberConfirm({ action: 'ban', memberId: editingMember.id })}>Ban</Button>
+                <Button variant="outline" className="secondary-button" type="button" disabled={editingMember.planId === 'free'} onClick={() => setMemberConfirm({ action: 'refund', memberId: editingMember.id })}>Refund</Button>
+                <Button className="primary-button" type="button" onClick={() => setEditingMemberId(null)}>Done</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {selectedMember && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSelectedMemberId(null)
+          }}
+        >
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label="會員入社群問題記錄">
+            <button className="modal-close" type="button" onClick={() => setSelectedMemberId(null)} aria-label="關閉會員記錄">×</button>
+            <SectionHeading eyebrow="Member record" title={selectedMember.name}>
+              {selectedMember.email}
+            </SectionHeading>
+            <div className="compact-list">
+              <p><strong>Role</strong><span>{selectedMember.role}</span></p>
+              <p><strong>Plan</strong><span>{planLabel(selectedMember.planId)}</span></p>
+              <p><strong>Join status</strong><span>{selectedApplication ? applicationStatusLabel(selectedApplication.status) : '無申請記錄'}</span></p>
+            </div>
+            <div className="application-answers member-question-record">
+              {selectedApplication ? Object.entries(selectedApplication.answers).map(([question, answer]) => (
+                <p key={question}><span>{question}</span><strong>{answer}</strong></p>
+              )) : <p className="empty-note">這位會員沒有入社群問題記錄。</p>}
+            </div>
+          </div>
+        </div>
+      )}
+      {memberConfirm && confirmMember && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setMemberConfirm(null)
+          }}
+        >
+          <div className="settings-modal" role="dialog" aria-modal="true" aria-label="確認會員操作">
+            <button className="modal-close" type="button" onClick={() => setMemberConfirm(null)} aria-label="關閉會員操作確認">×</button>
+            <SectionHeading eyebrow="Confirm member action" title={`確認${memberConfirm.action === 'remove' ? '移除' : memberConfirm.action === 'ban' ? '封鎖' : '退款'} ${confirmMember.name}`}>
+              {memberConfirm.action === 'refund' ? '這會新增一筆 Portaly refund 預覽記錄，不會真的退款。' : '這會更新會員狀態與可用權限。'}
+            </SectionHeading>
+            <div className="button-stack">
+              <Button variant="outline" className="secondary-button" type="button" onClick={() => setMemberConfirm(null)}>Cancel</Button>
+              <Button variant="outline" className="secondary-button danger-button" type="button" onClick={runMemberConfirm}>Confirm</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AdminPricing({ state }: { state: AppState }) {
+  const [copied, setCopied] = useState(false)
+  const portalyPrompt = `請協助我用 Portaly Payment 建立 MemberHub 的付費方案與付款流程。
+
+目前方案：
+${state.plans.map((plan) => `- ${plan.name}：${plan.price} / ${plan.cadence}`).join('\n')}
+
+請完成：
+1. 在 Portaly 建立對應商品與 checkout。
+2. 建立付款成功 callback，付款成功後把會員方案同步回 MemberHub。
+3. 使用環境變數：PORTALY_CHECKOUT_API_KEY、PORTALY_CALLBACK_SECRET、PORTALY_CALLBACK_URL。
+4. 回傳需要新增或修改的檔案、env 設定與測試步驟。
+
+我可以依照自己的方案需求修改上面的方案名稱、金額、週期與同步規則。`
+
+  return (
+    <div className="admin-grid">
+      <article className="span-3">
+        <div className="section-heading-row">
+          <SectionHeading eyebrow="Portaly Payment" title="AI 串接提示詞">
+            複製下方提示詞給 AI，協助串 Portaly Payment 建立方案；你可以依照自己的方案需求修改提示詞內容。
+          </SectionHeading>
+          <Button variant="outline" className="secondary-button" type="button" onClick={() => { void navigator.clipboard?.writeText(portalyPrompt); setCopied(true) }}>
+            <ClipboardCheck data-icon="inline-start" />
+            {copied ? 'Copied' : 'Copy prompt'}
+          </Button>
+        </div>
+        <div className="portaly-guide">
+          <pre>{portalyPrompt}</pre>
+        </div>
+      </article>
+    </div>
+  )
+}
+
+function AdminPlugins({ state, updateState }: { state: AppState; updateState: (patch: Partial<AppState>) => void }) {
+  return (
+    <div className="admin-grid">
+      <article className="span-3">
+        <SectionHeading eyebrow="Plugins" title="功能旗標">
+          這裡的開關目前會控制本機預覽狀態；外部服務需要 fork 後另外串接。
+        </SectionHeading>
+      </article>
+      <div className="plugin-grid span-3">
+        {state.plugins.map((plugin) => (
+          <article key={plugin.id} className="plugin-card">
+            <div>
+              <h3>{plugin.name}</h3>
+              <p>{plugin.description}</p>
+            </div>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={plugin.enabled}
+                onChange={(event) => updateState({ plugins: state.plugins.map((item) => (item.id === plugin.id ? { ...item, enabled: event.target.checked } : item)) })}
+              />
+              <span>{plugin.enabled ? 'Enabled' : 'Disabled'}</span>
+            </label>
           </article>
         ))}
       </div>
-      <div className="setup-grid">
-        <article>
-          <h4>先改這些檔案</h4>
-          <ul className="check-list">
-            <li><Settings2 size={16} />`src/data/presets.ts`：{isPublication ? '文案、方案、文章、電子報、訂閱者' : '文案、方案、課程、社群、活動'}</li>
-            <li><Settings2 size={16} />`.env.local`：InsForge key、PORTALY_API_TOKEN 與選配 checkout key</li>
-            <li><Settings2 size={16} />`migrations/*.sql`：正式部署前套用資料表</li>
-            <li><Settings2 size={16} />金流 functions：需要收款時再啟用</li>
-          </ul>
-        </article>
-        <article>
-          <h4>目前版本</h4>
-          <pre className="code-block">{JSON.stringify({ 目前案例: presetId, 下一步: isPublication ? '調整出版品牌、訂閱方案、文章與 Newsletter 設定' : '調整 AI Skill 品牌、方案、內容、課程與社群設定' }, null, 2)}</pre>
-        </article>
-        <article>
-          <h4>Portaly Vibe MCP</h4>
-          <ul className="check-list">
-            {portalyIntegrationNotes.map((note) => <li key={note}><ShieldCheck size={16} />{note}</li>)}
-          </ul>
-        </article>
-      </div>
-    </section>
-  )
-}
-
-function MetricTile({ label, value, icon: Icon }: { label: string; value: string; icon: typeof BarChart3 }) {
-  return (
-    <div className="metric-tile">
-      <Icon size={18} />
-      <span>{label}</span>
-      <strong>{value}</strong>
     </div>
   )
 }
