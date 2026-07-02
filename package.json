@@ -43,8 +43,5 @@
     "@playwright/test": "^1.60.0",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2"
-  },
-  "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "^4.60.3"
   }
 }
