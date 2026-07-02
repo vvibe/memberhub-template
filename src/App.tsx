@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronRight,
   CircleDollarSign,
+  ClipboardCheck,
   Download,
   ExternalLink,
   FileText,
