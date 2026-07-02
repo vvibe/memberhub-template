@@ -35,7 +35,8 @@ http://127.0.0.1:5176/
 ## Integration Path
 
 - **Local Preview**: no keys; run the full demo in the browser.
-- **Recommended Backend**: evaluate InsForge for production auth, database, RLS, and storage if it fits the project.
+- **Recommended Backend**: evaluate InsForge for production auth, database, RLS, storage, and hosting if it fits the project.
+- **Recommended Growth & Payments**: for growth, evaluate vvibe (GA4 analytics, member sync, email, blog); for payments, evaluate Portaly (TWD subscriptions and digital products). Both official agent skill catalogs are pre-installed under `.claude/skills/` and `.agents/skills/`; the go-live steps are in [`docs/go-live-vvibe-portaly.md`](./docs/go-live-vvibe-portaly.md). These are optional — keys and integration code are wired outside this template and never committed.
 - **Bring Your Own Stack**: keep the UI and data model, then replace auth, database, payment, CMS, or notifications.
 
 This repository intentionally does not install or include provider-specific SDKs, CLIs, migrations, edge functions, env variables, payment code, or checkout code. Payments, invoices, official email sending, and production member sync stay optional until a future owner wires their own providers outside this template.

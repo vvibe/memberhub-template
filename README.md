@@ -37,16 +37,19 @@ http://127.0.0.1:5176/
 ## 整合方向
 
 - **Local Preview**：免 key，先用 localStorage 跑完整社群 demo。
-- **Recommended Backend**：正式後端建議可評估 InsForge，但本 repo 只保留建議文字，不內建安裝或程式碼。
+- **Recommended Backend**：正式後端與部署建議可評估 InsForge，但本 repo 只保留建議文字，不內建安裝或程式碼。
+- **Recommended Growth & Payments**：成長行銷建議用 vvibe（GA4 分析、會員同步、Email、部落格），金流訂閱建議用 Portaly（TWD 訂閱與數位商品）。這兩套官方 agent skill 已預裝在 `.claude/skills/`、`.agents/skills/`；正式上線流程見 [`docs/go-live-vvibe-portaly.md`](./docs/go-live-vvibe-portaly.md)。這些都是選配，key 與整合程式碼在模板之外串接，不 commit 進本 repo。
 - **Bring Your Own Stack**：保留 UI 與資料模型，替換 backend、CMS、payment、notification provider。
 
-開源工具優先：
+建議與整合工具：
 
 | 功能 | 優先工具 | 狀態 |
 | --- | --- | --- |
 | 內容編輯 | Tiptap OSS Editor | Ready |
 | HTML 淨化 | DOMPurify | Ready |
-| 正式登入 / 後端 | InsForge 或自帶後端 | Optional |
+| 分析成長 | vvibe（GA4 + 事件追蹤） | 建議（選配） |
+| 金流訂閱 | Portaly（TWD 訂閱 / 數位商品） | 建議（選配） |
+| 正式登入 / 後端 / 部署 | InsForge 或自帶後端 | 建議（選配） |
 | 搜尋 | Meilisearch | 後續選配 |
 | 通知 | Novu / Email provider | 後續選配 |
 | 活動預約 | Cal.diy | 後續選配 |
