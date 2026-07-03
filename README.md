@@ -1,5 +1,10 @@
 # MemberHub - 開源社群模板
 
+<!-- vvibe-readme:start -->
+> ⚡ **vvibe-optimized starter.** Analytics, members, email, blog & payments are pre-wired via [VVibe](https://vvibe.ai) + [Portaly](https://portaly.cc).
+> **Start here → [`VVIBE_STARTER.md`](VVIBE_STARTER.md)** — works with or without an AI agent.
+<!-- vvibe-readme:end -->
+
 > 一套人人可 fork 的 open-source community template。功能流程參考現代會員社群：Community、Classroom、Calendar、Members、Leaderboard、About、Pricing、Membership Questions；UI 使用 Vercel Geist + shadcn 方向，不模仿任何既有平台視覺。
 
 [English README](./README.en.md)

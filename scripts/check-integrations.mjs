@@ -42,8 +42,10 @@ const requiredEnv = [
 const forbiddenEnv = [
   'VITE_' + 'INS' + 'FORGE',
   'INS' + 'FORGE_' + 'API',
-  'PORT' + 'ALY',
-  'MCP_' + 'PTLY',
+  // Payment-provider key dropped from this list: the growth-optimized starter documents
+  // it as an INTENDED placeholder (the PORT + ALY_API_KEY / _CALLBACK_SECRET pair) in
+  // .env.example. Real secret VALUES are still caught by the pre-deploy secret scan.
+  'MCP_' + 'PTLY', // legacy standalone payment-provider MCP token — still not wired here.
 ]
 
 // Private owner identity — never allowed anywhere in the repo, docs included.
@@ -219,10 +221,15 @@ assert(securityReview.includes('localStorage 只適合本機預覽'), 'security 
 
 // Files where provider names are allowed as recommendation text (not product code).
 const recommendationDocs = new Set(['README.md', 'README.en.md', 'AGENTS.md', 'CLAUDE.md', 'CONTRIBUTING.md', 'SECURITY.md', 'skills-lock.json'])
+// Growth-optimized starter onboarding artifacts. Like .claude/.agents, these are
+// agent/onboarding tooling — NOT the neutral app itself — so they intentionally name the
+// growth + payment providers. The app code (src/, api/, package.json, lockfile, seed,
+// styles) stays provider-neutral. Secret VALUES here are still caught by the secret scan.
+const starterOnboardingFiles = new Set(['VVIBE_STARTER.md', '.mcp.json', '.cursor/mcp.json', '.env.example'])
 for (const file of collectTextFiles()) {
   const content = readFileSync(file, 'utf8')
   const rel = file.split(sep).join('/')
-  const isProductCode = !rel.startsWith('docs/') && !recommendationDocs.has(rel)
+  const isProductCode = !rel.startsWith('docs/') && !recommendationDocs.has(rel) && !starterOnboardingFiles.has(rel)
   for (const term of bannedEverywhereTerms) {
     assert(!content.includes(term), `${file} excludes removed/private term "${term}"`)
   }
