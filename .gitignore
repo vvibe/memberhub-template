@@ -9,9 +9,9 @@ seed/generated
 .vercel
 test-results
 playwright-report
-.mcp.json
+# .mcp.json / .cursor/mcp.json are COMMITTED — the tokenless VVibe MCP config the
+# fork needs to connect. Only the *.local.json personal-token overrides stay ignored.
 .mcp.local.json
-.cursor/mcp.json
 .cursor/mcp.local.json
 
 # Local agent files

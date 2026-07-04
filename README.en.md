@@ -1,5 +1,10 @@
 # MemberHub - Open Membership Website Template
 
+<!-- vvibe-readme:start -->
+> ⚡ **vvibe-optimized starter.** Analytics, members, email, blog & payments are pre-wired via [VVibe](https://vvibe.ai) + [Portaly](https://portaly.cc).
+> **Start here → [`VVIBE_STARTER.md`](VVIBE_STARTER.md)** — works with or without an AI agent.
+<!-- vvibe-readme:end -->
+
 > A forkable membership community template for courses, private discussions, events, member plans, and admin operations.
 
 [中文 README](./README.md)

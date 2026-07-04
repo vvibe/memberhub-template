@@ -50,6 +50,7 @@ import type {
   Role,
   ViewId,
 } from './types'
+import { initAnalytics, pageview } from '@/lib/analytics'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -373,6 +374,8 @@ function App() {
     const params = new URLSearchParams()
     params.set('view', view)
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`)
+    initAnalytics()
+    pageview(`/?view=${view}`)
   }, [view])
 
   useEscapeKey(loginOpen, () => setLoginOpen(false))
