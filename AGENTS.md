@@ -70,10 +70,20 @@ register at https://insforge.dev/auth/sign-up?ref=VVIBE ; see `VVIBE_STARTER.md`
   product-brain work over REST with no browser; email + blog are MCP-only and wait for
   the interactive login.
 
-Once connected via MCP, register the pre-installed skills so VVibe turns on their tools:
-for **each** VVibe skill folder call `vibe_report_skill_installed` (read its `version:`
-from that skill's `SKILL.md`). Portaly payment needs its own quick web signup for a key
-(`VVIBE_STARTER.md` step 2).
+Once connected via MCP, finish onboarding with **two** steps — don't stop at "connected":
+1. **Set the product basics.** Call `vibe_get_brand` to see what's blank, then
+   `vibe_update_brand` to fill the **product name** (from the repo — `package.json` name /
+   README title, **not** the account owner's personal name), the **`appBaseUrl`** (the
+   product's public HTTPS URL — find it in deploy config: `package.json` homepage, `.env` /
+   hosting settings; if you can't determine it, ask the user or have them set it in dashboard
+   Settings), and a plain-language **brand description** (what it does + who it's for; no tech
+   stack). **`appBaseUrl` is required for analytics to work** — don't skip it. (A fresh
+   account ships blank/defaulted brand fields; without this step the dashboard stays empty.)
+2. **Register the pre-installed skills** so VVibe turns on their tools: for **each** VVibe
+   skill folder call `vibe_report_skill_installed` (read its `version:` from that skill's
+   `SKILL.md`).
+
+Portaly payment needs its own quick web signup for a key (`VVIBE_STARTER.md` step 2).
 <!-- vvibe:end -->
 
 Read `README.md` first. The Chinese README is the canonical homepage; `README.en.md` is the English mirror.

@@ -37,13 +37,19 @@ started; here's what it does:
 3. That first call opens a browser to **https://vvibe.ai** → **sign up or log in once**
    (Google / magic link — no card). That one login *is* your onboarding: it creates
    your account, sets up your workspace, and authorizes the agent. No token to copy.
-4. Once `vibe_heartbeat` works, the agent **registers the pre-installed skills** for
-   you: this starter ships the VVibe skills in `.claude/skills/` and `.agents/skills/`,
-   so VVibe doesn't know about them yet and their `vibe_*` tools stay hidden until it's
-   told. For **each** VVibe skill folder the agent calls `vibe_report_skill_installed`
-   (reading the `version:` from that skill's `SKILL.md`), which turns on their tools
-   (e.g. `vibe_list_members`) and marks onboarding complete. (Two differ: **analytics**
-   connects your Google Analytics via a hosted click; **blog-render** is read-only.)
+4. Once `vibe_heartbeat` works, the agent **sets your product basics** so the dashboard
+   and skills have context: `vibe_get_brand` shows what's blank, then `vibe_update_brand`
+   fills your **product name**, **website** (`appBaseUrl`), and a short plain-language
+   **description**. Your product website is **required for analytics** — if the agent can't
+   find it in the repo it'll ask you. (Edit these any time in dashboard **Settings** — a
+   fresh account starts blank, so don't skip this or the dashboard stays empty.)
+5. Then the agent **registers the pre-installed skills** so VVibe turns on their tools:
+   this starter ships the VVibe skills in `.claude/skills/` and `.agents/skills/`, so
+   VVibe doesn't know about them yet and their `vibe_*` tools stay hidden until it's told.
+   For **each** VVibe skill folder the agent calls `vibe_report_skill_installed` (reading
+   the `version:` from that skill's `SKILL.md`), which turns on their tools (e.g.
+   `vibe_list_members`) and marks onboarding complete. (Two differ: **analytics** connects
+   your Google Analytics via a hosted click; **blog-render** is read-only.)
 
 **Non-interactive / headless session (no browser) — the API-key path.** A browser login
 can't be completed without a human, and the CLI won't change that (it only writes
@@ -99,6 +105,7 @@ backend (database, auth, storage, functions) as you build past the showcase.
 |---|---|
 | VVibe connect (interactive) | agent drives; one browser login, no token to copy |
 | VVibe connect (headless / REST) | `VVIBE_API_KEY` in `.env` — from the VVibe dashboard, no browser |
+| Product basics (name / website / description) | agent checks with `vibe_get_brand`, then sets via `vibe_update_brand`, or dashboard Settings — website (`appBaseUrl`) is required for analytics |
 | Portaly account | https://portaly.cc/payment |
 | Portaly key + callback secret | Portaly dashboard → creator-subscription |
 | Deploy / hosting | InsForge — https://insforge.dev/auth/sign-up?ref=VVIBE |
