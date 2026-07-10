@@ -54,21 +54,20 @@ If your agent doesn't auto-discover skills (e.g. **Codex**), read the relevant
 register at https://insforge.dev/auth/sign-up?ref=VVIBE ; see `VVIBE_STARTER.md` step 5.
 
 **Connecting VVibe — the primary next step (drive it proactively; it's just not a launch
-*prerequisite*).** Pick the path that matches your session:
-- **Interactive session (a human can click once):** you drive the wiring; the human's
-  only step is a single browser login. If you already have `vibe_*` tools (this starter
-  pre-wires `.mcp.json` for **Claude Code**), just call `vibe_heartbeat` — the first
-  call opens the login (the human may also run `/mcp`). On **Cursor / Codex**, first run
-  `npx @vvibe/cli connect --server=https://mcp.vvibe.ai` YOURSELF to write the server
-  into config (it only writes config — it does **not** log you in), then call it. That
-  one login creates the account, provisions the workspace, and authorizes you — nothing to paste.
-- **Non-interactive / headless session (no one to open a browser):** you **cannot**
-  finish the OAuth login here, and no CLI changes that — it is a browser step. Don't
-  block on it: either ask the human to do the one-time login in an interactive session,
-  **or** make progress now over REST — put a VVibe API key (`pcs_test_…` / `pcs_live_…`
-  from https://vvibe.ai) in `.env` as `VVIBE_API_KEY`. Member sync, analytics, and
-  product-brain work over REST with no browser; email + blog are MCP-only and wait for
-  the interactive login.
+*prerequisite*).**
+- **Any session — interactive or headless:** run
+  `npx @vvibe/cli login --server=https://mcp.vvibe.ai` yourself. This one command works
+  the same everywhere (Claude Code, Cursor, Codex, or a headless/background session): it
+  opens a browser to vvibe.ai and also prints the login URL to the terminal, so even
+  headless you can hand the human a link to click once. That single click creates their
+  account, provisions the workspace, and writes a long-lived credential — with the
+  `Authorization` header already wired in — straight into your MCP config. Nothing to
+  paste by hand. (This starter pre-wires `.mcp.json` for **Claude Code**; `/mcp` still
+  works as a manual fallback to re-authorize.)
+- **No human available at all (rare):** don't block on it — make progress now over
+  REST instead. Put a VVibe API key (`pcs_test_…` / `pcs_live_…` from https://vvibe.ai)
+  in `.env` as `VVIBE_API_KEY`. Member sync, analytics, and product-brain work over REST
+  with no browser; email + blog are MCP-only and wait until someone runs `login`.
 
 Once connected via MCP, finish onboarding with **two** steps — don't stop at "connected":
 1. **Set the product basics.** Call `vibe_get_brand` to see what's blank, then
