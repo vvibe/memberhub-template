@@ -49,13 +49,18 @@ your agent to get started; here's what it does:
    **description**. Your product website is **required for analytics** — if the agent can't
    find it in the repo it'll ask you. (Edit these any time in dashboard **Settings** — a
    fresh account starts blank, so don't skip this or the dashboard stays empty.)
-5. Then the agent **registers the pre-installed skills** so VVibe turns on their tools:
-   this starter ships the VVibe skills in `.claude/skills/` and `.agents/skills/`, so
+5. Then the agent **registers the pre-installed VVibe skills** so VVibe turns on their
+   tools: this starter ships the VVibe skills in `.claude/skills/` and `.agents/skills/`, so
    VVibe doesn't know about them yet and their `vibe_*` tools stay hidden until it's told.
-   For **each** VVibe skill folder the agent calls `vibe_report_skill_installed` (reading
-   the `version:` from that skill's `SKILL.md`), which turns on their tools (e.g.
-   `vibe_list_members`) and marks onboarding complete. (Two differ: **analytics** connects
-   your Google Analytics via a hosted click; **blog-render** is read-only.)
+   The agent calls `vibe_list_skills` first — it maps each skill's folder (`installPackage`,
+   e.g. `vvibe-analytics`) to the `id` that `vibe_report_skill_installed` requires (e.g.
+   `analytics`). Then it calls `vibe_report_skill_installed` once per VVibe skill with that
+   **`id`** — **not** the folder name, which returns `-32602 Input validation error` —
+   reading `version:` from that folder's `SKILL.md`. This turns on their tools (e.g.
+   `vibe_list_members`) and marks onboarding complete. Only the **7 VVibe skills** register
+   this way; Portaly's skills are not VVibe skills — use them directly with your
+   `PORTALY_API_KEY` (steps 2–3), not `vibe_report_skill_installed`. (Two differ:
+   **analytics** connects your Google Analytics via a hosted click; **blog-render** is read-only.)
 
 **No human available at all (rare) — the REST API-key fallback.** Headless still runs
 `login` first — the printed URL is meant to be handed to a human, so don't skip
