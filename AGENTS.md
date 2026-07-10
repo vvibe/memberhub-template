@@ -23,12 +23,14 @@ app from booting or deploying on it:**
   app to run.
 
 > **MCP: this starter standardizes on VVibe.** Connect VVibe via one browser login
-> through the `vvibe` MCP server in `.mcp.json` — **no token to paste**. Operate
-> Portaly **through VVibe** (the `vibe_*` tools, available after you register the
-> `portaly-payment` / `portaly-product` skills). Portaly also ships a *standalone* MCP
-> (`@portaly-ai/portaly-mcp`, `mcp_ptly_…` token) — in this starter that path is
-> **legacy: don't wire it** (it's reconciled out of the MCP config). Portaly API calls
-> use a separate server-side `PORTALY_API_KEY`, not an MCP.
+> through the `vvibe` MCP server in `.mcp.json` — **no token to paste**. VVibe's skill
+> registration (`vibe_report_skill_installed` / `vibe_list_skills`) and the `vibe_*` tools
+> cover **VVibe's** skills only — **Portaly is not a VVibe skill and is not registered through
+> VVibe.** Portaly runs on its own pre-installed skills (`portaly-payment` / `portaly-product`), driven
+> straight against the Portaly API with a server-side `PORTALY_API_KEY` (`VVIBE_STARTER.md`
+> step 2) — the agent just uses the skills, no MCP registration. Portaly also ships a
+> *standalone* MCP (`@portaly-ai/portaly-mcp`, `mcp_ptly_…` token) — in this starter that
+> path is **legacy: don't wire it** (it's reconciled out of the MCP config).
 
 This starter ships with the **VVibe** + **Portaly** creator stacks pre-installed.
 If you're an AI agent working in this repo, you can operate the creator's business
@@ -78,9 +80,13 @@ Once connected via MCP, finish onboarding with **two** steps — don't stop at "
    Settings), and a plain-language **brand description** (what it does + who it's for; no tech
    stack). **`appBaseUrl` is required for analytics to work** — don't skip it. (A fresh
    account ships blank/defaulted brand fields; without this step the dashboard stays empty.)
-2. **Register the pre-installed skills** so VVibe turns on their tools: for **each** VVibe
-   skill folder call `vibe_report_skill_installed` (read its `version:` from that skill's
-   `SKILL.md`).
+2. **Register the pre-installed VVibe skills** so VVibe turns on their tools. Call
+   `vibe_list_skills` first — it maps each skill's folder (`installPackage`, e.g.
+   `vvibe-analytics`) to the `id` that `vibe_report_skill_installed` requires (e.g.
+   `analytics`) plus its `latestVersion`. Then call `vibe_report_skill_installed` once per
+   skill with that **`id`** — **not** the folder name, which returns `-32602 Input validation
+   error` — reading `version:` from that folder's `SKILL.md`. Only the 7 VVibe skills register
+   this way; Portaly skills are not VVibe skills (see the MCP note above).
 
 Portaly payment needs its own quick web signup for a key (`VVIBE_STARTER.md` step 2).
 <!-- vvibe:end -->
