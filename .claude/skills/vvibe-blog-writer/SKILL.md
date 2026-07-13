@@ -1,6 +1,6 @@
 ---
 name: vvibe-blog-writer
-version: 0.7.0
+version: 0.9.0
 manifest_version: 1
 description: Draft SEO blog articles for a VVibe creator from their Product Brain, then publish them either to the creator's own VVibe headless blog (no external CMS, no setup) or as a draft to their WordPress. Reads the Product Brain for brand voice, forbidden claims, FAQ, and audience so the article matches the brand and avoids legal landmines. Trigger when the user asks to write / draft / generate a blog post or article, "write a blog about X", "draft an SEO article", refresh, publish or unpublish a post, or connect a WordPress site for publishing.
 ---
@@ -84,7 +84,8 @@ in `references/api.md`. There is no separate API-key surface for the blog.
 
 | Intent | MCP tool | REST it wraps |
 |---|---|---|
-| List the creator's posts | `vibe_list_blog_posts` | `GET /api/blog/posts` |
+| List the creator's posts (lightweight — no body) | `vibe_list_blog_posts` | `GET /api/blog/posts` |
+| Get one post's full content | `vibe_get_blog_post` | `GET /api/blog/posts/{id}` |
 | Create a post from a brief | `vibe_create_blog_post` | `POST /api/blog/posts` |
 | Generate brief + draft | `vibe_generate_blog_post` | `POST /api/blog/posts/{id}/generate` |
 | Edit prose (title/body/outline/meta) | `vibe_update_blog_post` | `PATCH /api/blog/posts/{id}` |
@@ -130,6 +131,12 @@ specific feature:
   never claim a WordPress post is live. (`target: 'native'` or a
   `publishingSiteId` are per-post overrides, used only when the creator
   explicitly wants one article to go somewhere other than their default.)
+- **Never call a native publish "done" without the post-publish
+  checklist.** A native publish only makes the article available on the
+  content API — nothing renders it for a reader yet. `references/publishing.md`
+  §A has a mandatory checklist (does a rendering frontend exist? if not,
+  say so plainly and route to `vvibe-blog-render`) — run it every time,
+  don't skip to "Published!".
 - **No fabrication.** No invented customers, statistics, or sources. No
   ranking / revenue guarantees. The KB's `forbidden_claims` are rejected
   server-side.

@@ -1,6 +1,6 @@
 ---
 name: vvibe-email
-version: 0.5.0
+version: 0.5.1
 manifest_version: 1
 description: Help VVibe creators wire invitation-email integration end-to-end — where the email CTA lands (VVibe-hosted, self-hosted waitlist, or direct register), how to send campaigns via Vibe MCP, and how to manage system + follower-flow email templates. When drafting campaign copy, reads the creator's Product Brain (`vibe_get_product_kb`) for brand voice, value prop, audience, and forbidden claims so the email matches the brand and avoids legal landmines. Trigger when the user mentions invitation emails, follower outreach campaigns, sending an email blast, drafting an email campaign, waitlist signup landing page, app base URL, embedding a waitlist CTA, skipping the waitlist when a member system already exists, or asks where the registration email link lands.
 
@@ -23,7 +23,7 @@ NOT mutually exclusive:
 - **hosted-cta** — embed VVibe's hosted waitlist URL as a button/link. Zero infra.
 - **self-hosted-waitlist** — host `/waitlist/[slug]` on your own domain. Brand control.
 - **direct-register** — skip the waitlist; invitation clicks land on your app's existing register page.
-- **mcp-campaign** — author + send invitation campaigns via the Vibe MCP tools. Independent of where clicks land.
+- **mcp-campaign** — author + send invitation campaigns via the Vibe MCP tools. Independent of which click-destination mode is *configured* (works alongside any of A/B/C) — but sending still requires resolving and confirming the *live* landing URL first (see `references/sending-campaigns.md`).
 
 The first three are mutually exclusive *as the click destination* (one
 merchant has one destination per moment), but they're swappable — a
@@ -119,11 +119,14 @@ modes:
     status: available
     when: >
       Author and send invitation campaigns via the Vibe MCP tools.
-      Independent of where clicks land — works alongside any of A/B/C.
+      Independent of which click-destination mode is *configured* —
+      works alongside any of A/B/C, no need to pick a destination first.
       Requires the agent to be connected to the creator's Vibe MCP.
       Draft the copy from the creator's Product Brain (brand voice,
-      value prop, ICP, forbidden claims) — read it FIRST; see
-      references/sending-campaigns.md.
+      value prop, ICP, forbidden claims) — read it FIRST. Before every
+      send, resolve the *live* landing URL with `vibe_get_brand` and
+      read it back to the creator — never state where the CTA lands
+      from memory; see references/sending-campaigns.md.
     triggers:
       - "send an invitation campaign"
       - "draft an email blast"
@@ -187,9 +190,15 @@ disambiguators:
     scope: >
       This question is ONLY about the click destination (A/B/C are mutually
       exclusive). Campaign sending (mcp-campaign) is on a separate axis —
-      do NOT mix it in here. If the user also wants to send campaigns, ask
-      about that separately after the destination is settled, or use the
-      `production-launch` recipe.
+      do NOT mix it in here when the user is just choosing/configuring a
+      destination. If the user also wants to send campaigns, ask about
+      that separately after the destination is settled, or use the
+      `production-launch` recipe. This axis separation is about *choosing*
+      a mode, though — it does NOT mean sending is exempt from checking
+      the destination. Before any actual `vibe_send_campaign` call, still
+      resolve and read back the live landing URL per
+      `references/sending-campaigns.md`, regardless of which mode was
+      chosen here.
     ask: >
       VVibe sends invitation emails on behalf of creators. The CTA in those
       emails goes through VVibe for click tracking, then redirects to a

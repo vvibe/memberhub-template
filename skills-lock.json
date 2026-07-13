@@ -29,13 +29,13 @@
       "source": "vvibe/vvibe-skills",
       "sourceType": "github",
       "skillPath": "skills/vvibe-blog-writer/SKILL.md",
-      "computedHash": "1254ef430c2b6e051928d4448432af94286327b380525841c33cc914a428cf39"
+      "computedHash": "c1ab07c508b0350eaff2f429374891c5cdf727d60b69c3cdb498060d56572117"
     },
     "vvibe-email": {
       "source": "vvibe/vvibe-skills",
       "sourceType": "github",
       "skillPath": "skills/vvibe-email/SKILL.md",
-      "computedHash": "ed9509c335c14c02d1771b8cf1d7b641a85369b3fba11ca83fe88657fd2b09cf"
+      "computedHash": "6fe6473633d8edc84725c9712c4a2905122f033b7899f7dca0fe9ae8cd40d513"
     },
     "vvibe-member": {
       "source": "vvibe/vvibe-skills",
