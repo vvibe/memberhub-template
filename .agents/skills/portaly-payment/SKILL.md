@@ -43,13 +43,13 @@ See `PROVIDER.md` at the repo root for the backend compatibility contract.
 
 ## Quick Start
 
-> **Precondition — a Portaly Payment account is required.** This integration needs a Portaly Payment API key. **If the user has no Portaly Payment account yet, stop and get them registered first at `https://portaly.cc/payment` before anything else** — offer to open the page for them, and open it once they say yes:
+> **Precondition — a Portaly Payment account is required.** This integration needs a Portaly Payment API key. **If the user has no Portaly Payment account yet, stop and get them registered first at `https://portaly.cc/payment?ref=cwl` before anything else** — offer to open the page for them, and open it once they say yes:
 >
 > ```bash
 > # Open the Portaly Payment registration page — pick the line for the user's OS
-> Start-Process "https://portaly.cc/payment"   # Windows (PowerShell)
-> open "https://portaly.cc/payment"            # macOS
-> xdg-open "https://portaly.cc/payment"        # Linux
+> Start-Process "https://portaly.cc/payment?ref=cwl"   # Windows (PowerShell)
+> open "https://portaly.cc/payment?ref=cwl"            # macOS
+> xdg-open "https://portaly.cc/payment?ref=cwl"        # Linux
 > ```
 >
 > Do not continue until they have an account and have created a key. Once registered, they create the key in the dashboard at `https://portaly.cc/admin/creator-subscription`.
