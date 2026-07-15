@@ -30,7 +30,7 @@ export const communityPreset: CommunityPreset = {
     description:
       '一個給創作者、顧問與知識工作者的實作社群。會員在社群裡拆任務、上課、參加直播、互相回饋，逐步把 AI 從單次提示詞變成可交付的工作系統。',
     coverLabel: 'AI Skill Community',
-    coverImageUrl: 'https://picsum.photos/seed/memberhub-cover/1200/630',
+    coverImageUrl: '/images/memberhub-login-cover.png',
     logoImageUrl: '',
     onlineLabel: '2 online',
   },
