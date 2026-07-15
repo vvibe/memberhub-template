@@ -74,7 +74,7 @@ path, or paste an MCP connection token into `.mcp.json` as a `Bearer` header. Ke
 secrets out of git.
 
 ## 2. Register Portaly Payment (~3 min)
-1. Go to **https://portaly.cc/payment** and create an account.
+1. Go to **https://portaly.cc/payment?ref=cwl** and create an account.
 2. In the Portaly dashboard, issue an API key + **callback secret**. Start with a
    **test** key (`pcs_test_…`) — TapPay sandbox, no real charges.
 3. Put them in `.env` yourself (never paste secrets into a chat):
@@ -118,7 +118,7 @@ backend (database, auth, storage, functions) as you build past the showcase.
 | VVibe connect (any session) | agent runs `npx @vvibe/cli login --server=https://mcp.vvibe.ai`; one browser click, no token to copy |
 | VVibe connect (no human available) | `VVIBE_API_KEY` in `.env` — from the VVibe dashboard, no browser |
 | Product basics (name / website / description) | agent checks with `vibe_get_brand`, then sets via `vibe_update_brand`, or dashboard Settings — website (`appBaseUrl`) is required for analytics |
-| Portaly account | https://portaly.cc/payment |
+| Portaly account | https://portaly.cc/payment?ref=cwl |
 | Portaly key + callback secret | Portaly dashboard → creator-subscription |
 | Deploy / hosting | InsForge — https://insforge.dev/auth/sign-up?ref=VVIBE |
 | What's wired & where | the `## ⚡ vvibe-optimized` block in `AGENTS.md` |

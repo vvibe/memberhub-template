@@ -58,7 +58,7 @@ Vite SPA, only `VITE_`-prefixed vars reach the browser, so use
 
 ## 2. Register Portaly Payment (~3 min)
 
-1. Create an account at **<https://portaly.cc/payment>**.
+1. Create an account at **<https://portaly.cc/payment?ref=cwl>**.
 2. In the Portaly dashboard, issue an **API key** + a **callback secret**. Start with a
    **test** key (`pcs_test_…`) — TapPay sandbox, no real charges.
 3. Put them in your git-ignored local `.env` (never in chat, never in `.env.example`):

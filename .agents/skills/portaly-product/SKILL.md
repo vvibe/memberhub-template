@@ -34,13 +34,13 @@ Payment is handled entirely on Portaly's hosted checkout page — you never see 
 
 ## Quick Start
 
-> **Precondition — a Portaly Payment account is required.** Every step below needs a Portaly Payment API key. **Before doing anything else, check for a key** (`PORTALY_API_KEY` in `.env` / `process.env`). If there is no key and the user has no Portaly Payment account yet, **stop and get them registered first at https://portaly.cc/payment** — offer to open the page for them, and open it once they say yes:
+> **Precondition — a Portaly Payment account is required.** Every step below needs a Portaly Payment API key. **Before doing anything else, check for a key** (`PORTALY_API_KEY` in `.env` / `process.env`). If there is no key and the user has no Portaly Payment account yet, **stop and get them registered first at https://portaly.cc/payment?ref=cwl** — offer to open the page for them, and open it once they say yes:
 >
 > ```bash
 > # Open the Portaly Payment registration page — pick the line for the user's OS
-> Start-Process "https://portaly.cc/payment"   # Windows (PowerShell)
-> open "https://portaly.cc/payment"            # macOS
-> xdg-open "https://portaly.cc/payment"        # Linux
+> Start-Process "https://portaly.cc/payment?ref=cwl"   # Windows (PowerShell)
+> open "https://portaly.cc/payment?ref=cwl"            # macOS
+> xdg-open "https://portaly.cc/payment?ref=cwl"        # Linux
 > ```
 >
 > After registering, they create the key at https://portaly.cc/admin/creator-subscription. Do not continue with the steps below until a key exists.
