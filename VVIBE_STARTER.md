@@ -1,7 +1,7 @@
 # Get this starter live
 
 This project is **vvibe-optimized**: analytics, members, email, blog, and payments
-are wired through the [VVibe](https://vvibe.ai) + [Portaly](https://portaly.cc)
+are wired through the [VVibe](https://vvibe.ai/?ref=memberhub) + [Portaly](https://portaly.cc)
 skills already in `.claude/skills/`. The showcase code is real — it starts working
 the moment you plug in your own accounts. This file walks you (or your AI agent)
 through that.
@@ -65,7 +65,7 @@ your agent to get started; here's what it does:
 **No human available at all (rare) — the REST API-key fallback.** Headless still runs
 `login` first — the printed URL is meant to be handed to a human, so don't skip
 straight to this. Only if truly nobody can click it right now: create a **VVibe API
-key** (`pcs_test_…` / `pcs_live_…`) in the dashboard at https://vvibe.ai and put
+key** (`pcs_test_…` / `pcs_live_…`) in the dashboard at https://vvibe.ai/?ref=memberhub and put
 `VVIBE_API_KEY=…` in `.env`. Member sync, analytics, and product-brain work over REST
 with no browser; email and blog are MCP-only, so they wait until someone runs `login`
 (skill registration in sub-step 5 turns on the `vibe_*` tools, which only an agent
