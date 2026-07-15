@@ -125,7 +125,7 @@ type AdminTab = (typeof adminTabs)[number]['id']
 
 const viewIds = new Set<ViewId>([...navItems.map((item) => item.id), 'login', 'account', 'admin'])
 const publicViews = new Set<ViewId>(['about'])
-const fallbackCoverImage = 'https://picsum.photos/seed/memberhub-cover/1200/630'
+const fallbackCoverImage = '/images/memberhub-login-cover.png'
 const fallbackGalleryImages = [
   'https://picsum.photos/seed/memberhub-workshop-a/1200/630',
   'https://picsum.photos/seed/memberhub-workshop-b/1200/630',

@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 test('visitor starts on simplified about with cover and join calls to action', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '把 AI Skill 變成每天用得到的工作流程' })).toBeVisible()
   const heroCover = page.getByRole('img', { name: '社群封面圖' })
-  await expect(heroCover).toHaveCSS('background-image', /picsum\.photos/)
+  await expect(heroCover).toHaveCSS('background-image', /\/images\/memberhub-login-cover\.png/)
   const heroBox = await heroCover.boundingBox()
   const nextButtonBox = await page.getByRole('button', { name: '下一張社群輪播圖' }).boundingBox()
   expect(heroBox).not.toBeNull()
@@ -1357,7 +1357,7 @@ async function expectInsetCardMedia(page: Page, cardSelector: string, mediaSelec
   expect(media?.rightInset).toBeGreaterThanOrEqual(12)
   expect(media?.borderStyle).toBe('solid')
   expect(media?.borderWidth).toBeGreaterThanOrEqual(1)
-  expect(media?.backgroundImage).toContain('picsum.photos')
+  expect(media?.backgroundImage).toContain('/images/memberhub-login-cover.png')
 }
 
 async function expectGroupStatsMatchCoverWidth(page: Page) {
