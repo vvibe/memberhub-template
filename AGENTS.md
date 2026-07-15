@@ -58,7 +58,7 @@ register at https://insforge.dev/auth/sign-up?ref=VVIBE ; see `VVIBE_STARTER.md`
 **Connecting VVibe — the primary next step (drive it proactively; it's just not a launch
 *prerequisite*).**
 - **Any session — interactive or headless:** run
-  `npx @vvibe/cli login --server=https://mcp.vvibe.ai` yourself. This one command works
+  `npx @vvibe/cli login --server=https://mcp.vvibe.ai --ref=memberhub` yourself. This one command works
   the same everywhere (Claude Code, Cursor, Codex, or a headless/background session): it
   opens a browser to vvibe.ai and also prints the login URL to the terminal, so even
   headless you can hand the human a link to click once. That single click creates their

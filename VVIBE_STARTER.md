@@ -9,7 +9,7 @@ through that.
 **Start by connecting VVibe — that's what this starter is for.** The fastest path to
 value is to register + onboard VVibe (step 1) and Portaly payments (step 2). It is not a
 hard prerequisite — you *can* deploy (step 5) with no VVibe connection — but connecting is
-the primary path: run `npx @vvibe/cli login --server=https://mcp.vvibe.ai`, which works in
+the primary path: run `npx @vvibe/cli login --server=https://mcp.vvibe.ai --ref=memberhub`, which works in
 any session — interactive or headless — with just one browser click from the human (no
 token to copy). Payment (Portaly) needs its own quick web signup for a key — see step 2.
 
@@ -18,7 +18,7 @@ token to copy). Payment (Portaly) needs its own quick web signup for a key — s
 > agent path just automates the clicks. Where a step says "ask your agent", the
 > manual route is the linked dashboard — and for VVibe, the simplest manual route is
 > creating an **API key** (step 1, REST path) and pasting it into `.env`; running
-> `npx @vvibe/cli login --server=https://mcp.vvibe.ai` yourself works too if you'd
+> `npx @vvibe/cli login --server=https://mcp.vvibe.ai --ref=memberhub` yourself works too if you'd
 > rather use the MCP path.
 
 ## 1. Connect VVibe (start here — the register + onboard flow)
@@ -30,7 +30,7 @@ nobody can click through the one-time login.
 
 **The one-command path — works in any session, interactive or headless.** Just tell
 your agent to get started; here's what it does:
-1. The agent runs `npx @vvibe/cli login --server=https://mcp.vvibe.ai` **itself** —
+1. The agent runs `npx @vvibe/cli login --server=https://mcp.vvibe.ai --ref=memberhub` **itself** —
    the same command whether it's running in Claude Code, Cursor, Codex, or a headless
    / background session. This is the agent's job — don't type it yourself.
 2. The CLI opens a browser to **https://vvibe.ai** and also prints the login URL to
@@ -115,7 +115,7 @@ backend (database, auth, storage, functions) as you build past the showcase.
 ## Cheat sheet
 | Need | Where |
 |---|---|
-| VVibe connect (any session) | agent runs `npx @vvibe/cli login --server=https://mcp.vvibe.ai`; one browser click, no token to copy |
+| VVibe connect (any session) | agent runs `npx @vvibe/cli login --server=https://mcp.vvibe.ai --ref=memberhub`; one browser click, no token to copy |
 | VVibe connect (no human available) | `VVIBE_API_KEY` in `.env` — from the VVibe dashboard, no browser |
 | Product basics (name / website / description) | agent checks with `vibe_get_brand`, then sets via `vibe_update_brand`, or dashboard Settings — website (`appBaseUrl`) is required for analytics |
 | Portaly account | https://portaly.cc/payment?ref=cwl |
