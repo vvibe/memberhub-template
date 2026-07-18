@@ -91,6 +91,8 @@ With keys in place, ask your agent to use the pre-installed skills:
 - **vvibe-analytics** — set your GA4 measurement ID and connect GA to the VVibe
   dashboard so traffic + the showcase events show up.
 - **vvibe-product-brain** — teach VVibe about your product (powers email / blog).
+  Needs the VVibe connection from step 1 — the skill checks first and, if you're
+  not connected yet, pauses to run `login` before it extracts anything.
 - **vvibe-member**, **vvibe-email**, **vvibe-blog-writer/render** — add as you grow.
 
 **No AI agent?** Do the same in the web dashboards — the skills just automate these:
